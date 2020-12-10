@@ -42,7 +42,6 @@ void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHe
     m_ScreenWidth = windowWidth; 
 }
 
-void ImGuiSetup();
 void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void ProcessInput(GLFWwindow* window);
 void ScrollCallback(GLFWwindow* window, double xOffset, double yOffset);
@@ -101,47 +100,47 @@ int main()
 
     //Because OpenGL works in 3D space, we render a 2D triangle with each vertex having a Z coordinate of 0.0. This way, the depth of the triangle remains the same, making it look like its 2D. 
     float vertices[] = {
-            -0.5f, -0.5f, -0.5f,
-             0.5f, -0.5f, -0.5f,
-             0.5f,  0.5f, -0.5f,  
-             0.5f,  0.5f, -0.5f,  
-            -0.5f,  0.5f, -0.5f,  
-            -0.5f, -0.5f, -0.5f,  
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 
-            -0.5f, -0.5f,  0.5f,  
-             0.5f, -0.5f,  0.5f,  
-             0.5f,  0.5f,  0.5f,  
-             0.5f,  0.5f,  0.5f,  
-            -0.5f,  0.5f,  0.5f,  
-            -0.5f, -0.5f,  0.5f,  
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 
-            -0.5f,  0.5f,  0.5f,  
-            -0.5f,  0.5f, -0.5f,  
-            -0.5f, -0.5f, -0.5f,  
-            -0.5f, -0.5f, -0.5f,  
-            -0.5f, -0.5f,  0.5f,  
-            -0.5f,  0.5f,  0.5f,  
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 
-             0.5f,  0.5f,  0.5f,  
-             0.5f,  0.5f, -0.5f,  
-             0.5f, -0.5f, -0.5f,  
-             0.5f, -0.5f, -0.5f,  
-             0.5f, -0.5f,  0.5f,  
-             0.5f,  0.5f,  0.5f,  
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 
-            -0.5f, -0.5f, -0.5f,  
-             0.5f, -0.5f, -0.5f,  
-             0.5f, -0.5f,  0.5f,  
-             0.5f, -0.5f,  0.5f,  
-            -0.5f, -0.5f,  0.5f,  
-            -0.5f, -0.5f, -0.5f,  
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
 
-            -0.5f,  0.5f, -0.5f,  
-             0.5f,  0.5f, -0.5f,  
-             0.5f,  0.5f,  0.5f,  
-             0.5f,  0.5f,  0.5f,  
-            -0.5f,  0.5f,  0.5f,  
-            -0.5f,  0.5f, -0.5f,  
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
     };
 
     unsigned int indices[] =
@@ -165,8 +164,11 @@ int main()
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     //Links the vertex attributes from the buffers that we passed into the shaders.
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     //Light Source VBO
 
@@ -176,9 +178,8 @@ int main()
     //We only need to bind to the VBO, the container's VBO data also ready contains the data.
     glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
     //Set the vertex attribute.
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-
 
 #if Texture
     unsigned int textureData1, textureData2;
@@ -253,6 +254,7 @@ int main()
         lightingShader.UseShader();
         lightingShader.SetUniformVector3("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
         lightingShader.SetUniformVector3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+        lightingShader.SetUniformVector3("lightPosition", lightPosition);
 
         //Our Object Cube
 
@@ -269,10 +271,19 @@ int main()
         glm::mat4 cubeObjectMatrix = glm::mat4(1.0f);
         cubeObjectMatrix = glm::scale(modelMatrix, glm::vec3(1.5, 1.5, 1.5));
         cubeObjectMatrix = glm::translate(modelMatrix, glm::vec3(0, 0, 0));
-        cubeObjectMatrix = glm::rotate(modelMatrix, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f)); //Rotation on the X-axis and Y axis.
+       // cubeObjectMatrix = glm::rotate(modelMatrix, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f)); //Rotation on the X-axis and Y axis.
         
         lightingShader.SetUniformMat4("model", cubeObjectMatrix);
         glBindVertexArray(vertexArrayObject);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        //Secondary Cube Object
+
+        glm::mat4 cubeObjectMatrix2 = glm::mat4(1.0f);
+        cubeObjectMatrix2 = glm::scale(cubeObjectMatrix2, glm::vec3(3.0f, 3.0f, 3.0f));
+        cubeObjectMatrix2 = glm::translate(cubeObjectMatrix2, glm::vec3(-1.0f, 0.0f, -3.0f));
+        cubeObjectMatrix2 = glm::rotate(cubeObjectMatrix2, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f)); //Rotation on the X-axis and Y axis.
+        lightingShader.SetUniformMat4("model", cubeObjectMatrix2);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         //Draw our Lamp Object
