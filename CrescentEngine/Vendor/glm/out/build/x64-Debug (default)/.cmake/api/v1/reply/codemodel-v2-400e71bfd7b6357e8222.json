@@ -1,0 +1,38 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"projectIndex" : 0,
+					"source" : "."
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "Project"
+				}
+			],
+			"targets" : []
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/Ryan-/source/repos/GraphicsAPIAbstractor/GraphicsAPIAbstractor/Vendor/glm/out/build/x64-Debug (default)",
+		"source" : "C:/Users/Ryan-/source/repos/GraphicsAPIAbstractor/GraphicsAPIAbstractor/Vendor/glm"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 1
+	}
+}
