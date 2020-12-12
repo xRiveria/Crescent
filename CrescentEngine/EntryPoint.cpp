@@ -28,6 +28,10 @@ bool firstMove = true;
 float lastX = 400;
 float lastY = 300;
 
+//Light
+float g_AmbientStrength = 0.1f;
+float g_SpecularStrength = 0.5f;
+
 //Settings
 unsigned int m_ScreenWidth = 800;
 unsigned int m_ScreenHeight = 600;
@@ -45,7 +49,7 @@ void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHe
     m_ScreenWidth = windowWidth; 
 }
 
-//void MouseCallback(GLFWwindow* window, double xPos, double yPos);
+void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void ProcessInput(GLFWwindow* window);
 void ScrollCallback(GLFWwindow* window, double xOffset, double yOffset);
 
@@ -82,12 +86,12 @@ int main()
     //We tell GLFW to make the context of our window the main context on the current thread.
 
     glfwMakeContextCurrent(window);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     //Sets a callback to a viewport resize function everytime we resize our window
  
     glfwSetFramebufferSizeCallback(window, FramebufferResizeCallback);
-    //glfwSetCursorPosCallback(window, MouseCallback);
+    glfwSetCursorPosCallback(window, MouseCallback);
     glfwSetScrollCallback(window, ScrollCallback);
 
     m_Editor.SetApplicationContext(window);
@@ -260,6 +264,9 @@ int main()
         lightingShader.SetUniformVector3("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
         lightingShader.SetUniformVector3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
         lightingShader.SetUniformVector3("lightPosition", lightPosition);
+        lightingShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
+        lightingShader.SetUniformFloat("ambientStrength", g_AmbientStrength);
+        lightingShader.SetUniformFloat("specularStrength", g_SpecularStrength);
 
         //Our Object Cube
 
@@ -305,10 +312,27 @@ int main()
         glBindVertexArray(lightVertexArrayObject);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
+        g_Camera.UpdateCameraVectors();
+
         m_Editor.BeginEditorRenderLoop();
 
         ImGui::Begin("Camera Settings");
-        ImGui::Text("Hello World");
+        ImGui::Text("Camera");
+        ImGui::DragFloat3("Camera Position", glm::value_ptr(g_Camera.m_CameraPosition), 0.2f);
+        ImGui::DragFloat("Camera FOV", &g_Camera.m_MouseZoom, 0.2f);
+        ImGui::DragFloat("Camera Yaw", &g_Camera.m_CameraYaw, 0.2f);
+        ImGui::DragFloat("Camera Pitch", &g_Camera.m_CameraPitch, 0.2f);
+        ImGui::End();
+
+        ImGui::Begin("Light Cube");
+        ImGui::Text("Light Settings");
+        ImGui::DragFloat3("Light Position", glm::value_ptr(lightPosition), 0.2f);
+        ImGui::DragFloat("Ambient Strength", &g_AmbientStrength, 0.2f, 0.0f, 1.0f);
+        ImGui::DragFloat("Specular Strength", &g_SpecularStrength, 0.2f, 0.0f, 50.0f);
+        ImGui::End();
+
+        ImGui::Begin("Frames");
+        ImGui::Text("Frame Rate: %d", ImGui::GetFrameCount());
         ImGui::End();
 
         m_Editor.EndEditorRenderLoop();
