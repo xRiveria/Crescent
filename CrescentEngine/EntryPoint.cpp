@@ -16,6 +16,8 @@
 #include "stb_image/stb_image.h"
 #include <glm/gtc/type_ptr.hpp>
 #include "Utilities/Camera.h"
+#include "Editor.h"
+#include "imgui/imgui.h"
 
 float deltaTime = 0.0f;	// Time between current frame and last frame.
 float lastFrame = 0.0f; // Time of last frame.
@@ -33,6 +35,7 @@ float visibleValue = 0.1f;
 
 //Lighting
 glm::vec3 lightPosition = { 1.2f, 1.0f, 2.0f };
+CrescentEngine::Editor m_Editor;
 
 //This is a callback function that is called whenever a window is resized.
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight)
@@ -42,7 +45,7 @@ void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHe
     m_ScreenWidth = windowWidth; 
 }
 
-void MouseCallback(GLFWwindow* window, double xPos, double yPos);
+//void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void ProcessInput(GLFWwindow* window);
 void ScrollCallback(GLFWwindow* window, double xOffset, double yOffset);
 
@@ -79,14 +82,16 @@ int main()
     //We tell GLFW to make the context of our window the main context on the current thread.
 
     glfwMakeContextCurrent(window);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     //Sets a callback to a viewport resize function everytime we resize our window
  
     glfwSetFramebufferSizeCallback(window, FramebufferResizeCallback);
-    glfwSetCursorPosCallback(window, MouseCallback);
+    //glfwSetCursorPosCallback(window, MouseCallback);
     glfwSetScrollCallback(window, ScrollCallback);
 
+    m_Editor.SetApplicationContext(window);
+    m_Editor.InitializeImGui();
 
     //Initializes GLEW. 
     if (glewInit() != GLEW_OK)
@@ -299,6 +304,14 @@ int main()
 
         glBindVertexArray(lightVertexArrayObject);
         glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        m_Editor.BeginEditorRenderLoop();
+
+        ImGui::Begin("Camera Settings");
+        ImGui::Text("Hello World");
+        ImGui::End();
+
+        m_Editor.EndEditorRenderLoop();
 
 
         glfwSwapBuffers(window);
