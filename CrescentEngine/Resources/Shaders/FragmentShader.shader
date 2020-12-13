@@ -6,8 +6,11 @@ uniform vec3 viewPosition;
 
 struct Material
 {
-    vec3 ambientColor;  //What color the surface reflects under ambient lighting, which is usually the same as the surface's color. 
-    vec3 diffuseColor;  //Defines the color of the surface under diffuse lighting. The diffuse color is usually also set to the desired surface's color. 
+    sampler2D diffuseMap;
+    sampler2D specularMap;
+    sampler2D emissionMap;
+    //vec3 ambientColor;  //What color the surface reflects under ambient lighting, which is usually the same as the surface's color. 
+    //vec3 diffuseColor;  //Defines the color of the surface under diffuse lighting. The diffuse color is usually also set to the desired surface's color. 
     vec3 specularColor; //Sets the color of the specular highlight on the surface, or possibly even reflect a surface-specific color. 
     float specularScatter; //The shininess impacts the scattering / radius of the specular highlight.
 };
@@ -25,26 +28,32 @@ uniform Material material;
 
 in vec3 FragPosition;
 in vec3 Normals;
+in vec2 TexCoords;
 
 void main()
 {
     //Ambient
-    vec3 ambient = light.ambientIntensity * material.ambientColor;
+    //vec3 ambient = light.ambientIntensity * material.ambientColor;
+    vec3 ambient = light.ambientIntensity * texture(material.diffuseMap, TexCoords).rgb;
 
     //Diffuse
     vec3 norm = normalize(Normals);
     vec3 lightDir = normalize(light.lightPosition - FragPosition);
 
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = light.diffuseIntensity * (diff * material.diffuseColor);
+    //vec3 diffuse = light.diffuseIntensity * (diff * material.diffuseColor);
+    vec3 diffuse = light.diffuseIntensity * diff * texture(material.diffuseMap, TexCoords).rgb;
 
     //Specular
     vec3 viewDirection = normalize(viewPosition - FragPosition);
     vec3 reflectDirection = reflect(-lightDir, norm);
   
     float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), material.specularScatter);
-    vec3 specular = light.specularIntensity * (spec * material.specularColor);
+    vec3 specular = light.specularIntensity * spec * texture(material.specularMap, TexCoords).rgb * material.specularColor;
 
-    vec3 result = ambient + diffuse + specular;
-    FragColor = vec4(result, 1.0);
+    //Emission
+    vec3 emission = texture(material.emissionMap, TexCoords).rgb;
+
+    vec3 result = ambient + diffuse + specular + emission;
+    FragColor = vec4(result, 1.0f);
 }
