@@ -29,8 +29,15 @@ float lastX = 400;
 float lastY = 300;
 
 //Light
-float g_AmbientStrength = 0.1f;
-float g_SpecularStrength = 0.5f;
+glm::vec3 g_AmbientIntensity = { 0.2f, 0.2f, 0.2f };
+glm::vec3 g_AmbientColor = { 1.0f, 0.5f, 0.31f };
+
+glm::vec3 g_DiffuseIntensity = { 0.5f, 0.5f, 0.5f }; 
+glm::vec3 g_DiffuseColor = { 1.0f, 0.5f, 0.31f };
+
+glm::vec3 g_SpecularIntensity = { 1.0f, 1.0f, 1.0f };
+float g_SpecularScattering = 32.0f;
+glm::vec3 g_SpecularColor = { 0.5f, 0.5f, 0.5f };
 
 //Settings
 unsigned int m_ScreenWidth = 800;
@@ -261,13 +268,18 @@ int main()
 
         //Be sure to activate shader when setting uniforms/drawing objects.
         lightingShader.UseShader();
-        lightingShader.SetUniformVector3("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
-        lightingShader.SetUniformVector3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
-        lightingShader.SetUniformVector3("lightPosition", lightPosition);
+        lightingShader.SetUniformVector3("light.lightPosition", lightPosition);
         lightingShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
-        lightingShader.SetUniformFloat("ambientStrength", g_AmbientStrength);
-        lightingShader.SetUniformFloat("specularStrength", g_SpecularStrength);
 
+        lightingShader.SetUniformVector3("light.ambientIntensity", g_AmbientIntensity);
+        lightingShader.SetUniformVector3("material.ambientColor", g_AmbientColor);
+
+        lightingShader.SetUniformVector3("light.diffuseIntensity", g_DiffuseIntensity);
+        lightingShader.SetUniformVector3("material.diffuseColor", g_DiffuseColor);
+
+        lightingShader.SetUniformVector3("material.specularColor", g_SpecularColor);
+        lightingShader.SetUniformVector3("light.specularIntensity", g_SpecularIntensity);
+        lightingShader.SetUniformFloat("material.specularScatter", g_SpecularScattering);
         //Our Object Cube
 
         //View/Projection Transformations
@@ -309,6 +321,7 @@ int main()
         modelMatrix = glm::scale(modelMatrix, glm::vec3(0.2f)); //A smaller cube.     
         lightCubeShader.SetUniformMat4("model", modelMatrix);
 
+        lightCubeShader.SetUniformVector3("lightColor", g_DiffuseColor);
         glBindVertexArray(lightVertexArrayObject);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -327,8 +340,16 @@ int main()
         ImGui::Begin("Light Cube");
         ImGui::Text("Light Settings");
         ImGui::DragFloat3("Light Position", glm::value_ptr(lightPosition), 0.2f);
-        ImGui::DragFloat("Ambient Strength", &g_AmbientStrength, 0.2f, 0.0f, 1.0f);
-        ImGui::DragFloat("Specular Strength", &g_SpecularStrength, 0.2f, 0.0f, 50.0f);
+        ImGui::NewLine();
+        ImGui::ColorEdit3("Ambient Color", glm::value_ptr(g_AmbientColor));
+        ImGui::DragFloat3("Ambient Intensity", glm::value_ptr(g_AmbientIntensity), 0.2f, 0.0f, 1.0f);
+        ImGui::NewLine();
+        ImGui::ColorEdit3("Diffuse Color", glm::value_ptr(g_DiffuseColor));
+        ImGui::DragFloat3("Diffuse Intensity", glm::value_ptr(g_DiffuseIntensity), 0.2f, 0.0f, 1.0f);
+        ImGui::NewLine();
+        ImGui::ColorEdit3("Specular Color", glm::value_ptr(g_SpecularColor));
+        ImGui::DragFloat("Specular Highlight", &g_SpecularScattering, 0.2f, 2.0f, 256.0f);
+        ImGui::DragFloat3("Specular Intensity", glm::value_ptr(g_SpecularIntensity), 0.2f, 0.0f, 1.0f);
         ImGui::End();
 
         ImGui::Begin("Frames");
