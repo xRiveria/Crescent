@@ -39,6 +39,9 @@ glm::vec3 g_SpecularIntensity = { 1.0f, 1.0f, 1.0f };
 float g_SpecularScattering = 32.0f;
 glm::vec3 g_SpecularColor = { 1.0f, 1.0f, 1.0f };
 
+//Light Casts
+glm::vec3 g_LightDirection = { -0.2f, -1.0f, -0.3f };
+
 //Settings
 unsigned int m_ScreenWidth = 800;
 unsigned int m_ScreenHeight = 600;
@@ -60,6 +63,18 @@ void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void ProcessInput(GLFWwindow* window);
 void ScrollCallback(GLFWwindow* window, double xOffset, double yOffset);
 unsigned int LoadTexture(const std::string& filePath);
+
+glm::vec3 cubePositions[] = {
+    glm::vec3(2.0f,  5.0f, -15.0f),
+    glm::vec3(-1.5f, -2.2f, -2.5f),
+    glm::vec3(-3.8f, -2.0f, -12.3f),
+    glm::vec3(2.4f, -0.4f, -3.5f),
+    glm::vec3(-1.7f,  3.0f, -7.5f),
+    glm::vec3(1.3f, -2.0f, -2.5f),
+    glm::vec3(1.5f,  2.0f, -2.5f),
+    glm::vec3(1.5f,  0.2f, -1.5f),
+    glm::vec3(-1.3f,  1.0f, -1.5f)
+};
 
 int main()
 {
@@ -238,6 +253,7 @@ int main()
         //Be sure to activate shader when setting uniforms/drawing objects.
         lightingShader.UseShader();
         lightingShader.SetUniformVector3("light.lightPosition", lightPosition);
+        lightingShader.SetUniformVector3("light.lightDirection", g_LightDirection); //Note that we define the direction as a direction from the light source; you can quickly see that the light's direction is pointing downwards.
         lightingShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
 
         lightingShader.SetUniformVector3("light.ambientIntensity", g_AmbientIntensity);
@@ -290,6 +306,16 @@ int main()
         lightingShader.SetUniformMat4("model", cubeObjectMatrix2);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
+        for (size_t i = 0; i < 9; i++)
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, cubePositions[i]);
+            float angle = 20.0f * i;
+            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            lightingShader.SetUniformMat4("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
         //Draw our Lamp Object
 
         lightCubeShader.UseShader();
@@ -319,7 +345,7 @@ int main()
 
         ImGui::Begin("Light Cube");
         ImGui::Text("Light Settings");
-        ImGui::DragFloat3("Light Position", glm::value_ptr(lightPosition), 0.2f);
+        ImGui::DragFloat3("Light Position", glm::value_ptr(g_LightDirection), 0.2f);
         ImGui::NewLine();
         ImGui::ColorEdit3("Ambient Color", glm::value_ptr(g_AmbientColor));
         ImGui::DragFloat3("Ambient Intensity", glm::value_ptr(g_AmbientIntensity), 0.2f, 0.0f, 1.0f);
