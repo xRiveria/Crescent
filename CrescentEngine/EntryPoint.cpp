@@ -253,8 +253,11 @@ int main()
         //Be sure to activate shader when setting uniforms/drawing objects.
         lightingShader.UseShader();
         lightingShader.SetUniformVector3("light.lightPosition", lightPosition);
-        lightingShader.SetUniformVector3("light.lightDirection", g_LightDirection); //Note that we define the direction as a direction from the light source; you can quickly see that the light's direction is pointing downwards.
+        //lightingShader.SetUniformVector3("light.lightDirection", g_LightDirection); //Note that we define the direction as a direction from the light source; you can quickly see that the light's direction is pointing downwards.
         lightingShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
+        lightingShader.SetUniformFloat("light.attenuationConstant", 1.0f);
+        lightingShader.SetUniformFloat("light.attenuationLinear", 0.09f);
+        lightingShader.SetUniformFloat("light.attenuationQuadratic", 0.032f);
 
         lightingShader.SetUniformVector3("light.ambientIntensity", g_AmbientIntensity);
         //lightingShader.SetUniformVector3("material.ambientColor", g_AmbientColor);
@@ -345,7 +348,7 @@ int main()
 
         ImGui::Begin("Light Cube");
         ImGui::Text("Light Settings");
-        ImGui::DragFloat3("Light Position", glm::value_ptr(g_LightDirection), 0.2f);
+        ImGui::DragFloat3("Light Position", glm::value_ptr(lightPosition), 0.2f);
         ImGui::NewLine();
         ImGui::ColorEdit3("Ambient Color", glm::value_ptr(g_AmbientColor));
         ImGui::DragFloat3("Ambient Intensity", glm::value_ptr(g_AmbientIntensity), 0.2f, 0.0f, 1.0f);
