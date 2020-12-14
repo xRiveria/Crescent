@@ -18,14 +18,18 @@ struct Material
 struct Light
 {
 
-    //Directional Lights
-    //vec3 lightDirection;
+    //Directional Lights / Spotlights
+    vec3 lightDirection;
 
-    //Point Lights
+    //Point Lights / Spotlights
     vec3 lightPosition;
     float attenuationConstant;
     float attenuationLinear;
     float attenuationQuadratic;
+
+    //Spotlights
+    float cutoff;
+    float outerCutoff;
 
     //Universal
     vec3 ambientIntensity;
@@ -42,14 +46,15 @@ in vec2 TexCoords;
 
 void main()
 {
-    //vec3 lightDir = normalize(-light.lightDirection);
+    vec3 lightDir = normalize(light.lightPosition - FragPosition);
+
     //Ambient
     //vec3 ambient = light.ambientIntensity * material.ambientColor;
     vec3 ambient = light.ambientIntensity * texture(material.diffuseMap, TexCoords).rgb;
 
     //Diffuse
     vec3 norm = normalize(Normals);
-    vec3 lightDir = normalize(light.lightPosition - FragPosition);
+    //vec3 lightDir = normalize(light.lightPosition - FragPosition);
 
     float diff = max(dot(norm, lightDir), 0.0);
     //vec3 diffuse = light.diffuseIntensity * (diff * material.diffuseColor);
@@ -58,12 +63,19 @@ void main()
     //Specular
     vec3 viewDirection = normalize(viewPosition - FragPosition);
     vec3 reflectDirection = reflect(-lightDir, norm);
-  
+
     float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), material.specularScatter);
     vec3 specular = light.specularIntensity * spec * texture(material.specularMap, TexCoords).rgb * material.specularColor;
 
     //Emission
     vec3 emission = texture(material.emissionMap, TexCoords).rgb;
+
+    //Spotlight
+    float theta = dot(lightDir, normalize(-light.lightDirection));
+    float epsilon = light.cutoff - light.outerCutoff;
+    float intensity = clamp((theta - light.outerCutoff) / epsilon, 0.0, 1.0);
+    diffuse *= intensity;
+    specular *= intensity;
 
     //Attenuation
     float distance = length(light.lightPosition - FragPosition);

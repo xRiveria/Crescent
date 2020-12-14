@@ -252,9 +252,12 @@ int main()
 
         //Be sure to activate shader when setting uniforms/drawing objects.
         lightingShader.UseShader();
-        lightingShader.SetUniformVector3("light.lightPosition", lightPosition);
-        //lightingShader.SetUniformVector3("light.lightDirection", g_LightDirection); //Note that we define the direction as a direction from the light source; you can quickly see that the light's direction is pointing downwards.
+        lightingShader.SetUniformVector3("light.lightPosition", g_Camera.m_CameraPosition);
+        lightingShader.SetUniformVector3("light.lightDirection", g_Camera.m_CameraFront); //Note that we define the direction as a direction from the light source; you can quickly see that the light's direction is pointing downwards.
         lightingShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
+        lightingShader.SetUniformFloat("light.cutoff", glm::cos(glm::radians(12.5f)));
+        lightingShader.SetUniformFloat("light.outerCutoff", glm::cos(glm::radians(17.5f)));
+
         lightingShader.SetUniformFloat("light.attenuationConstant", 1.0f);
         lightingShader.SetUniformFloat("light.attenuationLinear", 0.09f);
         lightingShader.SetUniformFloat("light.attenuationQuadratic", 0.032f);
