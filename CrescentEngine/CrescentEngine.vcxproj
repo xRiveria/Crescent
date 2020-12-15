@@ -616,6 +616,8 @@
     <ClInclude Include="Vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\Shaders\BackpackVertex.shader" />
+    <None Include="Resources\Shaders\BackpackFragment.shader" />
     <None Include="Resources\Shaders\FragmentShader.shader" />
     <None Include="OpenGL\Shaders\Basic.shader" />
     <None Include="Resources\Shaders\LightFragmentShader.shader" />

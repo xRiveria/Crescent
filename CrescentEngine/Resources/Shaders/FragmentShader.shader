@@ -52,7 +52,6 @@ struct SpotLight
     float attenuationConstant;
     float attenuationLinear;
     float attenuationQuadratic;
-
 };
 
 #define NR_POINT_LIGHTS 4

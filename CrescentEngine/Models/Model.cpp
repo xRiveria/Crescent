@@ -5,10 +5,11 @@
 
 namespace CrescentEngine
 {
-	unsigned int TextureFromFile(const char* path, const std::string& directory)
+	unsigned int TextureFromFile(const std::string& path, const std::string& directory)
 	{
-		std::string filename = std::string(path);
+		std::string filename = path;
 		filename = directory + '/' + filename;
+		std::cout << filename;
 
 		unsigned int textureID;
 		glGenTextures(1, &textureID);
@@ -137,16 +138,14 @@ namespace CrescentEngine
 			}
 		}
 
-		if (mesh->mMaterialIndex >= 0)
-		{
-			aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-			std::vector<Texture> diffuseMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
-			textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-			std::vector<Texture> specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-			textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-		}
+		std::vector<Texture> diffuseMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
+		std::vector<Texture> specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+		
 		return Mesh(vertices, indices, textures);
 	}
 
@@ -154,14 +153,15 @@ namespace CrescentEngine
 	std::vector<Texture> Model::LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName)
 	{
 		std::vector<Texture> textures;
-		for (size_t i = 0; i < material->GetTextureCount(type); i++)
+		for (unsigned int i = 0; i < material->GetTextureCount(type); i++)
 		{
 			aiString string;
 			material->GetTexture(type, i, &string);
+
 			bool skip = false;
 			for (unsigned int j = 0; j < m_TexturesLoaded.size(); j++)
 			{
-				if (std::strcmp(m_TexturesLoaded[j].texturePath.data(), string.C_Str()) == 0)
+				if (std::strcmp(m_TexturesLoaded[j].path.data(), string.C_Str()) == 0)
 				{
 					textures.push_back(m_TexturesLoaded[j]);
 					skip = true;
@@ -172,9 +172,9 @@ namespace CrescentEngine
 			if (!skip)
 			{
 				Texture texture;
-				texture.id = TextureFromFile(string.C_Str(), m_FileDirectory);
+				texture.id = TextureFromFile(string.C_Str(), this->m_FileDirectory);
 				texture.type = typeName;
-				texture.texturePath = string.C_Str();
+				texture.path = string.C_Str();
 				textures.push_back(texture);
 				m_TexturesLoaded.push_back(texture); //Add to loaded textures;
 			}

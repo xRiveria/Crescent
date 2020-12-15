@@ -17,7 +17,7 @@ namespace CrescentEngine
 	{
 		unsigned int id;  //Assigned Memory Location
 		std::string type; //Type of texture eg. Specular/Diffuse
-		std::string texturePath;
+		std::string path;
 	};
 
 	class Mesh

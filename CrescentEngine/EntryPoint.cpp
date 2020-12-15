@@ -19,9 +19,10 @@
 #include "Editor.h"
 #include "imgui/imgui.h"
 #include "Models/Model.h"
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 
-//Model
-CrescentEngine::Model ourModel("Resources/Models/backpack.obj");
 
 //Directional Light
 glm::vec3 directionalLight_LightDirection = { -0.2f, -1.0f, -0.3f };
@@ -273,6 +274,13 @@ int main()
      lightingShader.SetUniformInteger("material.emissionMap", 2);
     // ourShader.SetUniformInteger("texture2", 1);
 
+
+     //Model
+     stbi_set_flip_vertically_on_load(true);
+     LearnShader backpackShader("Resources/Shaders/BackpackVertex.shader", "Resources/Shaders/BackpackFragment.shader");
+     CrescentEngine::Model ourModel("Resources/Models/Backpack/backpack.obj");
+     CrescentEngine::Model lamp("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
+
      while (!glfwWindowShouldClose(window))
      {
          float currentFrame = glfwGetTime();
@@ -355,12 +363,28 @@ int main()
          lightingShader.SetUniformVector3("spotLight.diffuseIntensity", spotLight_DiffuseIntensity);
          lightingShader.SetUniformVector3("spotLight.specularIntensity", spotLight_SpecularIntensity);
 
+         //Backpack
+         backpackShader.UseShader();
+         backpackShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
+         backpackShader.SetUniformVector3("pointLight.lightPosition", pointLightPositions[0]);
+         //backpackShader.SetUniformVector3("spotLight.lightDirection", g_Camera.m_CameraFront);
+         //backpackShader.SetUniformFloat("spotLight.innerLightCutoff", glm::cos(glm::radians(spotLight_InnerLightCutoff)));
+         //backpackShader.SetUniformFloat("spotLight.outerLightCutoff", glm::cos(glm::radians(spotLight_OuterLightCutoff)));
+
+         backpackShader.SetUniformFloat("pointLight.attenuationConstant", 1.0f);
+         backpackShader.SetUniformFloat("pointLight.attenuationLinear", 0.09f);
+         backpackShader.SetUniformFloat("pointLight.attenuationQuadratic", 0.032f);
+
+         backpackShader.SetUniformVector3("pointLight.ambientIntensity", spotLight_AmbientIntensity);
+         backpackShader.SetUniformVector3("pointLight.diffuseIntensity", spotLight_DiffuseIntensity);
+         backpackShader.SetUniformVector3("pointLight.specularIntensity", spotLight_SpecularIntensity);
+
          //lightingShader.SetUniformVector3("light.ambientIntensity", g_AmbientIntensity);
          //lightingShader.SetUniformVector3("material.ambientColor", g_AmbientColor);
 
          //lightingShader.SetUniformVector3("light.diffuseIntensity", g_DiffuseIntensity);
          //lightingShader.SetUniformVector3("material.diffuseColor", g_DiffuseColor);
-
+         lightingShader.UseShader();
          lightingShader.SetUniformVector3("material.specularColor", g_SpecularColor);
          //lightingShader.SetUniformVector3("light.specularIntensity", g_SpecularIntensity);
          lightingShader.SetUniformFloat("material.specularScatter", g_SpecularScattering);
@@ -394,7 +418,7 @@ int main()
          glBindTexture(GL_TEXTURE_2D, emissionMap);
 
          glBindVertexArray(vertexArrayObject);
-         glDrawArrays(GL_TRIANGLES, 0, 36);
+         //glDrawArrays(GL_TRIANGLES, 0, 36);
 
          //Secondary Cube Object
 #if RotatingCube
@@ -409,7 +433,7 @@ int main()
          for (size_t i = 0; i < 9; i++)
          {
              glm::mat4 model = glm::mat4(1.0f);
-             model = glm::translate(model, cubePositions[i]);
+             model = glm::translate(model, cubePositions[i] + glm::vec3(0.0f, 0.0f, -10.0f));
              float angle = 20.0f * i;
              model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
              lightingShader.SetUniformMat4("model", model);
@@ -426,13 +450,14 @@ int main()
 
              modelMatrix = glm::mat4(1.0f);
              modelMatrix = glm::translate(modelMatrix, pointLightPositions[i]);
-             modelMatrix = glm::scale(modelMatrix, glm::vec3(0.2f)); //A smaller cube.     
+             modelMatrix = glm::scale(modelMatrix, glm::vec3(0.01f)); //A smaller cube.     
              lightCubeShader.SetUniformMat4("model", modelMatrix);
 
-             lightCubeShader.SetUniformVector3("lightColor", g_DiffuseColor);
+             //lightCubeShader.SetUniformVector3("lightColor", g_DiffuseColor);
              glBindVertexArray(lightVertexArrayObject);
-             glDrawArrays(GL_TRIANGLES, 0, 36);
+             lamp.Draw(lightCubeShader);
          }
+
 
         g_Camera.UpdateCameraVectors();
 
@@ -506,6 +531,15 @@ int main()
 
         m_Editor.EndEditorRenderLoop();
 
+        //Render the loaded model.
+        backpackShader.UseShader();
+        backpackShader.SetUniformMat4("projection", projectionMatrix);
+        backpackShader.SetUniformMat4("view", viewMatrix);
+        glm::mat4 backpackModel = glm::mat4(1.0f);
+        backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 0.0f, 0.0f));
+        backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
+        backpackShader.SetUniformMat4("model", backpackModel);
+        ourModel.Draw(backpackShader);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -525,7 +559,7 @@ void ProcessInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
-        glfwSetWindowShouldClose(window, true);
+        glfwSetWindowShouldClose(window, true);     
     }
    
     const float cameraSpeed = deltaTime * 2.5f;
