@@ -19,6 +19,46 @@
 #include "Editor.h"
 #include "imgui/imgui.h"
 
+//Directional Light
+glm::vec3 directionalLight_LightDirection = { -0.2f, -1.0f, -0.3f };
+glm::vec3 directionalLight_AmbientIntensity = { 0.2f, 0.2f, 0.2f };
+glm::vec3 directionalLight_DiffuseIntensity = { 0.5f, 0.5f, 0.5f };
+glm::vec3 directionalLight_SpecularIntensity = { 1.0f, 1.0f, 1.0f };
+
+//Point Light 1
+glm::vec3 pointLight1_AmbientIntensity = { 0.2f, 0.2f, 0.2f };
+glm::vec3 pointLight1_DiffuseIntensity = { 0.5f, 0.5f, 0.5f };
+glm::vec3 pointLight1_SpecularIntensity = { 1.0f, 1.0f, 1.0f };
+
+//Point Light 2
+glm::vec3 pointLight2_AmbientIntensity = { 0.2f, 0.2f, 0.2f };
+glm::vec3 pointLight2_DiffuseIntensity = { 0.5f, 0.5f, 0.5f };
+glm::vec3 pointLight2_SpecularIntensity = { 1.0f, 1.0f, 1.0f };
+
+//Point Light 3
+glm::vec3 pointLight3_AmbientIntensity = { 0.2f, 0.2f, 0.2f };
+glm::vec3 pointLight3_DiffuseIntensity = { 0.5f, 0.5f, 0.5f };
+glm::vec3 pointLight3_SpecularIntensity = { 1.0f, 1.0f, 1.0f };
+
+//Point Light 4
+glm::vec3 pointLight4_AmbientIntensity = { 0.2f, 0.2f, 0.2f };
+glm::vec3 pointLight4_DiffuseIntensity = { 0.5f, 0.5f, 0.5f };
+glm::vec3 pointLight4_SpecularIntensity = { 1.0f, 1.0f, 1.0f };
+
+glm::vec3 pointLightPositions[] = {
+    glm::vec3(0.7f,  0.2f,  2.0f),
+    glm::vec3(2.3f, -3.3f, -4.0f),
+    glm::vec3(-4.0f,  2.0f, -12.0f),
+    glm::vec3(0.0f,  0.0f, -3.0f)
+};
+
+//Spotlight
+float spotLight_InnerLightCutoff = 12.5f;
+float spotLight_OuterLightCutoff = 17.5f;
+glm::vec3 spotLight_AmbientIntensity = { 0.2f, 0.2f, 0.2f };
+glm::vec3 spotLight_DiffuseIntensity = { 0.5f, 0.5f, 0.5f };
+glm::vec3 spotLight_SpecularIntensity = { 1.0f, 1.0f, 1.0f };
+
 float deltaTime = 0.0f;	// Time between current frame and last frame.
 float lastFrame = 0.0f; // Time of last frame.
 
@@ -40,7 +80,7 @@ float g_SpecularScattering = 32.0f;
 glm::vec3 g_SpecularColor = { 1.0f, 1.0f, 1.0f };
 
 //Light Casts
-glm::vec3 g_LightDirection = { -0.2f, -1.0f, -0.3f };
+
 
 //Settings
 unsigned int m_ScreenWidth = 800;
@@ -65,6 +105,7 @@ void ScrollCallback(GLFWwindow* window, double xOffset, double yOffset);
 unsigned int LoadTexture(const std::string& filePath);
 
 glm::vec3 cubePositions[] = {
+    glm::vec3(0.0f,  0.0, 0.0f),
     glm::vec3(2.0f,  5.0f, -15.0f),
     glm::vec3(-1.5f, -2.2f, -2.5f),
     glm::vec3(-3.8f, -2.0f, -12.3f),
@@ -229,113 +270,166 @@ int main()
      lightingShader.SetUniformInteger("material.emissionMap", 2);
     // ourShader.SetUniformInteger("texture2", 1);
 
-    while (!glfwWindowShouldClose(window))
-    {
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-        glfwPollEvents();
-        ProcessInput(window); //Process key input events.
+     while (!glfwWindowShouldClose(window))
+     {
+         float currentFrame = glfwGetTime();
+         deltaTime = currentFrame - lastFrame;
+         lastFrame = currentFrame;
+         glfwPollEvents();
+         ProcessInput(window); //Process key input events.
 
-        /// ===== Rendering =====
-        //We want to place all the rendering commands in the render loop, since we want to execute all the rendering commands each iteration or frame of the loop. 
-        //Lets clear the screen with a color of our choice. At the start of each frame, we want to clear the screen.
-        //Otherwise, we would still see results from the previous frame, which could of course be the effect you're looking for, but usually, we don't.
-        //We can clear the screen's color buffer using "glClear()", where we pass in buffer bits to specify which buffer we would like to clear.
-        //The possible bits we can set are GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT and GL_STENCIL_BUFFER_BIT. Right now, we only care about the color values, so we only clear the color buffer.
-        
-        //Note that we also specify the color to clear the screen with using "glClearColor()".
-        //Whenever we call "glClear()" and clear the color buffer, the entire color buffer will be filled with the color as configured with "glClearColor()".
-        //As you may recall, the "glClearColor()" function is a state setting function and "glClear()" is a state using function in that it uses the current state to retrieve the clear color from.
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+         /// ===== Rendering =====
+         //We want to place all the rendering commands in the render loop, since we want to execute all the rendering commands each iteration or frame of the loop. 
+         //Lets clear the screen with a color of our choice. At the start of each frame, we want to clear the screen.
+         //Otherwise, we would still see results from the previous frame, which could of course be the effect you're looking for, but usually, we don't.
+         //We can clear the screen's color buffer using "glClear()", where we pass in buffer bits to specify which buffer we would like to clear.
+         //The possible bits we can set are GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT and GL_STENCIL_BUFFER_BIT. Right now, we only care about the color values, so we only clear the color buffer.
 
-        //Be sure to activate shader when setting uniforms/drawing objects.
-        lightingShader.UseShader();
-        lightingShader.SetUniformVector3("light.lightPosition", g_Camera.m_CameraPosition);
-        lightingShader.SetUniformVector3("light.lightDirection", g_Camera.m_CameraFront); //Note that we define the direction as a direction from the light source; you can quickly see that the light's direction is pointing downwards.
-        lightingShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
-        lightingShader.SetUniformFloat("light.cutoff", glm::cos(glm::radians(12.5f)));
-        lightingShader.SetUniformFloat("light.outerCutoff", glm::cos(glm::radians(17.5f)));
+         //Note that we also specify the color to clear the screen with using "glClearColor()".
+         //Whenever we call "glClear()" and clear the color buffer, the entire color buffer will be filled with the color as configured with "glClearColor()".
+         //As you may recall, the "glClearColor()" function is a state setting function and "glClear()" is a state using function in that it uses the current state to retrieve the clear color from.
+         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        lightingShader.SetUniformFloat("light.attenuationConstant", 1.0f);
-        lightingShader.SetUniformFloat("light.attenuationLinear", 0.09f);
-        lightingShader.SetUniformFloat("light.attenuationQuadratic", 0.032f);
+         //Be sure to activate shader when setting uniforms/drawing objects.
+         lightingShader.UseShader();
+         //lightingShader.SetUniformVector3("light.lightPosition", g_Camera.m_CameraPosition);
+         //lightingShader.SetUniformVector3("light.lightDirection", g_Camera.m_CameraFront); //Note that we define the direction as a direction from the light source; you can quickly see that the light's direction is pointing downwards.
+         lightingShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
 
-        lightingShader.SetUniformVector3("light.ambientIntensity", g_AmbientIntensity);
-        //lightingShader.SetUniformVector3("material.ambientColor", g_AmbientColor);
 
-        lightingShader.SetUniformVector3("light.diffuseIntensity", g_DiffuseIntensity);
-        //lightingShader.SetUniformVector3("material.diffuseColor", g_DiffuseColor);
+         //Point Lights
 
-        lightingShader.SetUniformVector3("material.specularColor", g_SpecularColor);
-        lightingShader.SetUniformVector3("light.specularIntensity", g_SpecularIntensity);
-        lightingShader.SetUniformFloat("material.specularScatter", g_SpecularScattering);
-        //Our Object Cube
+         lightingShader.SetUniformVector3("pointLights[0].lightPosition", pointLightPositions[0]);
+         lightingShader.SetUniformFloat("pointLights[0].attenuationConstant", 1.0f);
+         lightingShader.SetUniformFloat("pointLights[0].attenuationLinear", 0.09f);
+         lightingShader.SetUniformFloat("pointLights[0].attenuationQuadratic", 0.032f);
+         lightingShader.SetUniformVector3("pointLights[0].ambientIntensity", pointLight1_AmbientIntensity);
+         lightingShader.SetUniformVector3("pointLights[0].diffuseIntensity", pointLight1_DiffuseIntensity);
+         lightingShader.SetUniformVector3("pointLights[0].specularIntensity", pointLight1_SpecularIntensity);
 
-        //View/Projection Transformations
-        glm::mat4 projectionMatrix = glm::perspective(glm::radians(g_Camera.m_MouseZoom), 800.0f / 600.0f, 0.1f, 100.0f);
-        glm::mat4 viewMatrix = g_Camera.GetViewMatrix();
-        lightingShader.SetUniformMat4("projection", projectionMatrix);
-        lightingShader.SetUniformMat4("view", viewMatrix);
+         lightingShader.SetUniformVector3("pointLights[1].lightPosition", pointLightPositions[1]);
+         lightingShader.SetUniformFloat("pointLights[1].attenuationConstant", 1.0f);
+         lightingShader.SetUniformFloat("pointLights[1].attenuationLinear", 0.09f);
+         lightingShader.SetUniformFloat("pointLights[1].attenuationQuadratic", 0.032f);
+         lightingShader.SetUniformVector3("pointLights[1].ambientIntensity", pointLight2_AmbientIntensity);
+         lightingShader.SetUniformVector3("pointLights[1].diffuseIntensity", pointLight2_DiffuseIntensity);
+         lightingShader.SetUniformVector3("pointLights[1].specularIntensity", pointLight2_SpecularIntensity);
 
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
-        lightingShader.SetUniformMat4("model", modelMatrix); //World Transformation
+         lightingShader.SetUniformVector3("pointLights[2].lightPosition", pointLightPositions[2]);
+         lightingShader.SetUniformFloat("pointLights[2].attenuationConstant", 1.0f);
+         lightingShader.SetUniformFloat("pointLights[2].attenuationLinear", 0.09f);
+         lightingShader.SetUniformFloat("pointLights[2].attenuationQuadratic", 0.032f);
+         lightingShader.SetUniformVector3("pointLights[2].ambientIntensity", pointLight3_AmbientIntensity);
+         lightingShader.SetUniformVector3("pointLights[2].diffuseIntensity", pointLight3_DiffuseIntensity);
+         lightingShader.SetUniformVector3("pointLights[2].specularIntensity", pointLight3_SpecularIntensity);
 
-        //Render our Cube
-        glm::mat4 cubeObjectMatrix = glm::mat4(1.0f);
-        cubeObjectMatrix = glm::scale(modelMatrix, glm::vec3(1.5, 1.5, 1.5));
-        cubeObjectMatrix = glm::translate(modelMatrix, glm::vec3(0, 0, 0));
-       // cubeObjectMatrix = glm::rotate(modelMatrix, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f)); //Rotation on the X-axis and Y axis.
-        
-        lightingShader.SetUniformMat4("model", cubeObjectMatrix);
+         lightingShader.SetUniformVector3("pointLights[3].lightPosition", pointLightPositions[3]);
+         lightingShader.SetUniformFloat("pointLights[3].attenuationConstant", 1.0f);
+         lightingShader.SetUniformFloat("pointLights[3].attenuationLinear", 0.09f);
+         lightingShader.SetUniformFloat("pointLights[3].attenuationQuadratic", 0.032f);
+         lightingShader.SetUniformVector3("pointLights[3].ambientIntensity", pointLight4_AmbientIntensity);
+         lightingShader.SetUniformVector3("pointLights[3].diffuseIntensity", pointLight4_DiffuseIntensity);
+         lightingShader.SetUniformVector3("pointLights[3].specularIntensity", pointLight4_SpecularIntensity);
 
-        //Bind Diffuse Map
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuseMap);
+         //Directional Light
+         lightingShader.SetUniformVector3("directionalLight.lightDirection", directionalLight_LightDirection);
+         lightingShader.SetUniformVector3("directionalLight.ambientIntensity", directionalLight_AmbientIntensity);
+         lightingShader.SetUniformVector3("directionalLight.diffuseIntensity", directionalLight_DiffuseIntensity);
+         lightingShader.SetUniformVector3("directionalLight.specularIntensity", directionalLight_SpecularIntensity);
 
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, specularMap);
+         //Spotlight
+         lightingShader.SetUniformVector3("spotLight.lightPosition", g_Camera.m_CameraPosition);
+         lightingShader.SetUniformVector3("spotLight.lightDirection", g_Camera.m_CameraFront);
+         lightingShader.SetUniformFloat("spotLight.innerLightCutoff", glm::cos(glm::radians(spotLight_InnerLightCutoff)));
+         lightingShader.SetUniformFloat("spotLight.outerLightCutoff", glm::cos(glm::radians(spotLight_OuterLightCutoff)));
 
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, emissionMap);
+         lightingShader.SetUniformFloat("spotLight.attenuationConstant", 1.0f);
+         lightingShader.SetUniformFloat("spotLight.attenuationLinear", 0.09f);
+         lightingShader.SetUniformFloat("spotLight.attenuationQuadratic", 0.032f);
 
-        glBindVertexArray(vertexArrayObject);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+         lightingShader.SetUniformVector3("spotLight.ambientIntensity", spotLight_AmbientIntensity);
+         lightingShader.SetUniformVector3("spotLight.diffuseIntensity", spotLight_DiffuseIntensity);
+         lightingShader.SetUniformVector3("spotLight.specularIntensity", spotLight_SpecularIntensity);
 
-        //Secondary Cube Object
+         //lightingShader.SetUniformVector3("light.ambientIntensity", g_AmbientIntensity);
+         //lightingShader.SetUniformVector3("material.ambientColor", g_AmbientColor);
 
-        glm::mat4 cubeObjectMatrix2 = glm::mat4(1.0f);
-        cubeObjectMatrix2 = glm::scale(cubeObjectMatrix2, glm::vec3(3.0f, 3.0f, 3.0f));
-        cubeObjectMatrix2 = glm::translate(cubeObjectMatrix2, glm::vec3(-1.0f, 0.0f, -3.0f));
-        cubeObjectMatrix2 = glm::rotate(cubeObjectMatrix2, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f)); //Rotation on the X-axis and Y axis.
-        lightingShader.SetUniformMat4("model", cubeObjectMatrix2);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+         //lightingShader.SetUniformVector3("light.diffuseIntensity", g_DiffuseIntensity);
+         //lightingShader.SetUniformVector3("material.diffuseColor", g_DiffuseColor);
 
-        for (size_t i = 0; i < 9; i++)
-        {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, cubePositions[i]);
-            float angle = 20.0f * i;
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            lightingShader.SetUniformMat4("model", model);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+         lightingShader.SetUniformVector3("material.specularColor", g_SpecularColor);
+         //lightingShader.SetUniformVector3("light.specularIntensity", g_SpecularIntensity);
+         lightingShader.SetUniformFloat("material.specularScatter", g_SpecularScattering);
+         //Our Object Cube
 
-        //Draw our Lamp Object
+         //View/Projection Transformations
+         glm::mat4 projectionMatrix = glm::perspective(glm::radians(g_Camera.m_MouseZoom), 800.0f / 600.0f, 0.1f, 100.0f);
+         glm::mat4 viewMatrix = g_Camera.GetViewMatrix();
+         lightingShader.SetUniformMat4("projection", projectionMatrix);
+         lightingShader.SetUniformMat4("view", viewMatrix);
 
-        lightCubeShader.UseShader();
-        lightCubeShader.SetUniformMat4("projection", projectionMatrix);
-        lightCubeShader.SetUniformMat4("view", viewMatrix);
+         glm::mat4 modelMatrix = glm::mat4(1.0f);
+         lightingShader.SetUniformMat4("model", modelMatrix); //World Transformation
 
-        modelMatrix = glm::mat4(1.0f);
-        modelMatrix = glm::translate(modelMatrix, lightPosition);
-        modelMatrix = glm::scale(modelMatrix, glm::vec3(0.2f)); //A smaller cube.     
-        lightCubeShader.SetUniformMat4("model", modelMatrix);
+         //Render our Cube
+         glm::mat4 cubeObjectMatrix = glm::mat4(1.0f);
+         cubeObjectMatrix = glm::scale(modelMatrix, glm::vec3(1.5, 1.5, 1.5));
+         cubeObjectMatrix = glm::translate(modelMatrix, glm::vec3(0, 0, 0));
+         // cubeObjectMatrix = glm::rotate(modelMatrix, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f)); //Rotation on the X-axis and Y axis.
 
-        lightCubeShader.SetUniformVector3("lightColor", g_DiffuseColor);
-        glBindVertexArray(lightVertexArrayObject);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+         lightingShader.SetUniformMat4("model", cubeObjectMatrix);
+
+         //Bind Diffuse Map
+         glActiveTexture(GL_TEXTURE0);
+         glBindTexture(GL_TEXTURE_2D, diffuseMap);
+
+         glActiveTexture(GL_TEXTURE1);
+         glBindTexture(GL_TEXTURE_2D, specularMap);
+
+         glActiveTexture(GL_TEXTURE2);
+         glBindTexture(GL_TEXTURE_2D, emissionMap);
+
+         glBindVertexArray(vertexArrayObject);
+         glDrawArrays(GL_TRIANGLES, 0, 36);
+
+         //Secondary Cube Object
+#if RotatingCube
+         glm::mat4 cubeObjectMatrix2 = glm::mat4(1.0f);
+         cubeObjectMatrix2 = glm::scale(cubeObjectMatrix2, glm::vec3(3.0f, 3.0f, 3.0f));
+         cubeObjectMatrix2 = glm::translate(cubeObjectMatrix2, glm::vec3(-1.0f, 0.0f, -3.0f));
+         cubeObjectMatrix2 = glm::rotate(cubeObjectMatrix2, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f)); //Rotation on the X-axis and Y axis.
+         lightingShader.SetUniformMat4("model", cubeObjectMatrix2);
+         glDrawArrays(GL_TRIANGLES, 0, 36);
+#endif
+
+         for (size_t i = 0; i < 10; i++)
+         {
+             glm::mat4 model = glm::mat4(1.0f);
+             model = glm::translate(model, cubePositions[i]);
+             float angle = 20.0f * i;
+             model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+             lightingShader.SetUniformMat4("model", model);
+             glDrawArrays(GL_TRIANGLES, 0, 36);
+         }
+
+         //Draw our Lamp Object
+
+         for (int i = 0; i < 4; i++)
+         {
+             lightCubeShader.UseShader();
+             lightCubeShader.SetUniformMat4("projection", projectionMatrix);
+             lightCubeShader.SetUniformMat4("view", viewMatrix);
+
+             modelMatrix = glm::mat4(1.0f);
+             modelMatrix = glm::translate(modelMatrix, pointLightPositions[i]);
+             modelMatrix = glm::scale(modelMatrix, glm::vec3(0.2f)); //A smaller cube.     
+             lightCubeShader.SetUniformMat4("model", modelMatrix);
+
+             lightCubeShader.SetUniformVector3("lightColor", g_DiffuseColor);
+             glBindVertexArray(lightVertexArrayObject);
+             glDrawArrays(GL_TRIANGLES, 0, 36);
+         }
 
         g_Camera.UpdateCameraVectors();
 
@@ -349,23 +443,62 @@ int main()
         ImGui::DragFloat("Camera Pitch", &g_Camera.m_CameraPitch, 0.2f);
         ImGui::End();
 
-        ImGui::Begin("Light Cube");
-        ImGui::Text("Light Settings");
-        ImGui::DragFloat3("Light Position", glm::value_ptr(lightPosition), 0.2f);
-        ImGui::NewLine();
-        ImGui::ColorEdit3("Ambient Color", glm::value_ptr(g_AmbientColor));
-        ImGui::DragFloat3("Ambient Intensity", glm::value_ptr(g_AmbientIntensity), 0.2f, 0.0f, 1.0f);
-        ImGui::NewLine();
-        ImGui::ColorEdit3("Diffuse Color", glm::value_ptr(g_DiffuseColor));
-        ImGui::DragFloat3("Diffuse Intensity", glm::value_ptr(g_DiffuseIntensity), 0.2f, 0.0f, 1.0f);
-        ImGui::NewLine();
-        ImGui::ColorEdit3("Specular Color", glm::value_ptr(g_SpecularColor));
+        ImGui::Begin("Lights");
         ImGui::DragFloat("Specular Highlight", &g_SpecularScattering, 0.2f, 2.0f, 256.0f);
-        ImGui::DragFloat3("Specular Intensity", glm::value_ptr(g_SpecularIntensity), 0.2f, 0.0f, 1.0f);
+        ImGui::Begin("Directional Light");
+        ImGui::DragFloat3("Light Direction", glm::value_ptr(directionalLight_LightDirection), 0.1f);
+        ImGui::DragFloat3("Ambient Intensity##Direction", glm::value_ptr(directionalLight_AmbientIntensity), 0.1f);
+        ImGui::DragFloat3("Diffuse Intensity##Direction", glm::value_ptr(directionalLight_DiffuseIntensity), 0.1f);
+        ImGui::DragFloat3("Specular Intensity##Direction", glm::value_ptr(directionalLight_SpecularIntensity), 0.1f);
+        ImGui::End();
+
+        ImGui::Begin("Point Light 1");
+        ImGui::DragFloat3("Light Position##1", glm::value_ptr(pointLightPositions[0]), 0.1f);
+        ImGui::DragFloat3("Ambient Intensity##1", glm::value_ptr(pointLight1_AmbientIntensity), 0.1f);
+        ImGui::DragFloat3("Diffuse Intensity##1", glm::value_ptr(pointLight1_DiffuseIntensity), 0.1f);
+        ImGui::DragFloat3("Specular Intensity##1", glm::value_ptr(pointLight1_SpecularIntensity), 0.1f);
+        ImGui::End();
+
+        ImGui::Begin("Point Light 2");
+        ImGui::DragFloat3("Light Position##2", glm::value_ptr(pointLightPositions[1]), 0.1f);
+        ImGui::DragFloat3("Ambient Intensity##2", glm::value_ptr(pointLight2_AmbientIntensity), 0.1f);
+        ImGui::DragFloat3("Diffuse Intensity##2", glm::value_ptr(pointLight2_DiffuseIntensity), 0.1f);
+        ImGui::DragFloat3("Specular Intensity##2", glm::value_ptr(pointLight2_SpecularIntensity), 0.1f);
+        ImGui::End();
+
+        ImGui::Begin("Point Light 3");
+        ImGui::DragFloat3("Light Position##3", glm::value_ptr(pointLightPositions[2]), 0.1f);
+        ImGui::DragFloat3("Ambient Intensity##3", glm::value_ptr(pointLight3_AmbientIntensity), 0.1f);
+        ImGui::DragFloat3("Diffuse Intensity##3", glm::value_ptr(pointLight3_DiffuseIntensity), 0.1f);
+        ImGui::DragFloat3("Specular Intensity##3", glm::value_ptr(pointLight3_SpecularIntensity), 0.1f);
+        ImGui::End();
+
+        ImGui::Begin("Point Light 4");
+        ImGui::DragFloat3("Light Position##4", glm::value_ptr(pointLightPositions[3]), 0.1f);
+        ImGui::DragFloat3("Ambient Intensity##4", glm::value_ptr(pointLight4_AmbientIntensity), 0.1f);
+        ImGui::DragFloat3("Diffuse Intensity##4", glm::value_ptr(pointLight4_DiffuseIntensity), 0.1f);
+        ImGui::DragFloat3("Specular Intensity##4", glm::value_ptr(pointLight4_SpecularIntensity), 0.1f);
+        ImGui::End();
+
+        ImGui::Begin("Spotlight");
+        ImGui::DragFloat("Inner Cutoff", &spotLight_InnerLightCutoff, 0.1f);
+        ImGui::DragFloat("Outer Cutoff", &spotLight_OuterLightCutoff, 0.1f);
+        ImGui::DragFloat3("Ambient Intensity##Spotlight", glm::value_ptr(spotLight_AmbientIntensity), 0.1f);
+        ImGui::DragFloat3("Diffuse Intensity##Spotlight", glm::value_ptr(spotLight_DiffuseIntensity), 0.1f);
+        ImGui::DragFloat3("Specular Intensity##Spotlight", glm::value_ptr(spotLight_SpecularIntensity), 0.1f);
+        ImGui::End();
+
+        //ImGui::NewLine();
+        //ImGui::ColorEdit3("Ambient Color", glm::value_ptr(g_AmbientColor));
+        //ImGui::NewLine();
+        //ImGui::ColorEdit3("Diffuse Color", glm::value_ptr(g_DiffuseColor));
+        //ImGui::NewLine();
+        //ImGui::ColorEdit3("Specular Color", glm::value_ptr(g_SpecularColor));
         ImGui::End();
 
         ImGui::Begin("Frames");
-        ImGui::Text("Frame Rate: %d", ImGui::GetFrameCount());
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+            1000.0 / double(ImGui::GetIO().Framerate), double(ImGui::GetIO().Framerate));
         ImGui::End();
 
         m_Editor.EndEditorRenderLoop();
