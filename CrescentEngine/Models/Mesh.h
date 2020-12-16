@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "../LearnShader.h"
+#include <algorithm>
 
 namespace CrescentEngine
 {
@@ -11,6 +12,36 @@ namespace CrescentEngine
 		glm::vec3 Position;
 		glm::vec3 Normal;
 		glm::vec2 TexCoords;
+		int BoneIDs[8];
+		float BoneWeights[8];
+
+		Vertex()
+		{
+			std::fill(BoneIDs, BoneIDs + 8, 0);
+			std::fill(BoneWeights, BoneWeights + 8, 0);
+		}
+
+		void AddBone(int id, float weight)
+		{
+			int i;
+			for (i = 0; i < 8; i++)
+			{
+				if (BoneWeights[i] == 0) //Find empty slot.
+				{
+					break;
+				}
+				
+				if (i >= 8) //If we have more bones than supported.
+				{
+					std::cout << "Too Many Bones!";
+					std::terminate(); 
+				}
+			}
+
+			//Once empty slot is found, assign here.
+			BoneWeights[i] = weight;
+			BoneIDs[i] = id;
+		}
 	};
 
 	struct Texture
@@ -32,7 +63,7 @@ namespace CrescentEngine
 
 	private:
 		//Render Data
-		unsigned int vertexArrayObject, vertexBufferObject, indexBufferObject;
+		unsigned int vertexArrayObject, vertexBufferObject, indexBufferObject, boneBufferObject;
 		void SetupMesh();
 	};
 }

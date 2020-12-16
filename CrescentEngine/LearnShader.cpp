@@ -101,6 +101,12 @@ void LearnShader::SetUniformMat4(const std::string& name, const glm::mat4& value
 	glUniformMatrix4fv(glGetUniformLocation(m_ShaderID, name.c_str()), 1, GL_FALSE, &value[0][0]);
 }
 
+void LearnShader::SetUniformVectorMat4(const std::string& identifier, const std::vector<glm::mat4>& value) 
+{
+	auto location = glGetUniformLocation(m_ShaderID, identifier.c_str());
+	glUniformMatrix4fv(location, value.size(), GL_FALSE, value_ptr(value[0]));
+}
+
 void LearnShader::CheckCompileErrors(unsigned int shader, std::string type)
 {
 	int success;

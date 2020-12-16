@@ -3,6 +3,6 @@
 newmtl Redstone-lamp
 Ka 2 1 0
 Kd 1 1 1
-map_Kd ....redstone-lamp.jpg
+map_Kd redstone-lamp.jpg
 illum 7
 

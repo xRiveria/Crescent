@@ -23,6 +23,10 @@
 #include <fstream>
 #include <sstream>
 
+//To Do:
+//Cleanup Entry Point.
+//Abstract Texture Class.
+float animationTime = 0.0f;
 
 //Directional Light
 glm::vec3 directionalLight_LightDirection = { -0.2f, -1.0f, -0.3f };
@@ -84,9 +88,6 @@ glm::vec3 g_SpecularIntensity = { 1.0f, 1.0f, 1.0f };
 float g_SpecularScattering = 32.0f;
 glm::vec3 g_SpecularColor = { 1.0f, 1.0f, 1.0f };
 
-//Light Casts
-
-
 //Settings
 unsigned int m_ScreenWidth = 800;
 unsigned int m_ScreenHeight = 600;
@@ -94,7 +95,10 @@ float visibleValue = 0.1f;
 
 //Lighting
 glm::vec3 lightPosition = { 0.0f, 1.0f, 2.0f };
-glm::vec3 modelPosition = { -6.0f, -3.0f, 0.0f };
+glm::vec3 modelPosition = { -6.0f, -3.0f, 5.0f };
+glm::vec3 guardRotation = { -5.0f, 0.0f, 0.0f };
+glm::vec3 guardPosition = { -40.0f, -3.0f, 36.0f };
+float guardRotationAngle = 0.0f;
 CrescentEngine::Editor m_Editor;
 
 //This is a callback function that is called whenever a window is resized.
@@ -175,6 +179,7 @@ int main()
 
     LearnShader lightingShader("Resources/Shaders/VertexShader.shader", "Resources/Shaders/FragmentShader.shader");
     LearnShader lightCubeShader("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");
+    LearnShader animationShader("Resources/Shaders/AnimationVertex.shader", "Resources/Shaders/AnimationFragment.shader");
 
     //Because OpenGL works in 3D space, we render a 2D triangle with each vertex having a Z coordinate of 0.0. This way, the depth of the triangle remains the same, making it look like its 2D. 
     float vertices[] = {
@@ -280,16 +285,22 @@ int main()
      LearnShader backpackShader("Resources/Shaders/BackpackVertex.shader", "Resources/Shaders/BackpackFragment.shader");
      CrescentEngine::Model ourModel("Resources/Models/Backpack/backpack.obj");
      CrescentEngine::Model lamp("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
+     CrescentEngine::Model girl("Resources/Models/Girl/Character_Girl.fbx");
+
      stbi_set_flip_vertically_on_load(false);
      CrescentEngine::Model slime("Resources/Models/Torg/Torg_Animal.fbx");
+     std::shared_ptr<CrescentEngine::Model> guard = std::make_shared<CrescentEngine::Model>("Resources/Models/GuardBob/boblampclean.md5mesh");
      stbi_set_flip_vertically_on_load(true);
 
 
      while (!glfwWindowShouldClose(window))
      {
          float currentFrame = glfwGetTime();
+
          deltaTime = currentFrame - lastFrame;
          lastFrame = currentFrame;
+         animationTime += deltaTime;
+
          glfwPollEvents();
          ProcessInput(window); //Process key input events.
 
@@ -383,6 +394,31 @@ int main()
          backpackShader.SetUniformVector3("pointLight.diffuseIntensity", spotLight_DiffuseIntensity);
          backpackShader.SetUniformVector3("pointLight.specularIntensity", spotLight_SpecularIntensity);
 
+         //Directional Light
+         backpackShader.SetUniformVector3("directionalLight.lightDirection", directionalLight_LightDirection);
+         backpackShader.SetUniformVector3("directionalLight.ambientIntensity", directionalLight_AmbientIntensity);
+         backpackShader.SetUniformVector3("directionalLight.diffuseIntensity", directionalLight_DiffuseIntensity);
+         backpackShader.SetUniformVector3("directionalLight.specularIntensity", directionalLight_SpecularIntensity);
+
+         //Animation Shader
+         animationShader.UseShader();
+         animationShader.SetUniformVectorMat4("uBoneMatrices", guard->m_BoneMatrices);
+         animationShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
+         animationShader.SetUniformVector3("pointLight.lightPosition", pointLightPositions[0]);
+         animationShader.SetUniformFloat("pointLight.attenuationConstant", 1.0f);
+         animationShader.SetUniformFloat("pointLight.attenuationLinear", 0.09f);
+         animationShader.SetUniformFloat("pointLight.attenuationQuadratic", 0.032f);
+
+         animationShader.SetUniformVector3("pointLight.ambientIntensity", spotLight_AmbientIntensity);
+         animationShader.SetUniformVector3("pointLight.diffuseIntensity", spotLight_DiffuseIntensity);
+         animationShader.SetUniformVector3("pointLight.specularIntensity", spotLight_SpecularIntensity);
+
+         //Directional Light
+         animationShader.SetUniformVector3("directionalLight.lightDirection", directionalLight_LightDirection);
+         animationShader.SetUniformVector3("directionalLight.ambientIntensity", directionalLight_AmbientIntensity);
+         animationShader.SetUniformVector3("directionalLight.diffuseIntensity", directionalLight_DiffuseIntensity);
+         animationShader.SetUniformVector3("directionalLight.specularIntensity", directionalLight_SpecularIntensity);
+
          //lightingShader.SetUniformVector3("light.ambientIntensity", g_AmbientIntensity);
          //lightingShader.SetUniformVector3("material.ambientColor", g_AmbientColor);
 
@@ -471,14 +507,23 @@ int main()
          backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
          backpackShader.SetUniformMat4("model", backpackModel);
          ourModel.Draw(backpackShader);
-         backpackShader.UseShader();
 
          glm::mat4 torgModel = glm::mat4(1.0f);
          torgModel = glm::scale(torgModel, glm::vec3(0.5f)); //A smaller cube.     
          torgModel = glm::translate(torgModel, modelPosition);
          torgModel = glm::rotate(torgModel, (float)glfwGetTime(), glm::vec3(0.0f, 0.5f, 0.0f));
          backpackShader.SetUniformMat4("model", torgModel);
-         slime.Draw(lightCubeShader);
+         girl.Draw(backpackShader);
+
+         animationShader.UseShader();
+         animationShader.SetUniformMat4("projection", projectionMatrix);
+         animationShader.SetUniformMat4("view", viewMatrix);
+         glm::mat4 guardModel = glm::mat4(1.0f);
+         guardModel = glm::scale(guardModel, glm::vec3(0.02f)); //A smaller cube.     
+         guardModel = glm::translate(guardModel, guardPosition);
+         guardModel = glm::rotate(guardModel, glm::radians(guardRotationAngle), guardRotation);
+         animationShader.SetUniformMat4("model", guardModel);
+         guard->Draw(0, animationTime, true, animationShader);
 
         g_Camera.UpdateCameraVectors();
 
@@ -488,6 +533,8 @@ int main()
         ImGui::Text("Camera");
         ImGui::DragFloat3("Slime Position", glm::value_ptr(modelPosition), 0.1f);
         ImGui::DragFloat3("Camera Position", glm::value_ptr(g_Camera.m_CameraPosition), 0.2f);
+        ImGui::DragFloat3("Guard Position", glm::value_ptr(guardPosition), 0.1f);
+        ImGui::DragFloat("Guard Rotation Angle", &guardRotationAngle);
         ImGui::DragFloat("Camera FOV", &g_Camera.m_MouseZoom, 0.2f);
         ImGui::DragFloat("Camera Yaw", &g_Camera.m_CameraYaw, 0.2f);
         ImGui::DragFloat("Camera Pitch", &g_Camera.m_CameraPitch, 0.2f);
@@ -553,8 +600,6 @@ int main()
 
         m_Editor.EndEditorRenderLoop();
 
-
-
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -594,6 +639,10 @@ void ProcessInput(GLFWwindow* window)
         g_Camera.ProcessKeyboardEvents(CameraMovement::Right, deltaTime);
     }
 
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+    {
+        animationTime = 0.0f;
+    }
 }
 
 void ScrollCallback(GLFWwindow* window, double xOffset, double yOffset)

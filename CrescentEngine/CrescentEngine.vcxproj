@@ -184,6 +184,7 @@
     <ClCompile Include="Core\Editor.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="LearnShader.cpp" />
+    <ClCompile Include="Models\BoneMapper.cpp" />
     <ClCompile Include="Models\Mesh.cpp" />
     <ClCompile Include="Models\Model.cpp" />
     <ClCompile Include="OpenGL\IndexBuffer.cpp" />
@@ -242,6 +243,7 @@
     <ClInclude Include="Core\CrescentPCH.h" />
     <ClInclude Include="Core\Editor.h" />
     <ClInclude Include="LearnShader.h" />
+    <ClInclude Include="Models\BoneMapper.h" />
     <ClInclude Include="Models\Mesh.h" />
     <ClInclude Include="Models\Model.h" />
     <ClInclude Include="OpenGL\IndexBuffer.h" />
@@ -616,6 +618,8 @@
     <ClInclude Include="Vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\Shaders\AnimationFragment.shader" />
+    <None Include="Resources\Shaders\AnimationVertex.shader" />
     <None Include="Resources\Shaders\BackpackVertex.shader" />
     <None Include="Resources\Shaders\BackpackFragment.shader" />
     <None Include="Resources\Shaders\FragmentShader.shader" />

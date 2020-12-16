@@ -47,8 +47,10 @@ namespace CrescentEngine
 	void Mesh::SetupMesh()
 	{
 		glGenVertexArrays(1, &vertexArrayObject);
+
 		glGenBuffers(1, &vertexBufferObject);
 		glGenBuffers(1, &indexBufferObject);
+
 		glBindVertexArray(vertexArrayObject);
 
 		glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
@@ -68,7 +70,21 @@ namespace CrescentEngine
 		//Vertex Texture Coodinates
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
+		
+		glEnableVertexAttribArray(3);
+		glVertexAttribIPointer(3, 4, GL_INT, sizeof(Vertex), (void*)(offsetof(Vertex, BoneIDs) + 0 * sizeof(int)));
 
+		glEnableVertexAttribArray(4);
+		glVertexAttribIPointer(4, 4, GL_INT, sizeof(Vertex), (void*)(offsetof(Vertex, BoneIDs) + 4 * sizeof(int)));
+
+		glEnableVertexAttribArray(5);
+		glVertexAttribPointer(5, 4, GL_FLOAT, false, sizeof(Vertex), (void*)(offsetof(Vertex, BoneWeights) + 0 * sizeof(float)));
+
+		glEnableVertexAttribArray(6);
+		glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(Vertex), (void*)(offsetof(Vertex, BoneWeights) + 4 * sizeof(float)));
+		
 		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 }

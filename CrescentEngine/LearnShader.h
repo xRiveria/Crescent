@@ -14,6 +14,7 @@ public:
 	void SetUniformBool(const std::string& name, bool value) const;
 	void SetUniformVector3(const std::string& name, const glm::vec3& value);
 	void SetUniformMat4(const std::string& name, const glm::mat4& value);
+	void SetUniformVectorMat4(const std::string& identifier, const std::vector<glm::mat4>& value);
 
 	inline unsigned int GetShaderID() const { return m_ShaderID; }
 
