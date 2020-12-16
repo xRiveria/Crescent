@@ -1,5 +1,6 @@
 #pragma once
 #define _CRT_SECURE_NO_WARNINGS
+
 ///C++ Library
 #include <array>
 #include <string>
@@ -13,5 +14,5 @@
 #include <memory>
 
 ///Our Library
-
+#include "Core.h"
 

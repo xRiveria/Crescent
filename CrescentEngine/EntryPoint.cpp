@@ -22,6 +22,7 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include "Window.h"
 
 //To Do:
 //Cleanup Entry Point.
@@ -126,55 +127,27 @@ glm::vec3 cubePositions[] = {
     glm::vec3(-1.3f,  1.0f, -1.5f)
 };
 
+CrescentEngine::Window m_Window;
+
 int main()
 {
     RendererAbstractor::Renderer::InitializeSelectedRenderer(RendererAbstractor::Renderer::API::OpenGL);
-
-    /// ===== Hello Window =====
-
-    glfwInit();
-    //Refer to https://www.glfw.org/docs/latest/window.html#window_hints for a list of window hints avaliable here. This goes into the first value of glfwWindowHint.
-    //We are essentially setting the value of the enum (first value) to the second value.
-    //Here, we are telling GLFW that 3.3 is the OpenGL version we want to use. This allows GLFW to make the proper arrangements when creating the OpenGL context.
-    //Thus, when users don't have the proper OpenGL version on his or her computer that is lower than 3.3, GLFW will fail to run, crash or display undefined behavior. 
-    //We thus set the major and minor version to both 3 in this case.
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    //We also tell GLFW that we explicitly want to use the core profile. This means we will get access to a smaller subset of OpenGL features without backwards compatible features we no longer need.
-    //On Mac OS X, you need to add "glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);" for it to work.
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-   
-    //Creates a Window Object. This window object holds all the windowing data and is required by most of GLFW's other functions. 
-    //The "glfwCreateWindow()" function requires the window width and height as its first two arguments respectively.
-    //The third argument allows us to create a name for the window which I've called "OpenGL".
-    //We can ignore the last 2 parameters. The function returns a GLFWwindow object that we will later need for other GLFW operations.
-    GLFWwindow* window = glfwCreateWindow(m_ScreenWidth, m_ScreenHeight, "OpenGL", nullptr, nullptr);
-    if (window == nullptr)
-    {
-        std::cout << "Failed to create GLFW Window! \n";
-        glfwTerminate();
-        return -1;
-    }
-
-    //We tell GLFW to make the context of our window the main context on the current thread.
-
-    glfwMakeContextCurrent(window);
-    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    m_Window.CreateWindow("Crescent Engine", 1200.0f, 720.0f);
 
     //Sets a callback to a viewport resize function everytime we resize our window
  
-    glfwSetFramebufferSizeCallback(window, FramebufferResizeCallback);
-    glfwSetCursorPosCallback(window, MouseCallback);
-    glfwSetScrollCallback(window, ScrollCallback);
+    glfwSetFramebufferSizeCallback(m_Window.RetrieveWindow(), FramebufferResizeCallback);
+    glfwSetCursorPosCallback(m_Window.RetrieveWindow(), MouseCallback);
+    glfwSetScrollCallback(m_Window.RetrieveWindow(), ScrollCallback);
 
-    m_Editor.SetApplicationContext(window);
+    m_Editor.SetApplicationContext(m_Window.RetrieveWindow());
     m_Editor.InitializeImGui();
 
     //Initializes GLEW. 
     if (glewInit() != GLEW_OK)
     {
         std::cout << "Error!" << std::endl;
-    }
+    }    
     glEnable(GL_DEPTH_TEST);
 
     LearnShader lightingShader("Resources/Shaders/VertexShader.shader", "Resources/Shaders/FragmentShader.shader");
@@ -293,7 +266,7 @@ int main()
      stbi_set_flip_vertically_on_load(true);
 
 
-     while (!glfwWindowShouldClose(window))
+     while (!glfwWindowShouldClose(m_Window.RetrieveWindow()))
      {
          float currentFrame = glfwGetTime();
 
@@ -302,7 +275,7 @@ int main()
          animationTime += deltaTime;
 
          glfwPollEvents();
-         ProcessInput(window); //Process key input events.
+         ProcessInput(m_Window.RetrieveWindow()); //Process key input events.
 
          /// ===== Rendering =====
          //We want to place all the rendering commands in the render loop, since we want to execute all the rendering commands each iteration or frame of the loop. 
@@ -600,7 +573,7 @@ int main()
 
         m_Editor.EndEditorRenderLoop();
 
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(m_Window.RetrieveWindow());
         glfwPollEvents();
     }
 

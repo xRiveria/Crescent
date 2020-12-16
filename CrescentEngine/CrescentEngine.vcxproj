@@ -182,6 +182,7 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CrescentPCH.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="Core\Editor.cpp" />
+    <ClCompile Include="Core\Window.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="LearnShader.cpp" />
     <ClCompile Include="Models\BoneMapper.cpp" />
@@ -240,8 +241,10 @@
     <ClCompile Include="Vendor\stb_image\stb_image.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Core\Core.h" />
     <ClInclude Include="Core\CrescentPCH.h" />
     <ClInclude Include="Core\Editor.h" />
+    <ClInclude Include="Core\Window.h" />
     <ClInclude Include="LearnShader.h" />
     <ClInclude Include="Models\BoneMapper.h" />
     <ClInclude Include="Models\Mesh.h" />
