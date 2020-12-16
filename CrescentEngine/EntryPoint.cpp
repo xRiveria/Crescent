@@ -94,6 +94,7 @@ float visibleValue = 0.1f;
 
 //Lighting
 glm::vec3 lightPosition = { 0.0f, 1.0f, 2.0f };
+glm::vec3 modelPosition = { -6.0f, -3.0f, 0.0f };
 CrescentEngine::Editor m_Editor;
 
 //This is a callback function that is called whenever a window is resized.
@@ -274,12 +275,15 @@ int main()
      lightingShader.SetUniformInteger("material.emissionMap", 2);
     // ourShader.SetUniformInteger("texture2", 1);
 
-
      //Model
      stbi_set_flip_vertically_on_load(true);
      LearnShader backpackShader("Resources/Shaders/BackpackVertex.shader", "Resources/Shaders/BackpackFragment.shader");
      CrescentEngine::Model ourModel("Resources/Models/Backpack/backpack.obj");
      CrescentEngine::Model lamp("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
+     stbi_set_flip_vertically_on_load(false);
+     CrescentEngine::Model slime("Resources/Models/Torg/Torg_Animal.fbx");
+     stbi_set_flip_vertically_on_load(true);
+
 
      while (!glfwWindowShouldClose(window))
      {
@@ -458,6 +462,23 @@ int main()
              lamp.Draw(lightCubeShader);
          }
 
+         //Render the loaded model.
+         backpackShader.UseShader();
+         backpackShader.SetUniformMat4("projection", projectionMatrix);
+         backpackShader.SetUniformMat4("view", viewMatrix);
+         glm::mat4 backpackModel = glm::mat4(1.0f);
+         backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 0.0f, 0.0f));
+         backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
+         backpackShader.SetUniformMat4("model", backpackModel);
+         ourModel.Draw(backpackShader);
+         backpackShader.UseShader();
+
+         glm::mat4 torgModel = glm::mat4(1.0f);
+         torgModel = glm::scale(torgModel, glm::vec3(0.5f)); //A smaller cube.     
+         torgModel = glm::translate(torgModel, modelPosition);
+         torgModel = glm::rotate(torgModel, (float)glfwGetTime(), glm::vec3(0.0f, 0.5f, 0.0f));
+         backpackShader.SetUniformMat4("model", torgModel);
+         slime.Draw(lightCubeShader);
 
         g_Camera.UpdateCameraVectors();
 
@@ -465,6 +486,7 @@ int main()
 
         ImGui::Begin("Camera Settings");
         ImGui::Text("Camera");
+        ImGui::DragFloat3("Slime Position", glm::value_ptr(modelPosition), 0.1f);
         ImGui::DragFloat3("Camera Position", glm::value_ptr(g_Camera.m_CameraPosition), 0.2f);
         ImGui::DragFloat("Camera FOV", &g_Camera.m_MouseZoom, 0.2f);
         ImGui::DragFloat("Camera Yaw", &g_Camera.m_CameraYaw, 0.2f);
@@ -531,15 +553,7 @@ int main()
 
         m_Editor.EndEditorRenderLoop();
 
-        //Render the loaded model.
-        backpackShader.UseShader();
-        backpackShader.SetUniformMat4("projection", projectionMatrix);
-        backpackShader.SetUniformMat4("view", viewMatrix);
-        glm::mat4 backpackModel = glm::mat4(1.0f);
-        backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 0.0f, 0.0f));
-        backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
-        backpackShader.SetUniformMat4("model", backpackModel);
-        ourModel.Draw(backpackShader);
+
 
         glfwSwapBuffers(window);
         glfwPollEvents();
