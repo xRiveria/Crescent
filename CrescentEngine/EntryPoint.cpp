@@ -29,6 +29,7 @@
 //Cleanup Entry Point.
 //Abstract Texture Class.
 float animationTime = 0.0f;
+bool cameraMode = false;
 
 std::vector<std::string> cubemapFaces{ //In order of the cubemap enums.
     "Resources/Skybox/Ocean/right.jpg",
@@ -110,6 +111,7 @@ glm::vec3 modelPosition = { -6.0f, -3.0f, 5.0f };
 glm::vec3 guardRotation = { -5.0f, 0.0f, 0.0f };
 glm::vec3 guardPosition = { -40.0f, -3.0f, 36.0f };
 glm::vec3 reflectModelPosition = { 3.0f, 0.0f, 0.0f };
+glm::vec3 planePosition = { 0.0f, 0.0f, 0.0f };
 bool refractOn = true;
 float guardRotationAngle = 0.0f;
 
@@ -123,9 +125,11 @@ void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHe
     m_ScreenWidth = windowWidth; 
 }
 
+void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void ProcessInput(GLFWwindow* window);
 void ScrollCallback(GLFWwindow* window, double xOffset, double yOffset);
+
 unsigned int LoadTexture(const std::string& filePath);
 
 glm::vec3 cubePositions[] = {
@@ -146,12 +150,14 @@ CrescentEngine::Cubemap m_Cubemap;
 int main()
 {
     CrescentEngine::Renderer::InitializeSelectedRenderer(CrescentEngine::Renderer::API::OpenGL);
-    m_Window.CreateWindow("Crescent Engine", 1200.0f, 720.0f);
+    m_Window.CreateWindow("Crescent Engine", 1920.0f, 1080.0f);
 
     //Sets a callback to a viewport resize function everytime we resize our window
     glfwSetFramebufferSizeCallback(m_Window.RetrieveWindow(), FramebufferResizeCallback);
+    glfwSetMouseButtonCallback(m_Window.RetrieveWindow(), MouseButtonCallback);
     glfwSetCursorPosCallback(m_Window.RetrieveWindow(), MouseCallback);
     glfwSetScrollCallback(m_Window.RetrieveWindow(), ScrollCallback);
+
 
     m_Editor.SetApplicationContext(m_Window.RetrieveWindow());
     m_Editor.InitializeImGui();
@@ -164,6 +170,7 @@ int main()
     LearnShader lightCubeShader("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");
     LearnShader animationShader("Resources/Shaders/AnimationVertex.shader", "Resources/Shaders/AnimationFragment.shader");
     LearnShader reflectiveShader("Resources/Shaders/ReflectiveVertex.shader", "Resources/Shaders/ReflectiveFragment.shader");
+
     m_Cubemap.LoadCubemap(cubemapFaces);
 
     //Because OpenGL works in 3D space, we render a 2D triangle with each vertex having a Z coordinate of 0.0. This way, the depth of the triangle remains the same, making it look like its 2D. 
@@ -217,7 +224,7 @@ int main()
         0, 1, 3,
         1, 2, 3
     };
-
+    
     unsigned int vertexArrayObject;
     glGenVertexArrays(1, &vertexArrayObject);
     glBindVertexArray(vertexArrayObject); //Every subsequent attribute pointer call will now link the buffer and said attribute configurations to this vertex array object.
@@ -527,6 +534,7 @@ int main()
         ImGui::DragFloat3("Guard Position", glm::value_ptr(guardPosition), 0.1f);
         ImGui::DragFloat3("Reflect Model Position", glm::value_ptr(reflectModelPosition), 0.1f);
         ImGui::Checkbox("Refract On or Off", &refractOn);
+        ImGui::DragFloat3("Plane Position", glm::value_ptr(planePosition), 0.1f);
         ImGui::SameLine();
         if (refractOn == true)
         {
@@ -655,6 +663,18 @@ void ScrollCallback(GLFWwindow* window, double xOffset, double yOffset)
     g_Camera.ProcessMouseScroll(yOffset);
 }
 
+void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+    {
+        cameraMode = true;
+    }
+    else
+    {
+        cameraMode = false;
+    }
+}
+
 void MouseCallback(GLFWwindow* window, double xPos, double yPos)
 {
     if (firstMove)
@@ -670,7 +690,10 @@ void MouseCallback(GLFWwindow* window, double xPos, double yPos)
 
     lastY = yPos;
 
-    g_Camera.ProcessMouseMovement(xOffset, yOffset);
+    if (cameraMode)
+    {
+        g_Camera.ProcessMouseMovement(xOffset, yOffset);
+    }
 }
 
 unsigned int LoadTexture(const std::string& filePath)

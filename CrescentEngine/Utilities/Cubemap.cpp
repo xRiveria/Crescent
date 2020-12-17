@@ -13,11 +13,25 @@ namespace CrescentEngine
 
         int width, height, nrChannels;
         for (unsigned int i = 0; i < fileLocations.size(); i++)
-        {
+        {         
             unsigned char* data = stbi_load(fileLocations[i].c_str(), &width, &height, &nrChannels, 0);
             if (data)
             {
-                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+                GLenum format;
+                if (nrChannels == 1)
+                {
+                    format = GL_RED;
+                }
+                else if (nrChannels == 3)
+                {
+                    format = GL_RGB;
+                }
+                else if (nrChannels == 4)
+                {
+                    format = GL_RGBA;
+                }
+
+                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
                 stbi_image_free(data);
             }
             else
@@ -92,7 +106,6 @@ namespace CrescentEngine
         glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
     }
 
     void Cubemap::BindCubemap()
