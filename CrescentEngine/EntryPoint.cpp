@@ -1,5 +1,4 @@
 #include "CrescentPCH.h"
-#include "Core/Renderer.h"
 #include "OpenGL/OpenGLRenderer.h"
 #include <GL/glew.h>
 #include "GLFW/glfw3.h"
@@ -147,24 +146,25 @@ glm::vec3 cubePositions[] = {
 CrescentEngine::Window m_Window;
 CrescentEngine::Cubemap m_Cubemap;
 
-int main()
+int mainDefunct()
 {
-    CrescentEngine::Renderer::InitializeSelectedRenderer(CrescentEngine::Renderer::API::OpenGL);
+    //CrescentEngine::Renderer::InitializeSelectedRenderer(CrescentEngine::Renderer::API::OpenGL);
     m_Window.CreateWindow("Crescent Engine", 1920.0f, 1080.0f);
-
+    
     //Sets a callback to a viewport resize function everytime we resize our window
     glfwSetFramebufferSizeCallback(m_Window.RetrieveWindow(), FramebufferResizeCallback);
     glfwSetMouseButtonCallback(m_Window.RetrieveWindow(), MouseButtonCallback);
     glfwSetCursorPosCallback(m_Window.RetrieveWindow(), MouseCallback);
     glfwSetScrollCallback(m_Window.RetrieveWindow(), ScrollCallback);
 
-
     m_Editor.SetApplicationContext(m_Window.RetrieveWindow());
     m_Editor.InitializeImGui();
 
-    m_Window.InitializeOpenGL();
+    //m_Window.InitializeOpenGL();
 
     glEnable(GL_DEPTH_TEST);
+
+    //===
 
     LearnShader lightingShader("Resources/Shaders/VertexShader.shader", "Resources/Shaders/FragmentShader.shader");
     LearnShader lightCubeShader("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");

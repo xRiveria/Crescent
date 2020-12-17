@@ -2,6 +2,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <string>
+#include <functional>
 
 namespace CrescentEngine
 {
@@ -12,7 +13,13 @@ namespace CrescentEngine
 		Window(const std::string& windowName, const float& windowWidth, const float& windowHeight);
 
 		void CreateWindow(const std::string& windowName, const float& windowWidth, const float& windowHeight);
-		void InitializeOpenGL();
+
+		//Callbacks
+		void SetFramebufferCallback(GLFWframebuffersizefun callback);
+		void SetMouseButtonCallback(GLFWmousebuttonfun callback);
+		void SetMouseScrollCallback(GLFWscrollfun callback);
+		void SetMouseCursorCallback(GLFWcursorposfun callback);
+
 		GLFWwindow* RetrieveWindow() const { return m_ApplicationWindow; }
 		float RetrieveWindowWidth() const { return m_WindowWidth; }
 		float RetrieveWindowHeight() const { return m_WindowHeight; }

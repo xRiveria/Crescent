@@ -15,17 +15,18 @@ namespace CrescentEngine
 	class Model
 	{
 	public:
+		Model() {}
 		Model(const std::string& filePath)
 		{
 			LoadModel(filePath);
 		}
 
+		void LoadModel(const std::string& filePath);
 		void Draw(uint32_t animationID, double time, bool loop, LearnShader& shader);
 		void Draw(LearnShader& shader);
 		std::vector<glm::mat4> m_BoneMatrices, m_BoneOffsets;
 
 	private:
-		void LoadModel(const std::string& filePath);
 		void ProcessNode(aiNode* node);
 		Mesh ProcessMesh(const aiMesh* mesh);
 		std::vector<Texture> LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName);

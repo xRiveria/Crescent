@@ -27,15 +27,6 @@ namespace CrescentEngine
 		//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	}
 
-	void Window::InitializeOpenGL()
-	{
-		if (glewInit() != GLEW_OK)
-		{
-			CrescentError("Failed to initialize GLEW.")
-		}
-		CrescentInfo("Successfully initialized GLEW.");
-	}
-
 	void Window::InitializeGLFW()
 	{
 		if (!glfwInit())
@@ -47,5 +38,25 @@ namespace CrescentEngine
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	}
+
+	void Window::SetFramebufferCallback(GLFWframebuffersizefun callback)
+	{
+		glfwSetFramebufferSizeCallback(m_ApplicationWindow, callback);
+	}
+
+	void Window::SetMouseButtonCallback(GLFWmousebuttonfun callback)
+	{
+		glfwSetMouseButtonCallback(m_ApplicationWindow, callback);
+	}
+
+	void Window::SetMouseScrollCallback(GLFWscrollfun callback)
+	{
+		glfwSetScrollCallback(m_ApplicationWindow, callback);
+	}
+
+	void Window::SetMouseCursorCallback(GLFWcursorposfun callback)
+	{
+		glfwSetCursorPosCallback(m_ApplicationWindow, callback);
 	}
 }
