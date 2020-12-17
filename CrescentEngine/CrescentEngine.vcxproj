@@ -257,6 +257,7 @@
     <ClInclude Include="OpenGL\VertexArray.h" />
     <ClInclude Include="OpenGL\VertexBuffer.h" />
     <ClInclude Include="OpenGL\VertexBufferLayout.h" />
+    <ClInclude Include="Resources\Shaders\ReflectiveVertex.shader" />
     <ClInclude Include="Utilities\Camera.h" />
     <ClInclude Include="Utilities\Cubemap.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\ai_assert.h" />
@@ -627,6 +628,7 @@
     <None Include="Resources\Shaders\AnimationVertex.shader" />
     <None Include="Resources\Shaders\CubemapFragment.shader" />
     <None Include="Resources\Shaders\CubemapVertex.shader" />
+    <None Include="Resources\Shaders\ReflectiveFragment.shader" />
     <None Include="Resources\Shaders\StaticModelVertex.shader" />
     <None Include="Resources\Shaders\StaticModelFragment.shader" />
     <None Include="Resources\Shaders\FragmentShader.shader" />

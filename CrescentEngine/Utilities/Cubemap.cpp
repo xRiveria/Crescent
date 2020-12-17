@@ -5,8 +5,9 @@
 
 namespace CrescentEngine
 {
-    void Cubemap::LoadCubemap(std::vector<std::string> fileLocations, LearnShader& shader)
+    void Cubemap::LoadCubemap(std::vector<std::string> fileLocations)
     {
+        m_CubemapShader.CreateShaders("Resources/Shaders/CubemapVertex.shader", "Resources/Shaders/CubemapFragment.shader");
         glGenTextures(1, &m_CubemapID);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_CubemapID);
 
@@ -32,8 +33,8 @@ namespace CrescentEngine
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-        shader.UseShader();
-        shader.SetUniformInteger("skybox", 0);
+        m_CubemapShader.UseShader();
+        m_CubemapShader.SetUniformInteger("skybox", 0);
     }
 
     void Cubemap::SetupCubemap()
@@ -94,18 +95,23 @@ namespace CrescentEngine
 
     }
 
-    void Cubemap::DrawCubemap(LearnShader& shader, glm::mat4& viewMatrix, glm::mat4& projectionMatrix)
+    void Cubemap::BindCubemap()
     {
-        glDepthFunc(GL_LEQUAL); //Change depth function so that depth test passes when values are equal to depth buffer's content.
-        shader.UseShader();
-        glm::mat4 translationStrippedViewMatrix = glm::mat4(glm::mat3(viewMatrix)); //Strip translation from the view matrix.
-        shader.SetUniformMat4("view", translationStrippedViewMatrix);
-        shader.SetUniformMat4("projection", projectionMatrix);
-
         glBindVertexArray(m_CubemapVertexArrayID);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_CubemapID);
+    }
+
+    void Cubemap::DrawCubemap(glm::mat4& viewMatrix, glm::mat4& projectionMatrix)
+    {
+        glDepthFunc(GL_LEQUAL); //Change depth function so that depth test passes when values are equal to depth buffer's content.
+        m_CubemapShader.UseShader();
+        glm::mat4 translationStrippedViewMatrix = glm::mat4(glm::mat3(viewMatrix)); //Strip translation from the view matrix.
+        m_CubemapShader.SetUniformMat4("view", translationStrippedViewMatrix);
+        m_CubemapShader.SetUniformMat4("projection", projectionMatrix);
+
+        BindCubemap();
 
         glDrawArrays(GL_TRIANGLES, 0, 36);
 

@@ -10,9 +10,10 @@ namespace CrescentEngine
 	{
 	public:
 		Cubemap() {}
-		void LoadCubemap(std::vector<std::string> fileLocations, LearnShader& shader);
+		void LoadCubemap(std::vector<std::string> fileLocations);
 		void SetupCubemap();
-		void DrawCubemap(LearnShader& shader, glm::mat4& viewMatix, glm::mat4& projectionMatrix);
+		void BindCubemap();
+		void DrawCubemap(glm::mat4& viewMatix, glm::mat4& projectionMatrix);
 
 		unsigned int RetrieveCubemapID() const { return m_CubemapID; }
 
@@ -20,5 +21,6 @@ namespace CrescentEngine
 		unsigned int m_CubemapID;
 		unsigned int m_CubemapVertexArrayID;
 		unsigned int m_CubemapVertexBufferID;
+		LearnShader m_CubemapShader;
 	};
 }

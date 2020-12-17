@@ -109,6 +109,8 @@ glm::vec3 lightPosition = { 0.0f, 1.0f, 2.0f };
 glm::vec3 modelPosition = { -6.0f, -3.0f, 5.0f };
 glm::vec3 guardRotation = { -5.0f, 0.0f, 0.0f };
 glm::vec3 guardPosition = { -40.0f, -3.0f, 36.0f };
+glm::vec3 reflectModelPosition = { 3.0f, 0.0f, 0.0f };
+bool refractOn = true;
 float guardRotationAngle = 0.0f;
 
 CrescentEngine::Editor m_Editor;
@@ -161,8 +163,8 @@ int main()
     LearnShader lightingShader("Resources/Shaders/VertexShader.shader", "Resources/Shaders/FragmentShader.shader");
     LearnShader lightCubeShader("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");
     LearnShader animationShader("Resources/Shaders/AnimationVertex.shader", "Resources/Shaders/AnimationFragment.shader");
-    LearnShader cubemapShader("Resources/Shaders/CubemapVertex.shader", "Resources/Shaders/CubemapFragment.shader");
-    m_Cubemap.LoadCubemap(cubemapFaces, cubemapShader);
+    LearnShader reflectiveShader("Resources/Shaders/ReflectiveVertex.shader", "Resources/Shaders/ReflectiveFragment.shader");
+    m_Cubemap.LoadCubemap(cubemapFaces);
 
     //Because OpenGL works in 3D space, we render a 2D triangle with each vertex having a Z coordinate of 0.0. This way, the depth of the triangle remains the same, making it look like its 2D. 
     float vertices[] = {
@@ -304,11 +306,14 @@ int main()
          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
          //Be sure to activate shader when setting uniforms/drawing objects.
+         reflectiveShader.UseShader();
+         reflectiveShader.SetUniformVector3("cameraPos", g_Camera.m_CameraPosition);
+         reflectiveShader.SetUniformBool("refractOn", refractOn);
          lightingShader.UseShader();
          //lightingShader.SetUniformVector3("light.lightPosition", g_Camera.m_CameraPosition);
          //lightingShader.SetUniformVector3("light.lightDirection", g_Camera.m_CameraFront); //Note that we define the direction as a direction from the light source; you can quickly see that the light's direction is pointing downwards.
          lightingShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
-
+         lightingShader.SetUniformInteger("skybox", 0);
 
          lightingShader.SetUniformVector3("pointLights[0].lightPosition", pointLightPositions[0]);
          lightingShader.SetUniformFloat("pointLights[0].attenuationConstant", 1.0f);
@@ -444,15 +449,6 @@ int main()
          glBindVertexArray(vertexArrayObject);
          //glDrawArrays(GL_TRIANGLES, 0, 36);
 
-         //Secondary Cube Object
-#if RotatingCube
-         glm::mat4 cubeObjectMatrix2 = glm::mat4(1.0f);
-         cubeObjectMatrix2 = glm::scale(cubeObjectMatrix2, glm::vec3(3.0f, 3.0f, 3.0f));
-         cubeObjectMatrix2 = glm::translate(cubeObjectMatrix2, glm::vec3(-1.0f, 0.0f, -3.0f));
-         cubeObjectMatrix2 = glm::rotate(cubeObjectMatrix2, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f)); //Rotation on the X-axis and Y axis.
-         lightingShader.SetUniformMat4("model", cubeObjectMatrix2);
-         glDrawArrays(GL_TRIANGLES, 0, 36);
-#endif
 
          for (size_t i = 0; i < 9; i++)
          {
@@ -481,6 +477,16 @@ int main()
              glBindVertexArray(lightVertexArrayObject);
              lamp.Draw(lightCubeShader);
          }
+
+         //Reflective Cube
+         reflectiveShader.UseShader();
+         reflectiveShader.SetUniformMat4("projection", projectionMatrix);
+         reflectiveShader.SetUniformMat4("view", viewMatrix);
+         glm::mat4 reflectModel = glm::mat4(1.0f);
+         reflectModel = glm::translate(reflectModel, reflectModelPosition);
+         reflectiveShader.SetUniformMat4("model", reflectModel);
+         glBindVertexArray(vertexArrayObject);
+         glDrawArrays(GL_TRIANGLES, 0, 36);
 
          //Render the loaded model.
          staticModelShader.UseShader();
@@ -512,14 +518,24 @@ int main()
         g_Camera.UpdateCameraVectors();
 
         m_Editor.BeginEditorRenderLoop();
-        bool show = true;
-        ImGui::ShowDemoWindow(&show);
+
         //Point Lights
         ImGui::Begin("Camera Settings");
         ImGui::Text("Camera");
         ImGui::DragFloat3("Slime Position", glm::value_ptr(modelPosition), 0.1f);
         ImGui::DragFloat3("Camera Position", glm::value_ptr(g_Camera.m_CameraPosition), 0.2f);
         ImGui::DragFloat3("Guard Position", glm::value_ptr(guardPosition), 0.1f);
+        ImGui::DragFloat3("Reflect Model Position", glm::value_ptr(reflectModelPosition), 0.1f);
+        ImGui::Checkbox("Refract On or Off", &refractOn);
+        ImGui::SameLine();
+        if (refractOn == true)
+        {
+            ImGui::Text("Current State: Refraction");
+        }
+        else
+        {
+            ImGui::Text("Current State: Reflection");
+        }
         ImGui::DragFloat("Guard Rotation Angle", &guardRotationAngle);
         ImGui::DragFloat("Camera FOV", &g_Camera.m_MouseZoom, 0.2f);
         ImGui::DragFloat("Camera Yaw", &g_Camera.m_CameraYaw, 0.2f);
@@ -587,7 +603,7 @@ int main()
         m_Editor.EndEditorRenderLoop();
 
         //Draw Skybox as Last.
-        m_Cubemap.DrawCubemap(cubemapShader, viewMatrix, projectionMatrix);
+        m_Cubemap.DrawCubemap(viewMatrix, projectionMatrix);
 
         glfwSwapBuffers(m_Window.RetrieveWindow());
         glfwPollEvents();

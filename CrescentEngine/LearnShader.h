@@ -5,7 +5,9 @@
 class LearnShader
 {
 public:
+	LearnShader() {}
 	LearnShader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+	void CreateShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
 	void UseShader();
 	void DeleteShader();
 

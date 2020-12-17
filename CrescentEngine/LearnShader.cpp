@@ -5,6 +5,11 @@
 
 LearnShader::LearnShader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath)
 {
+	CreateShaders(vertexShaderPath, fragmentShaderPath);
+}
+
+void LearnShader::CreateShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath)
+{
 	//Retrieve the vertex/fragment source code form filepath.
 	std::string vertexCode;
 	std::string fragmentCode;
@@ -31,7 +36,7 @@ LearnShader::LearnShader(const std::string& vertexShaderPath, const std::string&
 		fragmentCode = fShaderStream.str();
 	}
 
-	catch(std::ifstream::failure e)
+	catch (std::ifstream::failure e)
 	{
 		std::cout << "Error::Shader::File_Not_Successfully_Read" << std::endl;
 	}

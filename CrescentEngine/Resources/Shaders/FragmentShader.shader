@@ -181,5 +181,5 @@ void main()
     //Phase 3: Spotlight
     result += CalculateSpotLight(spotLight, normal, FragPosition, viewDirection);
 
-    FragColor = vec4(result, 1.0f);
+    FragColor = vec4(result , 1.0f);
 }
