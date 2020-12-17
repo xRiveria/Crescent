@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "Renderer.h"
 
-namespace RendererAbstractor
+namespace CrescentEngine
 {
 	void Renderer::InitializeSelectedRenderer(API selectedAPI)
 	{

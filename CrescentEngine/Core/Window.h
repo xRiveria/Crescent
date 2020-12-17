@@ -1,4 +1,5 @@
 #pragma once
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <string>
 
@@ -11,6 +12,7 @@ namespace CrescentEngine
 		Window(const std::string& windowName, const float& windowWidth, const float& windowHeight);
 
 		void CreateWindow(const std::string& windowName, const float& windowWidth, const float& windowHeight);
+		void InitializeOpenGL();
 		GLFWwindow* RetrieveWindow() const { return m_ApplicationWindow; }
 		float RetrieveWindowWidth() const { return m_WindowWidth; }
 		float RetrieveWindowHeight() const { return m_WindowHeight; }

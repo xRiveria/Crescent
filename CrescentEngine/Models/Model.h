@@ -25,15 +25,10 @@ namespace CrescentEngine
 		std::vector<glm::mat4> m_BoneMatrices, m_BoneOffsets;
 
 	private:
-		//Model Data
-		std::vector<Mesh> m_Meshes;
-		std::vector<Texture> m_TexturesLoaded;
-		std::string m_FileDirectory;
-
-		//Bones
-		BoneMapper m_BoneMapper;
-
-		std::map<std::pair<uint32_t, std::string>, uint32_t> m_AnimationChannelMap;
+		void LoadModel(const std::string& filePath);
+		void ProcessNode(aiNode* node);
+		Mesh ProcessMesh(const aiMesh* mesh);
+		std::vector<Texture> LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName);
 
 		void RecursivelyUpdateBoneMatrices(int animation_id, aiNode* node, glm::mat4 transform, double ticks);
 
@@ -41,13 +36,18 @@ namespace CrescentEngine
 		static glm::mat4 InterpolateRotationMatrix(aiQuatKey* keys, uint32_t n, double ticks);
 		static glm::mat4 InterpolateScalingMatrix(aiVectorKey* keys, uint32_t n, double ticks);
 
+	private:
+		//Model Data
+		std::vector<Mesh> m_Meshes;
+		std::vector<Texture> m_TexturesLoaded;
+		std::string m_FileDirectory;
+
+		//Skeletal Animations
+		BoneMapper m_BoneMapper;
+		std::map<std::pair<uint32_t, std::string>, uint32_t> m_AnimationChannelMap;
+
 		//Assimp
 		Assimp::Importer m_Importer;
 		const aiScene* m_ModelScene;
-
-		void LoadModel(const std::string& filePath);
-		void ProcessNode(aiNode* node);
-		Mesh ProcessMesh(const aiMesh* mesh);
-		std::vector<Texture> LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName);	
 	};
 }

@@ -23,11 +23,21 @@
 #include <fstream>
 #include <sstream>
 #include "Window.h"
+#include "Utilities/Cubemap.h"
 
 //To Do:
 //Cleanup Entry Point.
 //Abstract Texture Class.
 float animationTime = 0.0f;
+
+std::vector<std::string> cubemapFaces{ //In order of the cubemap enums.
+    "Resources/Skybox/Ocean/right.jpg",
+    "Resources/Skybox/Ocean/left.jpg",
+    "Resources/Skybox/Ocean/top.jpg",
+    "Resources/Skybox/Ocean/bottom.jpg",
+    "Resources/Skybox/Ocean/front.jpg",
+    "Resources/Skybox/Ocean/back.jpg"
+};
 
 //Directional Light
 glm::vec3 directionalLight_LightDirection = { -0.2f, -1.0f, -0.3f };
@@ -100,6 +110,7 @@ glm::vec3 modelPosition = { -6.0f, -3.0f, 5.0f };
 glm::vec3 guardRotation = { -5.0f, 0.0f, 0.0f };
 glm::vec3 guardPosition = { -40.0f, -3.0f, 36.0f };
 float guardRotationAngle = 0.0f;
+
 CrescentEngine::Editor m_Editor;
 
 //This is a callback function that is called whenever a window is resized.
@@ -128,14 +139,14 @@ glm::vec3 cubePositions[] = {
 };
 
 CrescentEngine::Window m_Window;
+CrescentEngine::Cubemap m_Cubemap;
 
 int main()
 {
-    RendererAbstractor::Renderer::InitializeSelectedRenderer(RendererAbstractor::Renderer::API::OpenGL);
+    CrescentEngine::Renderer::InitializeSelectedRenderer(CrescentEngine::Renderer::API::OpenGL);
     m_Window.CreateWindow("Crescent Engine", 1200.0f, 720.0f);
 
     //Sets a callback to a viewport resize function everytime we resize our window
- 
     glfwSetFramebufferSizeCallback(m_Window.RetrieveWindow(), FramebufferResizeCallback);
     glfwSetCursorPosCallback(m_Window.RetrieveWindow(), MouseCallback);
     glfwSetScrollCallback(m_Window.RetrieveWindow(), ScrollCallback);
@@ -143,16 +154,15 @@ int main()
     m_Editor.SetApplicationContext(m_Window.RetrieveWindow());
     m_Editor.InitializeImGui();
 
-    //Initializes GLEW. 
-    if (glewInit() != GLEW_OK)
-    {
-        std::cout << "Error!" << std::endl;
-    }    
+    m_Window.InitializeOpenGL();
+
     glEnable(GL_DEPTH_TEST);
 
     LearnShader lightingShader("Resources/Shaders/VertexShader.shader", "Resources/Shaders/FragmentShader.shader");
     LearnShader lightCubeShader("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");
     LearnShader animationShader("Resources/Shaders/AnimationVertex.shader", "Resources/Shaders/AnimationFragment.shader");
+    LearnShader cubemapShader("Resources/Shaders/CubemapVertex.shader", "Resources/Shaders/CubemapFragment.shader");
+    m_Cubemap.LoadCubemap(cubemapFaces, cubemapShader);
 
     //Because OpenGL works in 3D space, we render a 2D triangle with each vertex having a Z coordinate of 0.0. This way, the depth of the triangle remains the same, making it look like its 2D. 
     float vertices[] = {
@@ -241,6 +251,9 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
+    //Cubemap
+    m_Cubemap.SetupCubemap();
+
    // Texture
     unsigned int diffuseMap = LoadTexture("Resources/Textures/Container2.png");
     unsigned int specularMap = LoadTexture("Resources/Textures/ContainerSpecularMap.png");
@@ -255,7 +268,7 @@ int main()
 
      //Model
      stbi_set_flip_vertically_on_load(true);
-     LearnShader backpackShader("Resources/Shaders/BackpackVertex.shader", "Resources/Shaders/BackpackFragment.shader");
+     LearnShader staticModelShader("Resources/Shaders/StaticModelVertex.shader", "Resources/Shaders/StaticModelFragment.shader");
      CrescentEngine::Model ourModel("Resources/Models/Backpack/backpack.obj");
      CrescentEngine::Model lamp("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
      CrescentEngine::Model girl("Resources/Models/Girl/Character_Girl.fbx");
@@ -296,8 +309,6 @@ int main()
          //lightingShader.SetUniformVector3("light.lightDirection", g_Camera.m_CameraFront); //Note that we define the direction as a direction from the light source; you can quickly see that the light's direction is pointing downwards.
          lightingShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
 
-
-         //Point Lights
 
          lightingShader.SetUniformVector3("pointLights[0].lightPosition", pointLightPositions[0]);
          lightingShader.SetUniformFloat("pointLights[0].attenuationConstant", 1.0f);
@@ -352,26 +363,26 @@ int main()
          lightingShader.SetUniformVector3("spotLight.specularIntensity", spotLight_SpecularIntensity);
 
          //Backpack
-         backpackShader.UseShader();
-         backpackShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
-         backpackShader.SetUniformVector3("pointLight.lightPosition", pointLightPositions[0]);
+         staticModelShader.UseShader();
+         staticModelShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
+         staticModelShader.SetUniformVector3("pointLight.lightPosition", pointLightPositions[0]);
          //backpackShader.SetUniformVector3("spotLight.lightDirection", g_Camera.m_CameraFront);
          //backpackShader.SetUniformFloat("spotLight.innerLightCutoff", glm::cos(glm::radians(spotLight_InnerLightCutoff)));
          //backpackShader.SetUniformFloat("spotLight.outerLightCutoff", glm::cos(glm::radians(spotLight_OuterLightCutoff)));
 
-         backpackShader.SetUniformFloat("pointLight.attenuationConstant", 1.0f);
-         backpackShader.SetUniformFloat("pointLight.attenuationLinear", 0.09f);
-         backpackShader.SetUniformFloat("pointLight.attenuationQuadratic", 0.032f);
+         staticModelShader.SetUniformFloat("pointLight.attenuationConstant", 1.0f);
+         staticModelShader.SetUniformFloat("pointLight.attenuationLinear", 0.09f);
+         staticModelShader.SetUniformFloat("pointLight.attenuationQuadratic", 0.032f);
 
-         backpackShader.SetUniformVector3("pointLight.ambientIntensity", spotLight_AmbientIntensity);
-         backpackShader.SetUniformVector3("pointLight.diffuseIntensity", spotLight_DiffuseIntensity);
-         backpackShader.SetUniformVector3("pointLight.specularIntensity", spotLight_SpecularIntensity);
+         staticModelShader.SetUniformVector3("pointLight.ambientIntensity", spotLight_AmbientIntensity);
+         staticModelShader.SetUniformVector3("pointLight.diffuseIntensity", spotLight_DiffuseIntensity);
+         staticModelShader.SetUniformVector3("pointLight.specularIntensity", spotLight_SpecularIntensity);
 
          //Directional Light
-         backpackShader.SetUniformVector3("directionalLight.lightDirection", directionalLight_LightDirection);
-         backpackShader.SetUniformVector3("directionalLight.ambientIntensity", directionalLight_AmbientIntensity);
-         backpackShader.SetUniformVector3("directionalLight.diffuseIntensity", directionalLight_DiffuseIntensity);
-         backpackShader.SetUniformVector3("directionalLight.specularIntensity", directionalLight_SpecularIntensity);
+         staticModelShader.SetUniformVector3("directionalLight.lightDirection", directionalLight_LightDirection);
+         staticModelShader.SetUniformVector3("directionalLight.ambientIntensity", directionalLight_AmbientIntensity);
+         staticModelShader.SetUniformVector3("directionalLight.diffuseIntensity", directionalLight_DiffuseIntensity);
+         staticModelShader.SetUniformVector3("directionalLight.specularIntensity", directionalLight_SpecularIntensity);
 
          //Animation Shader
          animationShader.UseShader();
@@ -472,21 +483,21 @@ int main()
          }
 
          //Render the loaded model.
-         backpackShader.UseShader();
-         backpackShader.SetUniformMat4("projection", projectionMatrix);
-         backpackShader.SetUniformMat4("view", viewMatrix);
+         staticModelShader.UseShader();
+         staticModelShader.SetUniformMat4("projection", projectionMatrix);
+         staticModelShader.SetUniformMat4("view", viewMatrix);
          glm::mat4 backpackModel = glm::mat4(1.0f);
          backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 0.0f, 0.0f));
          backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
-         backpackShader.SetUniformMat4("model", backpackModel);
-         ourModel.Draw(backpackShader);
+         staticModelShader.SetUniformMat4("model", backpackModel);
+         ourModel.Draw(staticModelShader);
 
          glm::mat4 torgModel = glm::mat4(1.0f);
          torgModel = glm::scale(torgModel, glm::vec3(0.5f)); //A smaller cube.     
          torgModel = glm::translate(torgModel, modelPosition);
          torgModel = glm::rotate(torgModel, (float)glfwGetTime(), glm::vec3(0.0f, 0.5f, 0.0f));
-         backpackShader.SetUniformMat4("model", torgModel);
-         girl.Draw(backpackShader);
+         staticModelShader.SetUniformMat4("model", torgModel);
+         girl.Draw(staticModelShader);
 
          animationShader.UseShader();
          animationShader.SetUniformMat4("projection", projectionMatrix);
@@ -501,7 +512,9 @@ int main()
         g_Camera.UpdateCameraVectors();
 
         m_Editor.BeginEditorRenderLoop();
-
+        bool show = true;
+        ImGui::ShowDemoWindow(&show);
+        //Point Lights
         ImGui::Begin("Camera Settings");
         ImGui::Text("Camera");
         ImGui::DragFloat3("Slime Position", glm::value_ptr(modelPosition), 0.1f);
@@ -572,6 +585,9 @@ int main()
         ImGui::End();
 
         m_Editor.EndEditorRenderLoop();
+
+        //Draw Skybox as Last.
+        m_Cubemap.DrawCubemap(cubemapShader, viewMatrix, projectionMatrix);
 
         glfwSwapBuffers(m_Window.RetrieveWindow());
         glfwPollEvents();

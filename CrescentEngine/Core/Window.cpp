@@ -27,6 +27,15 @@ namespace CrescentEngine
 		//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	}
 
+	void Window::InitializeOpenGL()
+	{
+		if (glewInit() != GLEW_OK)
+		{
+			CrescentError("Failed to initialize GLEW.")
+		}
+		CrescentInfo("Successfully initialized GLEW.");
+	}
+
 	void Window::InitializeGLFW()
 	{
 		if (!glfwInit())

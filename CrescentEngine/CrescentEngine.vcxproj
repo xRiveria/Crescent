@@ -195,6 +195,7 @@
     <ClCompile Include="OpenGL\VertexArray.cpp" />
     <ClCompile Include="OpenGL\VertexBuffer.cpp" />
     <ClCompile Include="Core\Renderer.cpp" />
+    <ClCompile Include="Utilities\Cubemap.cpp" />
     <ClCompile Include="Vendor\glm\detail\glm.cpp" />
     <ClCompile Include="Vendor\imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -257,6 +258,7 @@
     <ClInclude Include="OpenGL\VertexBuffer.h" />
     <ClInclude Include="OpenGL\VertexBufferLayout.h" />
     <ClInclude Include="Utilities\Camera.h" />
+    <ClInclude Include="Utilities\Cubemap.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\ai_assert.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\anim.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\BaseImporter.h" />
@@ -623,8 +625,10 @@
   <ItemGroup>
     <None Include="Resources\Shaders\AnimationFragment.shader" />
     <None Include="Resources\Shaders\AnimationVertex.shader" />
-    <None Include="Resources\Shaders\BackpackVertex.shader" />
-    <None Include="Resources\Shaders\BackpackFragment.shader" />
+    <None Include="Resources\Shaders\CubemapFragment.shader" />
+    <None Include="Resources\Shaders\CubemapVertex.shader" />
+    <None Include="Resources\Shaders\StaticModelVertex.shader" />
+    <None Include="Resources\Shaders\StaticModelFragment.shader" />
     <None Include="Resources\Shaders\FragmentShader.shader" />
     <None Include="OpenGL\Shaders\Basic.shader" />
     <None Include="Resources\Shaders\LightFragmentShader.shader" />

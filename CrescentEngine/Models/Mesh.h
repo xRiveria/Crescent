@@ -1,4 +1,5 @@
 #pragma once
+#include "Core.h"
 #include "glm/glm.hpp"
 #include <string>
 #include <vector>
@@ -15,7 +16,7 @@ namespace CrescentEngine
 		int BoneIDs[8];
 		float BoneWeights[8];
 
-		Vertex()
+		Vertex() 
 		{
 			std::fill(BoneIDs, BoneIDs + 8, 0);
 			std::fill(BoneWeights, BoneWeights + 8, 0);
@@ -33,8 +34,7 @@ namespace CrescentEngine
 				
 				if (i >= 8) //If we have more bones than supported.
 				{
-					std::cout << "Too Many Bones!";
-					std::terminate(); 
+					CrescentError("Model has more bones than supported.");
 				}
 			}
 
@@ -54,16 +54,17 @@ namespace CrescentEngine
 	class Mesh
 	{
 	public:
+		Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
+		void Draw(LearnShader& shader);
+
+	public:
 		std::vector<Vertex> vertices;
 		std::vector<unsigned int> indices;
 		std::vector<Texture> textures;
 
-		Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
-		void Draw(LearnShader& shader);
-
 	private:
 		//Render Data
-		unsigned int vertexArrayObject, vertexBufferObject, indexBufferObject, boneBufferObject;
+		unsigned int vertexArrayObject, vertexBufferObject, indexBufferObject;
 		void SetupMesh();
 	};
 }
