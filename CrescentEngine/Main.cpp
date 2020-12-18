@@ -1,15 +1,21 @@
 #include "CrescentPCH.h"
 #include "Window.h"
 #include "Editor.h"
+#include "Utilities/Timestep.h"
+#include "Utilities/Camera.h"
 #include "Models/Model.h"
 #include "Renderer/Renderer.h"
 #include "Utilities/Cubemap.h"
+#include <stb_image/stb_image.h>
 
 struct CoreSystems
 {
 	CrescentEngine::Window m_Window; //Setups our Window.
 	CrescentEngine::Editor m_Editor; //Setups our ImGui context.
 	CrescentEngine::Renderer m_Renderer; //Setups our OpenGL context.
+	CrescentEngine::Timestep m_Timestep; //Setups our Timestep.
+	CrescentEngine::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
+	float m_LastFrameTime = 0.0f;
 };
 
 struct RenderingComponents
@@ -20,20 +26,38 @@ struct RenderingComponents
 struct Renderables
 {
 	CrescentEngine::Model m_BackpackModel;
+
+	//Cubemap
+	std::vector<std::string> m_OceanCubemap = {
+		"Resources/Skybox/Ocean/right.jpg",
+		"Resources/Skybox/Ocean/left.jpg",
+		"Resources/Skybox/Ocean/top.jpg",
+		"Resources/Skybox/Ocean/bottom.jpg",
+		"Resources/Skybox/Ocean/front.jpg",
+		"Resources/Skybox/Ocean/back.jpg"
+	};
 };
 
-//Input Callbacks
+struct Shaders
+{
+	CrescentEngine::LearnShader m_StaticModelShader;
+};
 
+//Our Systems	
+CoreSystems g_CoreSystems; //Creates our core engine systems.
+RenderingComponents g_RenderingComponents; //Creates our rendering components.
+Renderables g_Renderables; //Creates our assets.
+Shaders g_Shaders; //Creates our shaders.
+
+//Input Callbacks
+void ProcessKeyboardEvents(GLFWwindow* window);
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight);
 void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mods);
 void CameraMovementCallback(GLFWwindow* window, double xPos, double yPos);
 void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset);
 
-int main()
+int main(int argc, int argv[])
 {
-	//Creates our core engine systems.
-	CoreSystems g_CoreSystems;
-
 	//Initializes GLFW.
 	g_CoreSystems.m_Window.CreateWindow("Crescent Engine", 1280.0f, 720.0f);
 
@@ -51,5 +75,143 @@ int main()
 	g_CoreSystems.m_Renderer.InitializeOpenGL();
 	g_CoreSystems.m_Renderer.ToggleDepthTesting(true);
 
+	//Cubemaps
+	g_RenderingComponents.m_Cubemap.LoadCubemap(g_Renderables.m_OceanCubemap);
+	g_RenderingComponents.m_Cubemap.SetupCubemapBuffers();
 
+	//Shaders
+	g_Shaders.m_StaticModelShader.CreateShaders("Resources/Shaders/StaticModelVertex.shader", "Resources/Shaders/StaticModelFragment.shader");
+
+	//Models
+	stbi_set_flip_vertically_on_load(true);
+	g_Renderables.m_BackpackModel.LoadModel("Resources/Models/Backpack/backpack.obj");
+	stbi_set_flip_vertically_on_load(false);
+
+	while (!g_CoreSystems.m_Window.RetrieveWindowCloseStatus())
+	{
+		//Retrieve Delta Time
+		float currentFrame = g_CoreSystems.m_Window.RetrieveCurrentTime();
+		g_CoreSystems.m_Timestep = currentFrame - g_CoreSystems.m_LastFrameTime;
+		g_CoreSystems.m_LastFrameTime = currentFrame;
+
+		//Poll Events
+		g_CoreSystems.m_Window.PollEvents();
+		ProcessKeyboardEvents(g_CoreSystems.m_Window.RetrieveWindow());
+
+		//Clear Buffers
+		g_CoreSystems.m_Renderer.ClearBuffers();
+
+		//View/Projection Matrix
+		glm::mat4 projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), g_CoreSystems.m_Window.RetrieveAspectRatio(), 0.2f, 100.0f);
+		glm::mat4 viewMatrix = g_CoreSystems.m_Camera.GetViewMatrix();
+
+		//Backpack Model - To Be Further Abstracted ===========================================================================
+		g_Shaders.m_StaticModelShader.UseShader();
+		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.lightDirection", glm::vec3(-0.2f, -1.0f, -0.3f));
+		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.ambientIntensity", glm::vec3(0.2f, 0.2f, 0.2f));
+		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.diffuseIntensity", glm::vec3(0.5f, 0.5f, 0.5f));
+		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.specularIntensity", glm::vec3(-1.0f, 1.0f, 1.0f));
+
+		g_Shaders.m_StaticModelShader.SetUniformMat4("projection", projectionMatrix);
+		g_Shaders.m_StaticModelShader.SetUniformMat4("view", viewMatrix);
+		g_Shaders.m_StaticModelShader.SetUniformVector3("viewPosition", g_CoreSystems.m_Camera.m_CameraPosition);
+		glm::mat4 backpackModel = glm::mat4(1.0f);
+		backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 0.0f, 0.0f));
+		backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
+		g_Shaders.m_StaticModelShader.SetUniformMat4("model", backpackModel);
+
+		g_Renderables.m_BackpackModel.Draw(g_Shaders.m_StaticModelShader);
+
+		//=======================================================================================================================
+
+		//Calculates the front vector from the Camera's (updated) Euler Angles.
+		g_CoreSystems.m_Camera.UpdateCameraVectors();
+
+		//Our ImGui Editor
+		g_CoreSystems.m_Editor.BeginEditorRenderLoop();
+		ImGui::Begin("Sample Box");
+		ImGui::End();
+		g_CoreSystems.m_Editor.EndEditorRenderLoop();
+
+		//Draw Cubemap
+		g_RenderingComponents.m_Cubemap.DrawCubemap(viewMatrix, projectionMatrix);
+
+		g_CoreSystems.m_Window.SwapBuffers();
+	}
+
+	g_CoreSystems.m_Window.TerminateWindow();
+	return 0;
 }
+
+//Event Callbacks - To Be Further Abstracted.
+void ProcessKeyboardEvents(GLFWwindow* window)
+{
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+	{
+		g_CoreSystems.m_Window.TerminateWindow();
+	}
+
+	const float cameraSpeed = g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds() * 2.5f;
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+	{
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Forward, cameraSpeed);
+	}
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+	{
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Backward, cameraSpeed);
+	}
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+	{
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Left, cameraSpeed);
+	}
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+	{
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Right, cameraSpeed);
+	}
+}
+
+void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+	{
+		CrescentEngine::g_CameraMode = true;
+	}
+	else
+	{
+		CrescentEngine::g_CameraMode = false;
+	}
+}
+
+void CameraMovementCallback(GLFWwindow* window, double xPos, double yPos)
+{
+	if (CrescentEngine::g_IsCameraFirstMove)
+	{
+		CrescentEngine::g_CameraLastXPosition = xPos;
+		CrescentEngine::g_CameraLastYPosition = yPos;
+		CrescentEngine::g_IsCameraFirstMove = false;
+	}
+
+	float xOffset = xPos - CrescentEngine::g_CameraLastXPosition;
+	float yOffset = CrescentEngine::g_CameraLastYPosition - yPos; //Reversed since Y Coordinates go from bottom to top.
+	CrescentEngine::g_CameraLastXPosition = xPos;
+
+	CrescentEngine::g_CameraLastYPosition = yPos;
+
+	if (CrescentEngine::g_CameraMode)
+	{
+		g_CoreSystems.m_Camera.ProcessMouseMovement(xOffset, yOffset);
+	}
+}
+
+void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset)
+{
+	g_CoreSystems.m_Camera.ProcessMouseScroll(yOffset);
+}
+
+//This is a callback function that is called whenever a window is resized.
+void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight)
+{
+	glViewport(0, 0, windowWidth, windowHeight);
+	g_CoreSystems.m_Window.SetWindowDimensions((float)windowWidth, (float)windowHeight);
+}
+

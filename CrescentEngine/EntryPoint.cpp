@@ -1,4 +1,5 @@
 #include "CrescentPCH.h"
+/*
 #include "OpenGL/OpenGLRenderer.h"
 #include <GL/glew.h>
 #include "GLFW/glfw3.h"
@@ -83,7 +84,7 @@ float deltaTime = 0.0f;	// Time between current frame and last frame.
 float lastFrame = 0.0f; // Time of last frame.
 
 //Camera
-Camera g_Camera(glm::vec3(0.0f, 0.0f, 3.0f));
+CrescentEngine::Camera g_Camera(glm::vec3(0.0f, 0.0f, 3.0f));
 bool firstMove = true;
 float lastX = 400;
 float lastY = 300;
@@ -166,10 +167,10 @@ int mainDefunct()
 
     //===
 
-    LearnShader lightingShader("Resources/Shaders/VertexShader.shader", "Resources/Shaders/FragmentShader.shader");
-    LearnShader lightCubeShader("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");
-    LearnShader animationShader("Resources/Shaders/AnimationVertex.shader", "Resources/Shaders/AnimationFragment.shader");
-    LearnShader reflectiveShader("Resources/Shaders/ReflectiveVertex.shader", "Resources/Shaders/ReflectiveFragment.shader");
+    CrescentEngine::LearnShader lightingShader("Resources/Shaders/VertexShader.shader", "Resources/Shaders/FragmentShader.shader");
+    CrescentEngine::LearnShader lightCubeShader("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");
+    CrescentEngine::LearnShader animationShader("Resources/Shaders/AnimationVertex.shader", "Resources/Shaders/AnimationFragment.shader");
+    CrescentEngine::LearnShader reflectiveShader("Resources/Shaders/ReflectiveVertex.shader", "Resources/Shaders/ReflectiveFragment.shader");
 
     m_Cubemap.LoadCubemap(cubemapFaces);
 
@@ -261,7 +262,7 @@ int mainDefunct()
     glEnableVertexAttribArray(0);
 
     //Cubemap
-    m_Cubemap.SetupCubemap();
+    m_Cubemap.SetupCubemapBuffers();
 
    // Texture
     unsigned int diffuseMap = LoadTexture("Resources/Textures/Container2.png");
@@ -277,7 +278,7 @@ int mainDefunct()
 
      //Model
      stbi_set_flip_vertically_on_load(true);
-     LearnShader staticModelShader("Resources/Shaders/StaticModelVertex.shader", "Resources/Shaders/StaticModelFragment.shader");
+     //LearnShader staticModelShader("Resources/Shaders/StaticModelVertex.shader", "Resources/Shaders/StaticModelFragment.shader");
      CrescentEngine::Model ourModel("Resources/Models/Backpack/backpack.obj");
      CrescentEngine::Model lamp("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
      CrescentEngine::Model girl("Resources/Models/Girl/Character_Girl.fbx");
@@ -377,11 +378,12 @@ int mainDefunct()
          //Backpack
          staticModelShader.UseShader();
          staticModelShader.SetUniformVector3("viewPosition", g_Camera.m_CameraPosition);
-         staticModelShader.SetUniformVector3("pointLight.lightPosition", pointLightPositions[0]);
+         
          //backpackShader.SetUniformVector3("spotLight.lightDirection", g_Camera.m_CameraFront);
          //backpackShader.SetUniformFloat("spotLight.innerLightCutoff", glm::cos(glm::radians(spotLight_InnerLightCutoff)));
          //backpackShader.SetUniformFloat("spotLight.outerLightCutoff", glm::cos(glm::radians(spotLight_OuterLightCutoff)));
 
+         staticModelShader.SetUniformVector3("pointLight.lightPosition", pointLightPositions[0]);
          staticModelShader.SetUniformFloat("pointLight.attenuationConstant", 1.0f);
          staticModelShader.SetUniformFloat("pointLight.attenuationLinear", 0.09f);
          staticModelShader.SetUniformFloat("pointLight.attenuationQuadratic", 0.032f);
@@ -429,6 +431,8 @@ int mainDefunct()
          //View/Projection Transformations
          glm::mat4 projectionMatrix = glm::perspective(glm::radians(g_Camera.m_MouseZoom), 800.0f / 600.0f, 0.1f, 100.0f);
          glm::mat4 viewMatrix = g_Camera.GetViewMatrix();
+
+
          lightingShader.SetUniformMat4("projection", projectionMatrix);
          lightingShader.SetUniformMat4("view", viewMatrix);
 
@@ -637,19 +641,19 @@ void ProcessInput(GLFWwindow* window)
     const float cameraSpeed = deltaTime * 2.5f;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        g_Camera.ProcessKeyboardEvents(CameraMovement::Forward, deltaTime);
+        g_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Forward, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        g_Camera.ProcessKeyboardEvents(CameraMovement::Backward, deltaTime);
+        g_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Backward, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-        g_Camera.ProcessKeyboardEvents(CameraMovement::Left, deltaTime);
+        g_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Left, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
-        g_Camera.ProcessKeyboardEvents(CameraMovement::Right, deltaTime);
+        g_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Right, deltaTime);
     }
 
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
@@ -738,3 +742,4 @@ unsigned int LoadTexture(const std::string& filePath)
 
     return TextureID;
 }
+*/

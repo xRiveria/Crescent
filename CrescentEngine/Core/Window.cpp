@@ -40,6 +40,11 @@ namespace CrescentEngine
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	}
 
+	void Window::PollEvents()
+	{
+		glfwPollEvents();
+	}
+
 	void Window::SetFramebufferCallback(GLFWframebuffersizefun callback)
 	{
 		glfwSetFramebufferSizeCallback(m_ApplicationWindow, callback);

@@ -185,6 +185,7 @@
     <ClCompile Include="Core\Window.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="LearnShader.cpp" />
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="Models\BoneMapper.cpp" />
     <ClCompile Include="Models\Mesh.cpp" />
     <ClCompile Include="Models\Model.cpp" />
@@ -194,7 +195,7 @@
     <ClCompile Include="OpenGL\Texture.cpp" />
     <ClCompile Include="OpenGL\VertexArray.cpp" />
     <ClCompile Include="OpenGL\VertexBuffer.cpp" />
-    <ClCompile Include="Core\Renderer.cpp" />
+    <ClCompile Include="Renderer\Renderer.cpp" />
     <ClCompile Include="Utilities\Cubemap.cpp" />
     <ClCompile Include="Vendor\glm\detail\glm.cpp" />
     <ClCompile Include="Vendor\imgui\imgui.cpp">
@@ -257,9 +258,11 @@
     <ClInclude Include="OpenGL\VertexArray.h" />
     <ClInclude Include="OpenGL\VertexBuffer.h" />
     <ClInclude Include="OpenGL\VertexBufferLayout.h" />
+    <ClInclude Include="Renderer\Renderer.h" />
     <ClInclude Include="Resources\Shaders\ReflectiveVertex.shader" />
     <ClInclude Include="Utilities\Camera.h" />
     <ClInclude Include="Utilities\Cubemap.h" />
+    <ClInclude Include="Utilities\Timestep.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\ai_assert.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\anim.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\BaseImporter.h" />

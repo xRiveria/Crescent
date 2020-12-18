@@ -51,7 +51,7 @@ namespace CrescentEngine
         m_CubemapShader.SetUniformInteger("skybox", 0);
     }
 
-    void Cubemap::SetupCubemap()
+    void Cubemap::SetupCubemapBuffers()
     {
         float skyboxVertices[] = {
             // positions          

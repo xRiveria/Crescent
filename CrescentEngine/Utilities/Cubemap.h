@@ -11,7 +11,7 @@ namespace CrescentEngine
 	public:
 		Cubemap() {}
 		void LoadCubemap(std::vector<std::string> fileLocations);
-		void SetupCubemap();
+		void SetupCubemapBuffers();
 		void BindCubemap();
 		void DrawCubemap(glm::mat4& viewMatix, glm::mat4& projectionMatrix);
 
