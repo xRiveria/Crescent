@@ -61,6 +61,9 @@ void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mo
 void CameraMovementCallback(GLFWwindow* window, double xPos, double yPos);
 void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset);
 
+glm::mat4 projectionMatrix = glm::mat4(1.0f);
+float m_AspectRatio = 1280.0 / 1080.0;
+
 int main(int argc, int argv[])
 {
 	//Initializes GLFW.
@@ -96,9 +99,12 @@ int main(int argc, int argv[])
 
 	while (!g_CoreSystems.m_Window.RetrieveWindowCloseStatus())
 	{
-		if (g_RenderingComponents.m_Framebuffer.RetrieveFramebufferWidth() != g_CoreSystems.m_Editor.RetrieveViewportWidth() || g_RenderingComponents.m_Framebuffer.RetrieveFramebufferHeight() != g_CoreSystems.m_Editor.RetrieveViewportHeight())
+		if (g_CoreSystems.m_Editor.RetrieveViewportWidth() > 0.0f && g_CoreSystems.m_Editor.RetrieveViewportHeight() > 0.0f && (g_RenderingComponents.m_Framebuffer.RetrieveFramebufferWidth() != g_CoreSystems.m_Editor.RetrieveViewportWidth() || g_RenderingComponents.m_Framebuffer.RetrieveFramebufferHeight() != g_CoreSystems.m_Editor.RetrieveViewportHeight()))
 		{
+			std::cout << "Not Correct! Updating Buffers!" << "\n";
 			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
+			m_AspectRatio = g_CoreSystems.m_Editor.RetrieveViewportWidth() / g_CoreSystems.m_Editor.RetrieveViewportHeight();
+			projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), m_AspectRatio, 0.2f, 100.0f);
 		}
 
 		//Retrieve Delta Time
@@ -117,7 +123,6 @@ int main(int argc, int argv[])
 		g_CoreSystems.m_Renderer.ClearBuffers();
 
 		//View/Projection Matrix
-		glm::mat4 projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), g_CoreSystems.m_Window.RetrieveAspectRatio(), 0.2f, 100.0f);
 		glm::mat4 viewMatrix = g_CoreSystems.m_Camera.GetViewMatrix();
 
 		//Backpack Model - To Be Further Abstracted ===========================================================================
@@ -147,6 +152,7 @@ int main(int argc, int argv[])
 
 		g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
 
+		//We reset the framebuffer back to normal here for ImGui to render to the default framebuffer.
 		//Our ImGui Editor
 		g_CoreSystems.m_Editor.BeginEditorRenderLoop();
 		g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
@@ -156,14 +162,12 @@ int main(int argc, int argv[])
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 		ImGui::Begin("Viewport");
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-		g_CoreSystems.m_Editor.SetViewportSize(viewportPanelSize.x, viewportPanelSize.y);
-
-		unsigned int textureID = g_RenderingComponents.m_Framebuffer.RetrieveColorAttachment();
-		ImGui::Image((void*)textureID, { viewportPanelSize.x, viewportPanelSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+		g_CoreSystems.m_Editor.SetViewportSize(viewportPanelSize.x, viewportPanelSize.y); //The current size of our viewport.
+		unsigned int colorAttachment = g_RenderingComponents.m_Framebuffer.RetrieveColorAttachment();
+		ImGui::Image((void*)colorAttachment, { (float)g_CoreSystems.m_Editor.RetrieveViewportWidth(), (float)g_CoreSystems.m_Editor.RetrieveViewportHeight() }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
 		ImGui::End();
 		ImGui::PopStyleVar(); //Pops the pushed style so other windows beyond this won't have the style's properties.
-
 
 		ImGui::End(); //Closes the docking context.
 		g_CoreSystems.m_Editor.EndEditorRenderLoop();
@@ -243,8 +247,7 @@ void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset)
 //This is a callback function that is called whenever a window is resized.
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight)
 {
-	//glViewport(0, 0, windowWidth, windowHeight);
-	g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(windowWidth, windowHeight);
+	//g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(windowWidth, windowHeight);
 	g_CoreSystems.m_Window.ResizeWindow((float)windowWidth, (float)windowHeight);
 }
 

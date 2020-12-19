@@ -29,7 +29,7 @@ namespace CrescentEngine
 		//Setup Color Buffer.
 		glGenTextures(1, &m_ColorAttachmentID);
 		glBindTexture(GL_TEXTURE_2D, m_ColorAttachmentID);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -50,7 +50,7 @@ namespace CrescentEngine
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE)
 		{
 			CrescentInfo("All requirements passed. Successfully created Framebuffer.")
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 		else
 		{

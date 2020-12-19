@@ -33,6 +33,5 @@ namespace CrescentEngine
 
 		int m_FramebufferWidth = 0;
 		int m_FramebufferHeight = 0;
-
 	};
 }
