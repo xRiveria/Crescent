@@ -64,4 +64,14 @@ namespace CrescentEngine
 	{
 		glfwSetCursorPosCallback(m_ApplicationWindow, callback);
 	}
+
+	void Window::ResizeWindow(const float& windowWidth, const float& windowHeight)
+	{
+		m_WindowWidth = windowWidth; 
+		m_WindowHeight = windowHeight;
+
+		//glViewport(0, 0, m_WindowWidth, m_WindowHeight);   -> This is now handled by the Framebuffer.
+	}
+
+
 }

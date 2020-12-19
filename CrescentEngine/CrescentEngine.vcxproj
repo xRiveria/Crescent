@@ -195,8 +195,9 @@
     <ClCompile Include="OpenGL\Texture.cpp" />
     <ClCompile Include="OpenGL\VertexArray.cpp" />
     <ClCompile Include="OpenGL\VertexBuffer.cpp" />
-    <ClCompile Include="Renderer\Renderer.cpp" />
-    <ClCompile Include="Utilities\Cubemap.cpp" />
+    <ClCompile Include="Rendering\Renderer.cpp" />
+    <ClCompile Include="Rendering\Cubemap.cpp" />
+    <ClCompile Include="Rendering\Framebuffer.cpp" />
     <ClCompile Include="Vendor\glm\detail\glm.cpp" />
     <ClCompile Include="Vendor\imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -246,6 +247,7 @@
     <ClInclude Include="Core\Core.h" />
     <ClInclude Include="Core\CrescentPCH.h" />
     <ClInclude Include="Core\Editor.h" />
+    <ClInclude Include="Core\Object.h" />
     <ClInclude Include="Core\Window.h" />
     <ClInclude Include="LearnShader.h" />
     <ClInclude Include="Models\BoneMapper.h" />
@@ -258,10 +260,11 @@
     <ClInclude Include="OpenGL\VertexArray.h" />
     <ClInclude Include="OpenGL\VertexBuffer.h" />
     <ClInclude Include="OpenGL\VertexBufferLayout.h" />
-    <ClInclude Include="Renderer\Renderer.h" />
+    <ClInclude Include="Rendering\Renderer.h" />
+    <ClInclude Include="Rendering\Framebuffer.h" />
     <ClInclude Include="Resources\Shaders\ReflectiveVertex.shader" />
     <ClInclude Include="Utilities\Camera.h" />
-    <ClInclude Include="Utilities\Cubemap.h" />
+    <ClInclude Include="Rendering\Cubemap.h" />
     <ClInclude Include="Utilities\Timestep.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\ai_assert.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\anim.h" />

@@ -3,10 +3,13 @@
 #include "Editor.h"
 #include "Utilities/Timestep.h"
 #include "Utilities/Camera.h"
+#include "Rendering/Framebuffer.h";
 #include "Models/Model.h"
-#include "Renderer/Renderer.h"
-#include "Utilities/Cubemap.h"
+#include "Rendering/Renderer.h"
+#include "Object.h"
+#include "Rendering/Cubemap.h"
 #include <stb_image/stb_image.h>
+#include <imgui/imgui.h>
 
 struct CoreSystems
 {
@@ -20,12 +23,14 @@ struct CoreSystems
 
 struct RenderingComponents
 {
+	CrescentEngine::Framebuffer m_Framebuffer;
 	CrescentEngine::Cubemap m_Cubemap;
 };
 
 struct Renderables
 {
 	CrescentEngine::Model m_BackpackModel;
+	CrescentEngine::DirectionalLight m_LightDirection;
 
 	//Cubemap
 	std::vector<std::string> m_OceanCubemap = {
@@ -67,13 +72,15 @@ int main(int argc, int argv[])
 	g_CoreSystems.m_Window.SetMouseButtonCallback(CameraAllowEulerCallback);
 	g_CoreSystems.m_Window.SetMouseScrollCallback(CameraZoomCallback);
 
-	//Setups ImGui
-	g_CoreSystems.m_Editor.SetApplicationContext(g_CoreSystems.m_Window.RetrieveWindow());
-	g_CoreSystems.m_Editor.InitializeImGui();
-
 	//Initializes OpenGL.
 	g_CoreSystems.m_Renderer.InitializeOpenGL();
 	g_CoreSystems.m_Renderer.ToggleDepthTesting(true);
+
+	//Setups ImGui
+	g_CoreSystems.m_Editor.SetApplicationContext(&g_CoreSystems.m_Window);
+	g_CoreSystems.m_Editor.InitializeImGui();
+
+	g_RenderingComponents.m_Framebuffer.InitializeFramebuffer(g_CoreSystems.m_Window.RetrieveWindowWidth(), g_CoreSystems.m_Window.RetrieveWindowHeight());
 
 	//Cubemaps
 	g_RenderingComponents.m_Cubemap.LoadCubemap(g_Renderables.m_OceanCubemap);
@@ -89,6 +96,11 @@ int main(int argc, int argv[])
 
 	while (!g_CoreSystems.m_Window.RetrieveWindowCloseStatus())
 	{
+		if (g_RenderingComponents.m_Framebuffer.RetrieveFramebufferWidth() != g_CoreSystems.m_Editor.RetrieveViewportWidth() || g_RenderingComponents.m_Framebuffer.RetrieveFramebufferHeight() != g_CoreSystems.m_Editor.RetrieveViewportHeight())
+		{
+			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
+		}
+
 		//Retrieve Delta Time
 		float currentFrame = g_CoreSystems.m_Window.RetrieveCurrentTime();
 		g_CoreSystems.m_Timestep = currentFrame - g_CoreSystems.m_LastFrameTime;
@@ -97,6 +109,9 @@ int main(int argc, int argv[])
 		//Poll Events
 		g_CoreSystems.m_Window.PollEvents();
 		ProcessKeyboardEvents(g_CoreSystems.m_Window.RetrieveWindow());
+
+		//Bind Our Framebuffer
+		g_RenderingComponents.m_Framebuffer.BindFramebuffer();
 
 		//Clear Buffers
 		g_CoreSystems.m_Renderer.ClearBuffers();
@@ -107,10 +122,10 @@ int main(int argc, int argv[])
 
 		//Backpack Model - To Be Further Abstracted ===========================================================================
 		g_Shaders.m_StaticModelShader.UseShader();
-		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.lightDirection", glm::vec3(-0.2f, -1.0f, -0.3f));
-		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.ambientIntensity", glm::vec3(0.2f, 0.2f, 0.2f));
-		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.diffuseIntensity", glm::vec3(0.5f, 0.5f, 0.5f));
-		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.specularIntensity", glm::vec3(-1.0f, 1.0f, 1.0f));
+		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.lightDirection", g_Renderables.m_LightDirection.lightDirection);
+		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.ambientIntensity", g_Renderables.m_LightDirection.ambientIntensity);
+		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.diffuseIntensity", g_Renderables.m_LightDirection.diffuseIntensity);
+		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.specularIntensity", g_Renderables.m_LightDirection.specularIntensity);
 
 		g_Shaders.m_StaticModelShader.SetUniformMat4("projection", projectionMatrix);
 		g_Shaders.m_StaticModelShader.SetUniformMat4("view", viewMatrix);
@@ -127,14 +142,31 @@ int main(int argc, int argv[])
 		//Calculates the front vector from the Camera's (updated) Euler Angles.
 		g_CoreSystems.m_Camera.UpdateCameraVectors();
 
-		//Our ImGui Editor
-		g_CoreSystems.m_Editor.BeginEditorRenderLoop();
-		ImGui::Begin("Sample Box");
-		ImGui::End();
-		g_CoreSystems.m_Editor.EndEditorRenderLoop();
-
 		//Draw Cubemap
 		g_RenderingComponents.m_Cubemap.DrawCubemap(viewMatrix, projectionMatrix);
+
+		g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
+
+		//Our ImGui Editor
+		g_CoreSystems.m_Editor.BeginEditorRenderLoop();
+		g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
+
+		g_Renderables.m_LightDirection.RenderSettingsInEditor();
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
+		ImGui::Begin("Viewport");
+		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+		g_CoreSystems.m_Editor.SetViewportSize(viewportPanelSize.x, viewportPanelSize.y);
+
+		unsigned int textureID = g_RenderingComponents.m_Framebuffer.RetrieveColorAttachment();
+		ImGui::Image((void*)textureID, { viewportPanelSize.x, viewportPanelSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
+		ImGui::End();
+		ImGui::PopStyleVar(); //Pops the pushed style so other windows beyond this won't have the style's properties.
+
+
+		ImGui::End(); //Closes the docking context.
+		g_CoreSystems.m_Editor.EndEditorRenderLoop();
 
 		g_CoreSystems.m_Window.SwapBuffers();
 	}
@@ -211,7 +243,8 @@ void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset)
 //This is a callback function that is called whenever a window is resized.
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight)
 {
-	glViewport(0, 0, windowWidth, windowHeight);
-	g_CoreSystems.m_Window.SetWindowDimensions((float)windowWidth, (float)windowHeight);
+	//glViewport(0, 0, windowWidth, windowHeight);
+	g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(windowWidth, windowHeight);
+	g_CoreSystems.m_Window.ResizeWindow((float)windowWidth, (float)windowHeight);
 }
 
