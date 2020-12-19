@@ -99,11 +99,12 @@ int main(int argc, int argv[])
 
 	while (!g_CoreSystems.m_Window.RetrieveWindowCloseStatus())
 	{
+		//Check Projection Matrix
 		if (g_CoreSystems.m_Editor.RetrieveViewportWidth() > 0.0f && g_CoreSystems.m_Editor.RetrieveViewportHeight() > 0.0f && (g_RenderingComponents.m_Framebuffer.RetrieveFramebufferWidth() != g_CoreSystems.m_Editor.RetrieveViewportWidth() || g_RenderingComponents.m_Framebuffer.RetrieveFramebufferHeight() != g_CoreSystems.m_Editor.RetrieveViewportHeight()))
 		{
 			std::cout << "Not Correct! Updating Buffers!" << "\n";
 			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
-			m_AspectRatio = g_CoreSystems.m_Editor.RetrieveViewportWidth() / g_CoreSystems.m_Editor.RetrieveViewportHeight();
+			m_AspectRatio = (float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight();
 			projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), m_AspectRatio, 0.2f, 100.0f);
 		}
 
