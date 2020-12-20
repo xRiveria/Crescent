@@ -181,7 +181,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CrescentPCH.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="Core\DefaultShape.cpp" />
+    <ClCompile Include="Core\Primitive.cpp" />
     <ClCompile Include="Core\Editor.cpp" />
     <ClCompile Include="Core\Window.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
@@ -199,6 +199,7 @@
     <ClCompile Include="Rendering\Renderer.cpp" />
     <ClCompile Include="Rendering\Cubemap.cpp" />
     <ClCompile Include="Rendering\Framebuffer.cpp" />
+    <ClCompile Include="Rendering\RenderQueue.cpp" />
     <ClCompile Include="Rendering\Texture.cpp" />
     <ClCompile Include="Vendor\glm\detail\glm.cpp" />
     <ClCompile Include="Vendor\imgui\imgui.cpp">
@@ -248,7 +249,7 @@
   <ItemGroup>
     <ClInclude Include="Core\Core.h" />
     <ClInclude Include="Core\CrescentPCH.h" />
-    <ClInclude Include="Core\DefaultShape.h" />
+    <ClInclude Include="Core\Primitive.h" />
     <ClInclude Include="Core\Editor.h" />
     <ClInclude Include="Core\Object.h" />
     <ClInclude Include="Core\Window.h" />
@@ -265,6 +266,7 @@
     <ClInclude Include="OpenGL\VertexBufferLayout.h" />
     <ClInclude Include="Rendering\Renderer.h" />
     <ClInclude Include="Rendering\Framebuffer.h" />
+    <ClInclude Include="Rendering\RenderQueue.h" />
     <ClInclude Include="Rendering\Texture.h" />
     <ClInclude Include="Resources\Shaders\OutlineVertex.shader" />
     <ClInclude Include="Resources\Shaders\ReflectiveVertex.shader" />

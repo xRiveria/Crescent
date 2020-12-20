@@ -7,8 +7,9 @@
 #include "Rendering/Framebuffer.h";
 #include "Models/Model.h"
 #include "Rendering/Renderer.h"
+#include "Rendering/RenderQueue.h"
 #include "Object.h"
-#include "DefaultShape.h"
+#include "Primitive.h"
 #include "Rendering/Cubemap.h"
 #include <stb_image/stb_image.h>
 #include <imgui/imgui.h>
@@ -32,15 +33,17 @@ struct RenderingComponents
 	bool m_OutlineRendering = false;
 };
 
-struct Renderables
+struct Renderables  //Currently our base scene objects.
 {
 	CrescentEngine::Model m_BackpackModel;
 	CrescentEngine::Model m_RedstoneLampModel;
-	CrescentEngine::Plane m_Plane;
+	CrescentEngine::Primitive m_Plane;
 	CrescentEngine::TransparentQuad m_TransparentQuad;
 
 	CrescentEngine::DirectionalLight m_LightDirection;
 	CrescentEngine::PointLight m_PointLight;
+
+	CrescentEngine::RenderQueue m_RenderQueue;
 
 	//Cubemap
 	std::vector<std::string> m_OceanCubemap = {
@@ -73,6 +76,8 @@ struct Shaders
 struct Textures
 {
 	CrescentEngine::Texture2D m_GrassTexture;
+	CrescentEngine::Texture2D m_WindowTexture;
+	CrescentEngine::Texture2D m_MarbleTexture;
 };
 
 //Our Systems	
@@ -105,8 +110,7 @@ int main(int argc, int argv[])
 	//Initializes OpenGL.
 	g_CoreSystems.m_Renderer.InitializeOpenGL();
 	g_CoreSystems.m_Renderer.ToggleDepthTesting(true);
-	glEnable(GL_STENCIL_TEST);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	g_CoreSystems.m_Renderer.ToggleBlending(true);
 
 	//Setups ImGui
 	g_CoreSystems.m_Editor.SetApplicationContext(&g_CoreSystems.m_Window);
@@ -125,9 +129,11 @@ int main(int argc, int argv[])
 	g_Shaders.m_TransparentQuadShader.CreateShaders("Resources/Shaders/TransparentVertex.shader", "Resources/Shaders/TransparentFragment.shader");
 
 	//Objects
-	g_Renderables.m_Plane.SetupPlaneBuffers();
+	g_Renderables.m_Plane.SetupPrimitiveBuffers(CrescentEngine::PrimitiveShape::PlanePrimitive);
 	g_Renderables.m_TransparentQuad.SetupTransparentQuadBuffers();
 	g_Textures.m_GrassTexture.LoadTexture("Resources/Textures/Grass.png");
+	g_Textures.m_WindowTexture.LoadTexture("Resources/Textures/TransparentWindow.png");
+	g_Textures.m_MarbleTexture.LoadTexture("Resources/Textures/Marble.jpg");
 	stbi_set_flip_vertically_on_load(true);
 	g_Renderables.m_BackpackModel.LoadModel("Resources/Models/Backpack/backpack.obj");
 	g_Renderables.m_RedstoneLampModel.LoadModel("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
@@ -187,18 +193,11 @@ int main(int argc, int argv[])
 		g_Renderables.m_BackpackModel.Draw(g_Shaders.m_StaticModelShader);
 
 		//Our Plane
-		g_Renderables.m_Plane.DrawPlane(g_Shaders.m_StaticModelShader);
+		g_Textures.m_MarbleTexture.BindTexture();
+		g_Renderables.m_Plane.DrawPrimitive(g_Shaders.m_StaticModelShader);
 
-		//Grass Texture
-		g_Shaders.m_TransparentQuadShader.UseShader();
-		g_Shaders.m_TransparentQuadShader.SetUniformMat4("projection", projectionMatrix);
-		g_Shaders.m_TransparentQuadShader.SetUniformMat4("view", viewMatrix);
-		for (unsigned int i = 0; i < g_Renderables.m_VegetableLocations.size(); i++)
-		{
-			glm::mat4 grassQuadMatrix = glm::mat4(1.0f);
-			grassQuadMatrix = glm::translate(grassQuadMatrix, g_Renderables.m_VegetableLocations[i]);
-			g_Renderables.m_TransparentQuad.DrawTransparentQuad(g_Shaders.m_TransparentQuadShader, grassQuadMatrix, g_Textures.m_GrassTexture);
-		}
+		//Our Queues
+		g_Renderables.m_RenderQueue.RenderAllQueueItems(g_Shaders.m_StaticModelShader);
 
 		//Redstone Lamp Model
 		g_Shaders.m_PointLightObjectShader.UseShader();
@@ -220,6 +219,22 @@ int main(int argc, int argv[])
 		//Draw Cubemap
 		g_RenderingComponents.m_Cubemap.DrawCubemap(viewMatrix, projectionMatrix);
 
+		//Grass Texture
+		g_Shaders.m_TransparentQuadShader.UseShader();
+		g_Shaders.m_TransparentQuadShader.SetUniformMat4("projection", projectionMatrix);
+		g_Shaders.m_TransparentQuadShader.SetUniformMat4("view", viewMatrix);
+
+		for (unsigned int i = 0; i < g_Renderables.m_VegetableLocations.size(); i++)
+		{
+			glm::mat4 grassQuadMatrix = glm::mat4(1.0f);
+			grassQuadMatrix = glm::translate(grassQuadMatrix, g_Renderables.m_VegetableLocations[i]);
+			g_Renderables.m_TransparentQuad.DrawTransparentQuad(g_Shaders.m_TransparentQuadShader, grassQuadMatrix, g_Textures.m_GrassTexture);
+		}
+
+		glm::mat4 windowMatrix = glm::mat4(1.0f);
+		windowMatrix = glm::translate(windowMatrix, glm::vec3(0.0f, 0.0f, 3.0f));
+		g_Renderables.m_TransparentQuad.DrawTransparentQuad(g_Shaders.m_TransparentQuadShader, windowMatrix, g_Textures.m_WindowTexture);
+
 		g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
 
 		//We reset the framebuffer back to normal here for ImGui to render to the default framebuffer.
@@ -232,8 +247,19 @@ int main(int argc, int argv[])
 		{
 			g_CoreSystems.m_Renderer.ToggleWireframeRendering(g_RenderingComponents.m_WireframeRendering);
 		}
+
+		if (ImGui::Button("Create Plane"))
+		{
+			g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::PlanePrimitive);
+		}
+
+		if (ImGui::Button("Create Cube"))
+		{
+			g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::CubePrimitive);
+		}
 		ImGui::End();
 
+		g_Renderables.m_RenderQueue.RenderAllQueueEditorSettings();
 		g_Renderables.m_LightDirection.RenderSettingsInEditor();
 		g_Renderables.m_PointLight.RenderSettingsInEditor();
 

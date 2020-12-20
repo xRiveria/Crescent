@@ -22,6 +22,12 @@ namespace CrescentEngine
 		value ? glPolygonMode(GL_FRONT_AND_BACK, GL_LINE) : glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 
+	void Renderer::ToggleBlending(bool value)
+	{
+		value ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
 	void Renderer::ClearBuffers()
 	{
 		glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
