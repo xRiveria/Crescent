@@ -181,6 +181,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CrescentPCH.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="Core\DefaultShape.cpp" />
     <ClCompile Include="Core\Editor.cpp" />
     <ClCompile Include="Core\Window.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
@@ -246,6 +247,7 @@
   <ItemGroup>
     <ClInclude Include="Core\Core.h" />
     <ClInclude Include="Core\CrescentPCH.h" />
+    <ClInclude Include="Core\DefaultShape.h" />
     <ClInclude Include="Core\Editor.h" />
     <ClInclude Include="Core\Object.h" />
     <ClInclude Include="Core\Window.h" />

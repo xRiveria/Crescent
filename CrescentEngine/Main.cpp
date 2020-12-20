@@ -7,6 +7,7 @@
 #include "Models/Model.h"
 #include "Rendering/Renderer.h"
 #include "Object.h"
+#include "DefaultShape.h"
 #include "Rendering/Cubemap.h"
 #include <stb_image/stb_image.h>
 #include <imgui/imgui.h>
@@ -34,6 +35,7 @@ struct Renderables
 {
 	CrescentEngine::Model m_BackpackModel;
 	CrescentEngine::Model m_RedstoneLampModel;
+	CrescentEngine::Plane m_Plane;
 
 	CrescentEngine::DirectionalLight m_LightDirection;
 	CrescentEngine::PointLight m_PointLight;
@@ -104,7 +106,8 @@ int main(int argc, int argv[])
 	g_Shaders.m_PointLightObjectShader.CreateShaders("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");
 	g_Shaders.m_OutlineObjectShader.CreateShaders("Resources/Shaders/OutlineVertex.shader", "Resources/Shaders/OutlineFragment.shader");
 
-	//Models
+	//Objects
+	g_Renderables.m_Plane.SetupPlaneBuffers();
 	stbi_set_flip_vertically_on_load(true);
 	g_Renderables.m_BackpackModel.LoadModel("Resources/Models/Backpack/backpack.obj");
 	g_Renderables.m_RedstoneLampModel.LoadModel("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
@@ -139,7 +142,6 @@ int main(int argc, int argv[])
 		//View/Projection Matrix
 		glm::mat4 viewMatrix = g_CoreSystems.m_Camera.GetViewMatrix();
 
-		glStencilMask(0x00);
 		//Backpack Model - To Be Further Abstracted ===========================================================================
 		g_Shaders.m_StaticModelShader.UseShader();
 		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.lightDirection", g_Renderables.m_LightDirection.lightDirection);
@@ -159,11 +161,12 @@ int main(int argc, int argv[])
 		g_Shaders.m_StaticModelShader.SetUniformMat4("view", viewMatrix);
 		g_Shaders.m_StaticModelShader.SetUniformVector3("viewPosition", g_CoreSystems.m_Camera.m_CameraPosition);
 		glm::mat4 backpackModel = glm::mat4(1.0f);
-		backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 0.0f, 0.0f));
+		backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 1.3f, 0.0f));
 		backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
 		g_Shaders.m_StaticModelShader.SetUniformMat4("model", backpackModel);
 
 		g_Renderables.m_BackpackModel.Draw(g_Shaders.m_StaticModelShader);
+		g_Renderables.m_Plane.DrawPlane(g_Shaders.m_StaticModelShader);
 
 		//Redstone Lamp Model
 		g_Shaders.m_PointLightObjectShader.UseShader();
