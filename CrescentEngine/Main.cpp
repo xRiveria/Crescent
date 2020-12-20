@@ -1,6 +1,7 @@
 #include "CrescentPCH.h"
 #include "Window.h"
 #include "Editor.h"
+#include "Rendering/Texture.h"
 #include "Utilities/Timestep.h"
 #include "Utilities/Camera.h"
 #include "Rendering/Framebuffer.h";
@@ -36,6 +37,7 @@ struct Renderables
 	CrescentEngine::Model m_BackpackModel;
 	CrescentEngine::Model m_RedstoneLampModel;
 	CrescentEngine::Plane m_Plane;
+	CrescentEngine::TransparentQuad m_TransparentQuad;
 
 	CrescentEngine::DirectionalLight m_LightDirection;
 	CrescentEngine::PointLight m_PointLight;
@@ -49,6 +51,15 @@ struct Renderables
 		"Resources/Skybox/Ocean/front.jpg",
 		"Resources/Skybox/Ocean/back.jpg"
 	};
+
+	//Vegetables
+	std::vector<glm::vec3> m_VegetableLocations = {
+		glm::vec3(-1.5f, 0.0f, -0.48f),
+		glm::vec3(1.5f, 0.0f, 0.51f),
+		glm::vec3(0.0f, 0.0f, 0.7f),
+		glm::vec3(-0.3f, 0.0f, -2.3f),
+		glm::vec3(0.5f, 0.0f, -0.6f)
+	};
 };
 
 struct Shaders
@@ -56,6 +67,12 @@ struct Shaders
 	CrescentEngine::LearnShader m_StaticModelShader;
 	CrescentEngine::LearnShader m_PointLightObjectShader;
 	CrescentEngine::LearnShader m_OutlineObjectShader;
+	CrescentEngine::LearnShader m_TransparentQuadShader;
+};
+
+struct Textures
+{
+	CrescentEngine::Texture2D m_GrassTexture;
 };
 
 //Our Systems	
@@ -63,6 +80,7 @@ CoreSystems g_CoreSystems; //Creates our core engine systems.
 RenderingComponents g_RenderingComponents; //Creates our rendering components.
 Renderables g_Renderables; //Creates our assets.
 Shaders g_Shaders; //Creates our shaders.
+Textures g_Textures; //Creates our textures.
 
 //Input Callbacks
 void ProcessKeyboardEvents(GLFWwindow* window);
@@ -72,7 +90,6 @@ void CameraMovementCallback(GLFWwindow* window, double xPos, double yPos);
 void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset);
 
 glm::mat4 projectionMatrix = glm::mat4(1.0f);
-float m_AspectRatio = 1280.0 / 1080.0;
 
 int main(int argc, int argv[])
 {
@@ -105,9 +122,12 @@ int main(int argc, int argv[])
 	g_Shaders.m_StaticModelShader.CreateShaders("Resources/Shaders/StaticModelVertex.shader", "Resources/Shaders/StaticModelFragment.shader");
 	g_Shaders.m_PointLightObjectShader.CreateShaders("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");
 	g_Shaders.m_OutlineObjectShader.CreateShaders("Resources/Shaders/OutlineVertex.shader", "Resources/Shaders/OutlineFragment.shader");
+	g_Shaders.m_TransparentQuadShader.CreateShaders("Resources/Shaders/TransparentVertex.shader", "Resources/Shaders/TransparentFragment.shader");
 
 	//Objects
 	g_Renderables.m_Plane.SetupPlaneBuffers();
+	g_Renderables.m_TransparentQuad.SetupTransparentQuadBuffers();
+	g_Textures.m_GrassTexture.LoadTexture("Resources/Textures/Grass.png");
 	stbi_set_flip_vertically_on_load(true);
 	g_Renderables.m_BackpackModel.LoadModel("Resources/Models/Backpack/backpack.obj");
 	g_Renderables.m_RedstoneLampModel.LoadModel("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
@@ -120,8 +140,7 @@ int main(int argc, int argv[])
 		{
 			std::cout << "Not Correct! Updating Buffers!" << "\n";
 			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
-			m_AspectRatio = (float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight();
-			projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), m_AspectRatio, 0.2f, 100.0f);
+			projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
 		}
 
 		//Retrieve Delta Time
@@ -166,7 +185,20 @@ int main(int argc, int argv[])
 		g_Shaders.m_StaticModelShader.SetUniformMat4("model", backpackModel);
 
 		g_Renderables.m_BackpackModel.Draw(g_Shaders.m_StaticModelShader);
+
+		//Our Plane
 		g_Renderables.m_Plane.DrawPlane(g_Shaders.m_StaticModelShader);
+
+		//Grass Texture
+		g_Shaders.m_TransparentQuadShader.UseShader();
+		g_Shaders.m_TransparentQuadShader.SetUniformMat4("projection", projectionMatrix);
+		g_Shaders.m_TransparentQuadShader.SetUniformMat4("view", viewMatrix);
+		for (unsigned int i = 0; i < g_Renderables.m_VegetableLocations.size(); i++)
+		{
+			glm::mat4 grassQuadMatrix = glm::mat4(1.0f);
+			grassQuadMatrix = glm::translate(grassQuadMatrix, g_Renderables.m_VegetableLocations[i]);
+			g_Renderables.m_TransparentQuad.DrawTransparentQuad(g_Shaders.m_TransparentQuadShader, grassQuadMatrix, g_Textures.m_GrassTexture);
+		}
 
 		//Redstone Lamp Model
 		g_Shaders.m_PointLightObjectShader.UseShader();
@@ -296,4 +328,3 @@ void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHe
 	//g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(windowWidth, windowHeight);
 	g_CoreSystems.m_Window.ResizeWindow((float)windowWidth, (float)windowHeight);
 }
-

@@ -1,11 +1,11 @@
 #pragma once
 #include "OpenGLRenderer.h"
 
-class Texture
+class Textures
 {
 public:
-	Texture(const std::string& path);
-	~Texture();
+	Textures(const std::string& path);
+	~Textures();
 
 	void Bind(unsigned int slot = 0) const;  //Allows us to specify a slot we want to bind the texture to. In OpenGl, we have these slots because we have the ability to bind more than one texture at once. In OpenGl, there are slots for us to bind textures to. On Windows, we typically have 32 texture slots. Of course, we can query OpenGL for many we have. 
 	void Unbind() const;

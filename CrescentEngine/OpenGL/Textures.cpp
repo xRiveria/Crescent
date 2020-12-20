@@ -1,8 +1,8 @@
 #include "CrescentPCH.h"
-#include "Texture.h"
+#include "Textures.h"
 #include "stb_image/stb_image.h"
 
-Texture::Texture(const std::string& path) : m_RendererID(0), m_FilePath(path), m_LocalBuffer(nullptr), m_Width(0), m_Height(0), m_BPP(0)
+Textures::Textures(const std::string& path) : m_RendererID(0), m_FilePath(path), m_LocalBuffer(nullptr), m_Width(0), m_Height(0), m_BPP(0)
 {
 	stbi_set_flip_vertically_on_load(1); //Flips the texture vertically upside down. OpenGL expects our texture pixels to start from the bottom left of 0,0. Typically, when we load a PNG image, it stores it in a top to bottom format. Thus, we have to flip it on load for OpenGL. If you see your image is upside down, play with this!
 	m_LocalBuffer = stbi_load(path.c_str(), &m_Width, &m_Height, &m_BPP, 4);
@@ -25,20 +25,21 @@ Texture::Texture(const std::string& path) : m_RendererID(0), m_FilePath(path), m
 	{
 		stbi_image_free(m_LocalBuffer);
 	}
+	stbi_set_flip_vertically_on_load(0);
 }
 
-Texture::~Texture()
+Textures::~Textures()
 {
 	glDeleteTextures(1, &m_RendererID);
 }
 
-void Texture::Bind(unsigned int slot) const
+void Textures::Bind(unsigned int slot) const
 {
 	glActiveTexture(GL_TEXTURE0 + slot); //I'm going to make the active texture Slot 0. This means the next texture I bind into will be slot 16 until I select another slot again.
 	glBindTexture(GL_TEXTURE_2D, m_RendererID);
 }
 
-void Texture::Unbind() const
+void Textures::Unbind() const
 {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }

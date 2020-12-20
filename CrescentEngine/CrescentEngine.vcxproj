@@ -193,12 +193,13 @@
     <ClCompile Include="OpenGL\IndexBuffer.cpp" />
     <ClCompile Include="OpenGL\OpenGLRenderer.cpp" />
     <ClCompile Include="OpenGL\Shader.cpp" />
-    <ClCompile Include="OpenGL\Texture.cpp" />
+    <ClCompile Include="OpenGL\Textures.cpp" />
     <ClCompile Include="OpenGL\VertexArray.cpp" />
     <ClCompile Include="OpenGL\VertexBuffer.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
     <ClCompile Include="Rendering\Cubemap.cpp" />
     <ClCompile Include="Rendering\Framebuffer.cpp" />
+    <ClCompile Include="Rendering\Texture.cpp" />
     <ClCompile Include="Vendor\glm\detail\glm.cpp" />
     <ClCompile Include="Vendor\imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -258,12 +259,13 @@
     <ClInclude Include="OpenGL\IndexBuffer.h" />
     <ClInclude Include="OpenGL\OpenGLRenderer.h" />
     <ClInclude Include="OpenGL\Shader.h" />
-    <ClInclude Include="OpenGL\Texture.h" />
+    <ClInclude Include="OpenGL\Textures.h" />
     <ClInclude Include="OpenGL\VertexArray.h" />
     <ClInclude Include="OpenGL\VertexBuffer.h" />
     <ClInclude Include="OpenGL\VertexBufferLayout.h" />
     <ClInclude Include="Rendering\Renderer.h" />
     <ClInclude Include="Rendering\Framebuffer.h" />
+    <ClInclude Include="Rendering\Texture.h" />
     <ClInclude Include="Resources\Shaders\OutlineVertex.shader" />
     <ClInclude Include="Resources\Shaders\ReflectiveVertex.shader" />
     <ClInclude Include="Utilities\Camera.h" />
@@ -645,6 +647,8 @@
     <None Include="OpenGL\Shaders\Basic.shader" />
     <None Include="Resources\Shaders\LightFragmentShader.shader" />
     <None Include="Resources\Shaders\LightVertexShader.shader" />
+    <None Include="Resources\Shaders\TransparentFragment.shader" />
+    <None Include="Resources\Shaders\TransparentVertex.shader" />
     <None Include="Vendor\assimp\include\assimp\.editorconfig" />
     <None Include="Vendor\assimp\include\assimp\color4.inl" />
     <None Include="Vendor\assimp\include\assimp\material.inl" />
