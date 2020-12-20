@@ -12,6 +12,7 @@ namespace CrescentEngine
 		void InitializeOpenGL();
 		void SetApplicationContext(GLFWwindow* window) { m_ApplicationContext = window; }
 		void ToggleDepthTesting(bool value);
+		void ToggleWireframeRendering(bool value);
 
 		void ClearBuffers();
 

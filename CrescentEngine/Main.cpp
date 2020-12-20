@@ -25,12 +25,18 @@ struct RenderingComponents
 {
 	CrescentEngine::Framebuffer m_Framebuffer;
 	CrescentEngine::Cubemap m_Cubemap;
+
+	bool m_WireframeRendering = false;
+	bool m_OutlineRendering = false;
 };
 
 struct Renderables
 {
 	CrescentEngine::Model m_BackpackModel;
+	CrescentEngine::Model m_RedstoneLampModel;
+
 	CrescentEngine::DirectionalLight m_LightDirection;
+	CrescentEngine::PointLight m_PointLight;
 
 	//Cubemap
 	std::vector<std::string> m_OceanCubemap = {
@@ -46,6 +52,8 @@ struct Renderables
 struct Shaders
 {
 	CrescentEngine::LearnShader m_StaticModelShader;
+	CrescentEngine::LearnShader m_PointLightObjectShader;
+	CrescentEngine::LearnShader m_OutlineObjectShader;
 };
 
 //Our Systems	
@@ -78,6 +86,8 @@ int main(int argc, int argv[])
 	//Initializes OpenGL.
 	g_CoreSystems.m_Renderer.InitializeOpenGL();
 	g_CoreSystems.m_Renderer.ToggleDepthTesting(true);
+	glEnable(GL_STENCIL_TEST);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
 	//Setups ImGui
 	g_CoreSystems.m_Editor.SetApplicationContext(&g_CoreSystems.m_Window);
@@ -91,10 +101,13 @@ int main(int argc, int argv[])
 
 	//Shaders
 	g_Shaders.m_StaticModelShader.CreateShaders("Resources/Shaders/StaticModelVertex.shader", "Resources/Shaders/StaticModelFragment.shader");
+	g_Shaders.m_PointLightObjectShader.CreateShaders("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");
+	g_Shaders.m_OutlineObjectShader.CreateShaders("Resources/Shaders/OutlineVertex.shader", "Resources/Shaders/OutlineFragment.shader");
 
 	//Models
 	stbi_set_flip_vertically_on_load(true);
 	g_Renderables.m_BackpackModel.LoadModel("Resources/Models/Backpack/backpack.obj");
+	g_Renderables.m_RedstoneLampModel.LoadModel("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
 	stbi_set_flip_vertically_on_load(false);
 
 	while (!g_CoreSystems.m_Window.RetrieveWindowCloseStatus())
@@ -126,12 +139,21 @@ int main(int argc, int argv[])
 		//View/Projection Matrix
 		glm::mat4 viewMatrix = g_CoreSystems.m_Camera.GetViewMatrix();
 
+		glStencilMask(0x00);
 		//Backpack Model - To Be Further Abstracted ===========================================================================
 		g_Shaders.m_StaticModelShader.UseShader();
 		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.lightDirection", g_Renderables.m_LightDirection.lightDirection);
 		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.ambientIntensity", g_Renderables.m_LightDirection.ambientIntensity);
 		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.diffuseIntensity", g_Renderables.m_LightDirection.diffuseIntensity);
 		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.specularIntensity", g_Renderables.m_LightDirection.specularIntensity);
+
+		g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.lightPosition", g_Renderables.m_PointLight.pointLightPosition);
+		g_Shaders.m_StaticModelShader.SetUniformFloat("pointLight.attenuationConstant", 1.0f);
+		g_Shaders.m_StaticModelShader.SetUniformFloat("pointLight.attenuationLinear", 0.09f);
+		g_Shaders.m_StaticModelShader.SetUniformFloat("pointLight.attenuationQuadratic", 0.032f);
+		g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.ambientIntensity", g_Renderables.m_PointLight.ambientIntensity);
+		g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.diffuseIntensity", g_Renderables.m_PointLight.diffuseIntensity);
+		g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.specularIntensity", g_Renderables.m_PointLight.specularIntensity);
 
 		g_Shaders.m_StaticModelShader.SetUniformMat4("projection", projectionMatrix);
 		g_Shaders.m_StaticModelShader.SetUniformMat4("view", viewMatrix);
@@ -142,6 +164,18 @@ int main(int argc, int argv[])
 		g_Shaders.m_StaticModelShader.SetUniformMat4("model", backpackModel);
 
 		g_Renderables.m_BackpackModel.Draw(g_Shaders.m_StaticModelShader);
+
+		//Redstone Lamp Model
+		g_Shaders.m_PointLightObjectShader.UseShader();
+		g_Shaders.m_PointLightObjectShader.SetUniformMat4("projection", projectionMatrix);
+		g_Shaders.m_PointLightObjectShader.SetUniformMat4("view", viewMatrix);
+
+		glm::mat4 redstoneLampModel = glm::mat4(1.0f);
+		redstoneLampModel = glm::translate(redstoneLampModel, g_Renderables.m_PointLight.pointLightPosition);
+		redstoneLampModel = glm::scale(redstoneLampModel, glm::vec3(0.01f)); //A smaller cube.     
+		g_Shaders.m_PointLightObjectShader.SetUniformMat4("model", redstoneLampModel);
+
+		g_Renderables.m_RedstoneLampModel.Draw(g_Shaders.m_PointLightObjectShader);
 
 		//=======================================================================================================================
 
@@ -158,7 +192,15 @@ int main(int argc, int argv[])
 		g_CoreSystems.m_Editor.BeginEditorRenderLoop();
 		g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
 
+		ImGui::Begin("Global Settings");
+		if (ImGui::Checkbox("Wireframe Rendering", &g_RenderingComponents.m_WireframeRendering))
+		{
+			g_CoreSystems.m_Renderer.ToggleWireframeRendering(g_RenderingComponents.m_WireframeRendering);
+		}
+		ImGui::End();
+
 		g_Renderables.m_LightDirection.RenderSettingsInEditor();
+		g_Renderables.m_PointLight.RenderSettingsInEditor();
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 		ImGui::Begin("Viewport");

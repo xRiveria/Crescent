@@ -27,4 +27,24 @@ namespace CrescentEngine
 			ImGui::End();
 		}
 	};
+
+	struct PointLight
+	{
+		PointLight() {}
+
+		glm::vec3 pointLightPosition = { 0.7f, 0.2f, 2.0f };
+		glm::vec3 ambientIntensity = { 0.2f, 0.2f, 0.2f };
+		glm::vec3 diffuseIntensity = { 0.5f, 0.5f, 0.5f };
+		glm::vec3 specularIntensity = { 1.0f, 1.0f, 1.0f };
+
+		void RenderSettingsInEditor()
+		{
+			ImGui::Begin("Point Light");
+			ImGui::DragFloat3("Light Position", glm::value_ptr(pointLightPosition), 0.1f);
+			ImGui::DragFloat3("Ambient Intensity##Point", glm::value_ptr(ambientIntensity), 0.1f);
+			ImGui::DragFloat3("Diffuse Intensity##Point", glm::value_ptr(diffuseIntensity), 0.1f);
+			ImGui::DragFloat3("Specular Intensity##Point", glm::value_ptr(specularIntensity), 0.1f);
+			ImGui::End();
+		}
+	};
 }

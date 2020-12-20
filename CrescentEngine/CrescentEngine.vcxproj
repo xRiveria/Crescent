@@ -262,6 +262,7 @@
     <ClInclude Include="OpenGL\VertexBufferLayout.h" />
     <ClInclude Include="Rendering\Renderer.h" />
     <ClInclude Include="Rendering\Framebuffer.h" />
+    <ClInclude Include="Resources\Shaders\OutlineVertex.shader" />
     <ClInclude Include="Resources\Shaders\ReflectiveVertex.shader" />
     <ClInclude Include="Utilities\Camera.h" />
     <ClInclude Include="Rendering\Cubemap.h" />
@@ -634,6 +635,7 @@
     <None Include="Resources\Shaders\AnimationVertex.shader" />
     <None Include="Resources\Shaders\CubemapFragment.shader" />
     <None Include="Resources\Shaders\CubemapVertex.shader" />
+    <None Include="Resources\Shaders\OutlineFragment.shader" />
     <None Include="Resources\Shaders\ReflectiveFragment.shader" />
     <None Include="Resources\Shaders\StaticModelVertex.shader" />
     <None Include="Resources\Shaders\StaticModelFragment.shader" />
