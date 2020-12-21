@@ -143,6 +143,7 @@ int main(int argc, int argv[])
 	g_Textures.m_WindowTexture.LoadTexture("Resources/Textures/TransparentWindow.png");
 	g_Textures.m_MarbleTexture.LoadTexture("Resources/Textures/Marble.jpg");
 	g_Textures.m_WoodTexture.LoadTexture("Resources/Textures/Wood.png");
+
 	stbi_set_flip_vertically_on_load(true);
 	g_Renderables.m_BackpackModel.LoadModel("Resources/Models/Backpack/backpack.obj");
 	g_Renderables.m_RedstoneLampModel.LoadModel("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
@@ -191,6 +192,11 @@ int main(int argc, int argv[])
 		g_CoreSystems.m_Renderer.ClearBuffers();
 
 		//Draws our Scene
+		g_Shaders.m_StaticModelShader.UseShader();
+		g_Shaders.m_StaticModelShader.SetUniformMat4("lightSpaceMatrix", lightSpaceMatrix);
+		g_Shaders.m_StaticModelShader.SetUniformVector3("lightPos", g_Renderables.m_PointLight.pointLightPosition);
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID());
 		RenderScene(g_Shaders.m_StaticModelShader);
 
 		g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
@@ -228,8 +234,10 @@ void RenderScene(CrescentEngine::LearnShader& shader)
 	g_Shaders.m_StaticModelShader.SetUniformMat4("projection", projectionMatrix);
 	g_Shaders.m_StaticModelShader.SetUniformMat4("view", viewMatrix);
 	g_Shaders.m_StaticModelShader.SetUniformVector3("viewPosition", g_CoreSystems.m_Camera.m_CameraPosition);
+	g_Shaders.m_StaticModelShader.SetUniformInteger("shadowMap", 3);
+
 	glm::mat4 backpackModel = glm::mat4(1.0f);
-	backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 1.3f, 0.0f));
+	backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 2.3f, 0.0f));
 	backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
 	shader.SetUniformMat4("model", backpackModel);
 
@@ -250,9 +258,9 @@ void RenderScene(CrescentEngine::LearnShader& shader)
 	glm::mat4 redstoneLampModel = glm::mat4(1.0f);
 	redstoneLampModel = glm::translate(redstoneLampModel, g_Renderables.m_PointLight.pointLightPosition);
 	redstoneLampModel = glm::scale(redstoneLampModel, glm::vec3(0.01f)); //A smaller cube.     
-	shader.SetUniformMat4("model", redstoneLampModel);
+	g_Shaders.m_PointLightObjectShader.SetUniformMat4("model", redstoneLampModel);
 
-	g_Renderables.m_RedstoneLampModel.Draw(shader);
+	g_Renderables.m_RedstoneLampModel.Draw(g_Shaders.m_PointLightObjectShader);
 
 	//=======================================================================================================================
 
@@ -262,7 +270,6 @@ void RenderScene(CrescentEngine::LearnShader& shader)
 	//Draw Cubemap
 	g_RenderingComponents.m_Cubemap.DrawCubemap(viewMatrix, projectionMatrix);
 
-	/*
 	//Grass Texture
 	g_Shaders.m_TransparentQuadShader.UseShader();
 	g_Shaders.m_TransparentQuadShader.SetUniformMat4("projection", projectionMatrix);
@@ -278,7 +285,6 @@ void RenderScene(CrescentEngine::LearnShader& shader)
 	glm::mat4 windowMatrix = glm::mat4(1.0f);
 	windowMatrix = glm::translate(windowMatrix, glm::vec3(0.0f, 0.0f, 3.0f));
 	g_Renderables.m_TransparentQuad.DrawTransparentQuad(g_Shaders.m_TransparentQuadShader, windowMatrix, g_Textures.m_WindowTexture);
-	*/
 }
 
 void DrawEditorContent()

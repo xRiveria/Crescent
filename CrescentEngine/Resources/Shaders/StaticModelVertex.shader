@@ -10,11 +10,15 @@ out vec3 FragPosition;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lightSpaceMatrix;
+
+out vec4 FragPosLightSpace;
 
 void main()
 {
     TexCoords = aTexCoords;
     FragPosition = vec3(model * vec4(aPos, 1.0));
     Normals = mat3(transpose(inverse(model))) * aNormal;
+    FragPosLightSpace = lightSpaceMatrix * vec4(FragPosition, 1.0);
     gl_Position = projection * view * model * vec4(aPos, 1.0);
 }

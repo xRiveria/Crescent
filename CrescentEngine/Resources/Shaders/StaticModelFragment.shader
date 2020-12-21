@@ -45,13 +45,35 @@ uniform vec3 viewPosition;
 uniform PointLight pointLight;
 uniform DirectionalLight directionalLight;
 uniform bool blinn = true;
+uniform sampler2D shadowMap;
 
 in vec3 FragPosition;
 in vec2 TexCoords;
 in vec3 Normals;
+in vec4 FragPosLightSpace;
 
 uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_specular1;
+
+float ShadowCalculation(vec4 fragPosLightSpace)
+{
+    vec3 lightDir = normalize(pointLight.lightPosition - FragPosition);
+    vec3 normal = normalize(Normals);
+
+    //Perform Perspective Divide
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    //Transform to [0, 1] range.
+    projCoords = projCoords * 0.5 + 0.5; 
+    //Get closest depth value from light's perspective, using [0 ,1] range from fragPosLight as coords.
+    float closestDepth = texture(shadowMap, projCoords.xy).r;
+    //Get depth of current fragment from light's perspective.
+    float currentDepth = projCoords.z;
+    //Check whether current fragment position is in shadow.
+    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+    float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+
+    return shadow;
+}
 
 vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragmentPosition, vec3 viewDirection)
 {
@@ -80,11 +102,15 @@ vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragmentPosition, v
     vec3 ambient = light.ambientIntensity * vec3(texture(texture_diffuse1, TexCoords));
     vec3 diffuse = light.diffuseIntensity * diff * vec3(texture(texture_diffuse1, TexCoords));
     vec3 specular = light.specularIntensity * spec * vec3(texture(texture_specular1, TexCoords));
+
+    //Calculate Shadow
+    float shadow = ShadowCalculation(FragPosLightSpace);
+
     ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;
 
-    return (ambient + diffuse + specular);
+    return (ambient + (1.0 - shadow) * (diffuse + specular));
 }
 
 vec3 CalculateDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDirection)
