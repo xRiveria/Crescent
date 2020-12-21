@@ -90,6 +90,38 @@ namespace CrescentEngine
 		glDeleteTextures(1, &m_ColorAttachmentID);
 		glDeleteTextures(1, &m_DepthAttachmentID);
 	}
+
+	void DepthmapFramebuffer::SetupDepthMapFramebuffer()
+	{
+		glGenFramebuffers(1, &m_DepthmapFramebufferID);
+
+		//Create Depth Map Texture
+		glGenTextures(1, &m_DepthTextureID);
+		glBindTexture(GL_TEXTURE_2D, m_DepthTextureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_ShadowWidth, m_ShadowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+		//Attach depth texture.
+		glBindFramebuffer(GL_FRAMEBUFFER, m_DepthmapFramebufferID);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_DepthTextureID, 0);
+		glDrawBuffer(GL_NONE); //Tells OpenGL we're not rendering any color data.
+		glReadBuffer(GL_NONE); //Tells OpenGL we're not rendering any color data.
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	void DepthmapFramebuffer::BindDepthFramebuffer()
+	{
+		glViewport(0, 0, m_ShadowWidth, m_ShadowHeight);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_DepthmapFramebufferID);
+	}
+
+	void DepthmapFramebuffer::UnbindDepthFramebuffer()
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
 }
 
 

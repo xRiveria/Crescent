@@ -34,4 +34,20 @@ namespace CrescentEngine
 		int m_FramebufferWidth = 0;
 		int m_FramebufferHeight = 0;
 	};
+
+	class DepthmapFramebuffer
+	{
+	public:
+		DepthmapFramebuffer() {}
+		void SetupDepthMapFramebuffer();
+		void BindDepthFramebuffer();
+		void UnbindDepthFramebuffer();
+		unsigned int RetrieveDepthmapFramebufferID() const { return m_DepthmapFramebufferID; }
+		unsigned int RetrieveDepthmapTextureID() const { return m_DepthTextureID; }
+
+	private:
+		unsigned int m_DepthmapFramebufferID = 0;
+		unsigned int m_DepthTextureID = 0;
+		const unsigned int m_ShadowWidth = 1024, m_ShadowHeight = 1024;
+	};
 }

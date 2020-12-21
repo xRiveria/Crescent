@@ -9,6 +9,7 @@ namespace CrescentEngine
 		Texture2D() {}
 		void LoadTexture(const std::string& filePath);
 		void BindTexture();
+		void UnbindTexture();
 
 	private:
 		unsigned int m_TextureID = 0;

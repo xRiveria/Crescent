@@ -27,6 +27,7 @@ struct CoreSystems
 struct RenderingComponents
 {
 	CrescentEngine::Framebuffer m_Framebuffer;
+	CrescentEngine::DepthmapFramebuffer m_DepthMapFramebuffer;
 	CrescentEngine::Cubemap m_Cubemap;
 
 	bool m_LightingModel[2] = { true, false };  //[0] for Blinn Phong, [1] for Phong.
@@ -71,6 +72,7 @@ struct Shaders
 	CrescentEngine::LearnShader m_PointLightObjectShader;
 	CrescentEngine::LearnShader m_OutlineObjectShader;
 	CrescentEngine::LearnShader m_TransparentQuadShader;
+	CrescentEngine::LearnShader m_DepthShader;
 };
 
 struct Textures
@@ -89,6 +91,7 @@ Shaders g_Shaders; //Creates our shaders.
 Textures g_Textures; //Creates our textures.
 
 //Input Callbacks
+void RenderScene(CrescentEngine::LearnShader& shader);
 void DrawEditorContent();
 void ProcessKeyboardEvents(GLFWwindow* window);
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight);
@@ -120,6 +123,7 @@ int main(int argc, int argv[])
 	g_CoreSystems.m_Editor.InitializeImGui();
 
 	g_RenderingComponents.m_Framebuffer.InitializeFramebuffer(g_CoreSystems.m_Window.RetrieveWindowWidth(), g_CoreSystems.m_Window.RetrieveWindowHeight());
+	g_RenderingComponents.m_DepthMapFramebuffer.SetupDepthMapFramebuffer();
 
 	//Cubemaps
 	g_RenderingComponents.m_Cubemap.LoadCubemap(g_Renderables.m_OceanCubemap);
@@ -130,6 +134,7 @@ int main(int argc, int argv[])
 	g_Shaders.m_PointLightObjectShader.CreateShaders("Resources/Shaders/LightVertexShader.shader", "Resources/Shaders/LightFragmentShader.shader");
 	g_Shaders.m_OutlineObjectShader.CreateShaders("Resources/Shaders/OutlineVertex.shader", "Resources/Shaders/OutlineFragment.shader");
 	g_Shaders.m_TransparentQuadShader.CreateShaders("Resources/Shaders/TransparentVertex.shader", "Resources/Shaders/TransparentFragment.shader");
+	g_Shaders.m_DepthShader.CreateShaders("Resources/Shaders/DepthVertex.shader", "Resources/Shaders/DepthFragment.shader");
 
 	//Objects
 	g_Renderables.m_Plane.SetupPrimitiveBuffers(CrescentEngine::PrimitiveShape::PlanePrimitive);
@@ -162,87 +167,35 @@ int main(int argc, int argv[])
 		g_CoreSystems.m_Window.PollEvents();
 		ProcessKeyboardEvents(g_CoreSystems.m_Window.RetrieveWindow());
 
-		//Bind Our Framebuffer
-		g_RenderingComponents.m_Framebuffer.BindFramebuffer();
-
-		//Clear Buffers
 		g_CoreSystems.m_Renderer.ClearBuffers();
 
-		//View/Projection Matrix
-		glm::mat4 viewMatrix = g_CoreSystems.m_Camera.GetViewMatrix();
+		//Bind our Depth Framebuffer.
+		glm::mat4 lightProjectionMatrix = glm::mat4(1.0f), lightViewMatrix = glm::mat4(1.0f);
+		glm::mat4 lightSpaceMatrix = glm::mat4(1.0f);
+		float nearPlane = 1.0f, farPlane = 7.5f;
+		lightProjectionMatrix = glm::ortho(-10.0f, 10.f, -10.0f, 10.0f, nearPlane, farPlane);
+		lightViewMatrix = glm::lookAt(g_Renderables.m_PointLight.pointLightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		lightSpaceMatrix = lightProjectionMatrix * lightViewMatrix;
 
-		//Backpack Model - To Be Further Abstracted ===========================================================================
-		g_Shaders.m_StaticModelShader.UseShader();
-		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.lightDirection", g_Renderables.m_LightDirection.lightDirection);
-		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.ambientIntensity", g_Renderables.m_LightDirection.ambientIntensity);
-		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.diffuseIntensity", g_Renderables.m_LightDirection.diffuseIntensity);
-		g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.specularIntensity", g_Renderables.m_LightDirection.specularIntensity);
+		//Render Scene from the light's point of view.
+		g_Shaders.m_DepthShader.UseShader();
+		g_Shaders.m_DepthShader.SetUniformMat4("lightSpaceMatrix", lightSpaceMatrix);
+		g_RenderingComponents.m_DepthMapFramebuffer.BindDepthFramebuffer();
+		glClear(GL_DEPTH_BUFFER_BIT);
+		RenderScene(g_Shaders.m_DepthShader);
+		g_RenderingComponents.m_DepthMapFramebuffer.UnbindDepthFramebuffer();
+		glViewport(0, 0, g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
 
-		g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.lightPosition", g_Renderables.m_PointLight.pointLightPosition);
-		g_Shaders.m_StaticModelShader.SetUniformFloat("pointLight.attenuationConstant", 1.0f);
-		g_Shaders.m_StaticModelShader.SetUniformFloat("pointLight.attenuationLinear", 0.09f);
-		g_Shaders.m_StaticModelShader.SetUniformFloat("pointLight.attenuationQuadratic", 0.032f);
-		g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.ambientIntensity", g_Renderables.m_PointLight.ambientIntensity);
-		g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.diffuseIntensity", g_Renderables.m_PointLight.diffuseIntensity);
-		g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.specularIntensity", g_Renderables.m_PointLight.specularIntensity);
+		//Bind Our Editor Window Framebuffer
+		g_RenderingComponents.m_Framebuffer.BindFramebuffer();
+		g_CoreSystems.m_Renderer.ClearBuffers();
 
-		g_Shaders.m_StaticModelShader.SetUniformMat4("projection", projectionMatrix);
-		g_Shaders.m_StaticModelShader.SetUniformMat4("view", viewMatrix);
-		g_Shaders.m_StaticModelShader.SetUniformVector3("viewPosition", g_CoreSystems.m_Camera.m_CameraPosition);
-		glm::mat4 backpackModel = glm::mat4(1.0f);
-		backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 1.3f, 0.0f));
-		backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
-		g_Shaders.m_StaticModelShader.SetUniformMat4("model", backpackModel);
-
-		g_Renderables.m_BackpackModel.Draw(g_Shaders.m_StaticModelShader);
-
-		//Our Plane
-		g_Textures.m_MarbleTexture.BindTexture();
-		g_Renderables.m_Plane.DrawPrimitive(g_Shaders.m_StaticModelShader);
-
-		//Our Queues
-		g_Renderables.m_RenderQueue.RenderAllQueueItems(g_Shaders.m_StaticModelShader);
-
-		//Redstone Lamp Model
-		g_Shaders.m_PointLightObjectShader.UseShader();
-		g_Shaders.m_PointLightObjectShader.SetUniformMat4("projection", projectionMatrix);
-		g_Shaders.m_PointLightObjectShader.SetUniformMat4("view", viewMatrix);
-
-		glm::mat4 redstoneLampModel = glm::mat4(1.0f);
-		redstoneLampModel = glm::translate(redstoneLampModel, g_Renderables.m_PointLight.pointLightPosition);
-		redstoneLampModel = glm::scale(redstoneLampModel, glm::vec3(0.01f)); //A smaller cube.     
-		g_Shaders.m_PointLightObjectShader.SetUniformMat4("model", redstoneLampModel);
-
-		g_Renderables.m_RedstoneLampModel.Draw(g_Shaders.m_PointLightObjectShader);
-
-		//=======================================================================================================================
-
-		//Calculates the front vector from the Camera's (updated) Euler Angles.
-		g_CoreSystems.m_Camera.UpdateCameraVectors();
-
-		//Draw Cubemap
-		g_RenderingComponents.m_Cubemap.DrawCubemap(viewMatrix, projectionMatrix);
-
-		//Grass Texture
-		g_Shaders.m_TransparentQuadShader.UseShader();
-		g_Shaders.m_TransparentQuadShader.SetUniformMat4("projection", projectionMatrix);
-		g_Shaders.m_TransparentQuadShader.SetUniformMat4("view", viewMatrix);
-
-		for (unsigned int i = 0; i < g_Renderables.m_VegetableLocations.size(); i++)
-		{
-			glm::mat4 grassQuadMatrix = glm::mat4(1.0f);
-			grassQuadMatrix = glm::translate(grassQuadMatrix, g_Renderables.m_VegetableLocations[i]);
-			g_Renderables.m_TransparentQuad.DrawTransparentQuad(g_Shaders.m_TransparentQuadShader, grassQuadMatrix, g_Textures.m_GrassTexture);
-		}
-
-		glm::mat4 windowMatrix = glm::mat4(1.0f);
-		windowMatrix = glm::translate(windowMatrix, glm::vec3(0.0f, 0.0f, 3.0f));
-		g_Renderables.m_TransparentQuad.DrawTransparentQuad(g_Shaders.m_TransparentQuadShader, windowMatrix, g_Textures.m_WindowTexture);
+		//Draws our Scene
+		RenderScene(g_Shaders.m_StaticModelShader);
 
 		g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
 
-		//We reset the framebuffer back to normal here for ImGui to render to the default framebuffer.
-		//Our ImGui Editor
+		//We reset the framebuffer back to normal here for our Editor.
 		DrawEditorContent();
 
 		g_CoreSystems.m_Window.SwapBuffers();
@@ -250,6 +203,82 @@ int main(int argc, int argv[])
 
 	g_CoreSystems.m_Window.TerminateWindow();
 	return 0;
+}
+
+void RenderScene(CrescentEngine::LearnShader& shader)
+{
+	//View/Projection Matrix
+	glm::mat4 viewMatrix = g_CoreSystems.m_Camera.GetViewMatrix();
+
+	//Backpack Model - To Be Further Abstracted ===========================================================================
+	g_Shaders.m_StaticModelShader.UseShader();
+	g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.lightDirection", g_Renderables.m_LightDirection.lightDirection);
+	g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.ambientIntensity", g_Renderables.m_LightDirection.ambientIntensity);
+	g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.diffuseIntensity", g_Renderables.m_LightDirection.diffuseIntensity);
+	g_Shaders.m_StaticModelShader.SetUniformVector3("directionalLight.specularIntensity", g_Renderables.m_LightDirection.specularIntensity);
+
+	g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.lightPosition", g_Renderables.m_PointLight.pointLightPosition);
+	g_Shaders.m_StaticModelShader.SetUniformFloat("pointLight.attenuationConstant", 1.0f);
+	g_Shaders.m_StaticModelShader.SetUniformFloat("pointLight.attenuationLinear", 0.09f);
+	g_Shaders.m_StaticModelShader.SetUniformFloat("pointLight.attenuationQuadratic", 0.032f);
+	g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.ambientIntensity", g_Renderables.m_PointLight.ambientIntensity);
+	g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.diffuseIntensity", g_Renderables.m_PointLight.diffuseIntensity);
+	g_Shaders.m_StaticModelShader.SetUniformVector3("pointLight.specularIntensity", g_Renderables.m_PointLight.specularIntensity);
+
+	g_Shaders.m_StaticModelShader.SetUniformMat4("projection", projectionMatrix);
+	g_Shaders.m_StaticModelShader.SetUniformMat4("view", viewMatrix);
+	g_Shaders.m_StaticModelShader.SetUniformVector3("viewPosition", g_CoreSystems.m_Camera.m_CameraPosition);
+	glm::mat4 backpackModel = glm::mat4(1.0f);
+	backpackModel = glm::translate(backpackModel, glm::vec3(0.0f, 1.3f, 0.0f));
+	backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
+	shader.SetUniformMat4("model", backpackModel);
+
+	g_Renderables.m_BackpackModel.Draw(shader);
+
+	//Our Plane
+	g_Textures.m_MarbleTexture.BindTexture();
+	g_Renderables.m_Plane.DrawPrimitive(shader);
+
+	//Our Queues
+	g_Renderables.m_RenderQueue.RenderAllQueueItems(shader);
+
+	//Redstone Lamp Model
+	g_Shaders.m_PointLightObjectShader.UseShader();
+	g_Shaders.m_PointLightObjectShader.SetUniformMat4("projection", projectionMatrix);
+	g_Shaders.m_PointLightObjectShader.SetUniformMat4("view", viewMatrix);
+
+	glm::mat4 redstoneLampModel = glm::mat4(1.0f);
+	redstoneLampModel = glm::translate(redstoneLampModel, g_Renderables.m_PointLight.pointLightPosition);
+	redstoneLampModel = glm::scale(redstoneLampModel, glm::vec3(0.01f)); //A smaller cube.     
+	shader.SetUniformMat4("model", redstoneLampModel);
+
+	g_Renderables.m_RedstoneLampModel.Draw(shader);
+
+	//=======================================================================================================================
+
+	//Calculates the front vector from the Camera's (updated) Euler Angles.
+	g_CoreSystems.m_Camera.UpdateCameraVectors();
+
+	//Draw Cubemap
+	g_RenderingComponents.m_Cubemap.DrawCubemap(viewMatrix, projectionMatrix);
+
+	/*
+	//Grass Texture
+	g_Shaders.m_TransparentQuadShader.UseShader();
+	g_Shaders.m_TransparentQuadShader.SetUniformMat4("projection", projectionMatrix);
+	g_Shaders.m_TransparentQuadShader.SetUniformMat4("view", viewMatrix);
+
+	for (unsigned int i = 0; i < g_Renderables.m_VegetableLocations.size(); i++)
+	{
+		glm::mat4 grassQuadMatrix = glm::mat4(1.0f);
+		grassQuadMatrix = glm::translate(grassQuadMatrix, g_Renderables.m_VegetableLocations[i]);
+		g_Renderables.m_TransparentQuad.DrawTransparentQuad(g_Shaders.m_TransparentQuadShader, grassQuadMatrix, g_Textures.m_GrassTexture);
+	}
+
+	glm::mat4 windowMatrix = glm::mat4(1.0f);
+	windowMatrix = glm::translate(windowMatrix, glm::vec3(0.0f, 0.0f, 3.0f));
+	g_Renderables.m_TransparentQuad.DrawTransparentQuad(g_Shaders.m_TransparentQuadShader, windowMatrix, g_Textures.m_WindowTexture);
+	*/
 }
 
 void DrawEditorContent()
@@ -280,6 +309,7 @@ void DrawEditorContent()
 
 		g_RenderingComponents.m_LightingModel[0] = false;
 	}
+	ImGui::Image((void*)g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), ImVec2{ 200.0f, 200.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
 	ImGui::End();
 

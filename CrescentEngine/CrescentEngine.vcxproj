@@ -641,6 +641,8 @@
     <None Include="Resources\Shaders\AnimationVertex.shader" />
     <None Include="Resources\Shaders\CubemapFragment.shader" />
     <None Include="Resources\Shaders\CubemapVertex.shader" />
+    <None Include="Resources\Shaders\DepthFragment.shader" />
+    <None Include="Resources\Shaders\DepthVertex.shader" />
     <None Include="Resources\Shaders\OutlineFragment.shader" />
     <None Include="Resources\Shaders\ReflectiveFragment.shader" />
     <None Include="Resources\Shaders\StaticModelVertex.shader" />
