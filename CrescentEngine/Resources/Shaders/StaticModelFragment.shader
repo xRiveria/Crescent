@@ -44,6 +44,7 @@ uniform vec3 viewPosition;
 //uniform SpotLight spotLight;
 uniform PointLight pointLight;
 uniform DirectionalLight directionalLight;
+uniform bool blinn = true;
 
 in vec3 FragPosition;
 in vec2 TexCoords;
@@ -59,8 +60,17 @@ vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragmentPosition, v
     float diff = max(dot(normal, lightDirection), 0.0);
 
     //Specular Shading
-    vec3 reflectDirection = reflect(-lightDirection, normal);
-    float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), 32.0f);
+    float spec = 0.0f;
+    if (blinn)
+    {
+        vec3 halfwayDirection = normalize(lightDirection + viewDirection);
+        spec = pow(max(dot(normal, halfwayDirection), 0.0), 16.0f);
+    }
+    else
+    {
+        vec3 reflectDirection = reflect(-lightDirection, normal);
+        spec = pow(max(dot(viewDirection, reflectDirection), 0.0), 32.0f);
+    }
 
     //Attenuation
     float distance = length(light.lightPosition - fragmentPosition);
@@ -84,8 +94,17 @@ vec3 CalculateDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDir
     float diff = max(dot(normal, lightDirection), 0.0);
 
     //Specular Shading
-    vec3 reflectDirection = reflect(-lightDirection, normal);
-    float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), 32.0f);
+    float spec = 0.0f;
+    if (blinn)
+    {
+        vec3 halfwayDirection = normalize(lightDirection + viewDirection);
+        spec = pow(max(dot(normal, halfwayDirection), 0.0), 16.0f);
+    }
+    else
+    {
+        vec3 reflectDirection = reflect(-lightDirection, normal);
+        spec = pow(max(dot(viewDirection, reflectDirection), 0.0), 32.0f);
+    }
 
     //Combine Results
     vec3 ambient = light.ambientIntensity * vec3(texture(texture_diffuse1, TexCoords));

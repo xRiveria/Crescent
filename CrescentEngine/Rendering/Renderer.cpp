@@ -28,6 +28,11 @@ namespace CrescentEngine
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 
+	void Renderer::ToggleFaceCulling(bool value)
+	{
+		value ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE);
+	}
+
 	void Renderer::ClearBuffers()
 	{
 		glClearColor(0.1f, 0.1f, 0.1f, 0.1f);

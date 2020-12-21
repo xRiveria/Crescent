@@ -11,6 +11,7 @@ namespace CrescentEngine
 		LearnShader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
 		void CreateShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
 		void UseShader();
+		void UnbindShader();
 		void DeleteShader();
 
 		void SetUniformFloat(const std::string& name, float value) const;

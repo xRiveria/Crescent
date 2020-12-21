@@ -76,6 +76,11 @@ namespace CrescentEngine
 		glUseProgram(m_ShaderID);
 	}
 
+	void LearnShader::UnbindShader()
+	{
+		glUseProgram(0);
+	}
+
 	void LearnShader::DeleteShader()
 	{
 		glDeleteProgram(m_ShaderID);

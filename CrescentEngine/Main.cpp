@@ -29,8 +29,8 @@ struct RenderingComponents
 	CrescentEngine::Framebuffer m_Framebuffer;
 	CrescentEngine::Cubemap m_Cubemap;
 
+	bool m_LightingModel[2] = { true, false };  //[0] for Blinn Phong, [1] for Phong.
 	bool m_WireframeRendering = false;
-	bool m_OutlineRendering = false;
 };
 
 struct Renderables  //Currently our base scene objects.
@@ -78,6 +78,7 @@ struct Textures
 	CrescentEngine::Texture2D m_GrassTexture;
 	CrescentEngine::Texture2D m_WindowTexture;
 	CrescentEngine::Texture2D m_MarbleTexture;
+	CrescentEngine::Texture2D m_WoodTexture;
 };
 
 //Our Systems	
@@ -88,6 +89,7 @@ Shaders g_Shaders; //Creates our shaders.
 Textures g_Textures; //Creates our textures.
 
 //Input Callbacks
+void DrawEditorContent();
 void ProcessKeyboardEvents(GLFWwindow* window);
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight);
 void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mods);
@@ -111,6 +113,7 @@ int main(int argc, int argv[])
 	g_CoreSystems.m_Renderer.InitializeOpenGL();
 	g_CoreSystems.m_Renderer.ToggleDepthTesting(true);
 	g_CoreSystems.m_Renderer.ToggleBlending(true);
+	g_CoreSystems.m_Renderer.ToggleFaceCulling(false);
 
 	//Setups ImGui
 	g_CoreSystems.m_Editor.SetApplicationContext(&g_CoreSystems.m_Window);
@@ -134,6 +137,7 @@ int main(int argc, int argv[])
 	g_Textures.m_GrassTexture.LoadTexture("Resources/Textures/Grass.png");
 	g_Textures.m_WindowTexture.LoadTexture("Resources/Textures/TransparentWindow.png");
 	g_Textures.m_MarbleTexture.LoadTexture("Resources/Textures/Marble.jpg");
+	g_Textures.m_WoodTexture.LoadTexture("Resources/Textures/Wood.png");
 	stbi_set_flip_vertically_on_load(true);
 	g_Renderables.m_BackpackModel.LoadModel("Resources/Models/Backpack/backpack.obj");
 	g_Renderables.m_RedstoneLampModel.LoadModel("Resources/Models/RedstoneLamp/Redstone-lamp.obj");
@@ -239,48 +243,74 @@ int main(int argc, int argv[])
 
 		//We reset the framebuffer back to normal here for ImGui to render to the default framebuffer.
 		//Our ImGui Editor
-		g_CoreSystems.m_Editor.BeginEditorRenderLoop();
-		g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
-
-		ImGui::Begin("Global Settings");
-		if (ImGui::Checkbox("Wireframe Rendering", &g_RenderingComponents.m_WireframeRendering))
-		{
-			g_CoreSystems.m_Renderer.ToggleWireframeRendering(g_RenderingComponents.m_WireframeRendering);
-		}
-
-		if (ImGui::Button("Create Plane"))
-		{
-			g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::PlanePrimitive);
-		}
-
-		if (ImGui::Button("Create Cube"))
-		{
-			g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::CubePrimitive);
-		}
-		ImGui::End();
-
-		g_Renderables.m_RenderQueue.RenderAllQueueEditorSettings();
-		g_Renderables.m_LightDirection.RenderSettingsInEditor();
-		g_Renderables.m_PointLight.RenderSettingsInEditor();
-
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
-		ImGui::Begin("Viewport");
-		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-		g_CoreSystems.m_Editor.SetViewportSize(viewportPanelSize.x, viewportPanelSize.y); //The current size of our viewport.
-		unsigned int colorAttachment = g_RenderingComponents.m_Framebuffer.RetrieveColorAttachment();
-		ImGui::Image((void*)colorAttachment, { (float)g_CoreSystems.m_Editor.RetrieveViewportWidth(), (float)g_CoreSystems.m_Editor.RetrieveViewportHeight() }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
-
-		ImGui::End();
-		ImGui::PopStyleVar(); //Pops the pushed style so other windows beyond this won't have the style's properties.
-
-		ImGui::End(); //Closes the docking context.
-		g_CoreSystems.m_Editor.EndEditorRenderLoop();
+		DrawEditorContent();
 
 		g_CoreSystems.m_Window.SwapBuffers();
 	}
 
 	g_CoreSystems.m_Window.TerminateWindow();
 	return 0;
+}
+
+void DrawEditorContent()
+{
+	g_CoreSystems.m_Editor.BeginEditorRenderLoop();
+	g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
+
+	ImGui::Begin("Global Settings");
+	if (ImGui::Checkbox("Wireframe Rendering", &g_RenderingComponents.m_WireframeRendering))
+	{
+		g_CoreSystems.m_Renderer.ToggleWireframeRendering(g_RenderingComponents.m_WireframeRendering);
+	}
+
+	if (ImGui::Checkbox("Blinn Phong", &g_RenderingComponents.m_LightingModel[0]))
+	{   //Perhaps it might be time for to pool our shaders together and update all their information in one go.
+		g_Shaders.m_StaticModelShader.UseShader();
+		g_Shaders.m_StaticModelShader.SetUniformBool("blinn", true);
+		g_Shaders.m_StaticModelShader.UnbindShader();
+
+		g_RenderingComponents.m_LightingModel[1] = false;
+	}
+	ImGui::SameLine();
+	if (ImGui::Checkbox("Phong", &g_RenderingComponents.m_LightingModel[1]))
+	{
+		g_Shaders.m_StaticModelShader.UseShader();
+		g_Shaders.m_StaticModelShader.SetUniformBool("blinn", false);
+		g_Shaders.m_StaticModelShader.UnbindShader();
+
+		g_RenderingComponents.m_LightingModel[0] = false;
+	}
+
+	ImGui::End();
+
+	ImGui::Begin("Primitive Creation");
+	if (ImGui::Button("Create Plane"))
+	{
+		g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::PlanePrimitive);
+	}
+
+	if (ImGui::Button("Create Cube"))
+	{
+		g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::CubePrimitive);
+	}
+	ImGui::End();
+
+	g_Renderables.m_RenderQueue.RenderAllQueueEditorSettings();
+	g_Renderables.m_LightDirection.RenderSettingsInEditor();
+	g_Renderables.m_PointLight.RenderSettingsInEditor();
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
+	ImGui::Begin("Viewport");
+	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+	g_CoreSystems.m_Editor.SetViewportSize(viewportPanelSize.x, viewportPanelSize.y); //The current size of our viewport.
+	unsigned int colorAttachment = g_RenderingComponents.m_Framebuffer.RetrieveColorAttachment();
+	ImGui::Image((void*)colorAttachment, { (float)g_CoreSystems.m_Editor.RetrieveViewportWidth(), (float)g_CoreSystems.m_Editor.RetrieveViewportHeight() }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
+	ImGui::End();
+	ImGui::PopStyleVar(); //Pops the pushed style so other windows beyond this won't have the style's properties.
+
+	ImGui::End(); //Closes the docking context.
+	g_CoreSystems.m_Editor.EndEditorRenderLoop();
 }
 
 //Event Callbacks - To Be Further Abstracted.

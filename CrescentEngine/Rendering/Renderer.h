@@ -14,6 +14,7 @@ namespace CrescentEngine
 		void ToggleDepthTesting(bool value);
 		void ToggleWireframeRendering(bool value);
 		void ToggleBlending(bool value);
+		void ToggleFaceCulling(bool value);
 
 		void ClearBuffers();
 
