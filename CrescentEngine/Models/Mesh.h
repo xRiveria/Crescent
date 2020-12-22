@@ -55,7 +55,7 @@ namespace CrescentEngine
 	{
 	public:
 		Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
-		void Draw(LearnShader& shader);
+		void Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID);
 
 	public:
 		std::vector<Vertex> vertices;

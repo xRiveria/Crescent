@@ -40,13 +40,13 @@ namespace CrescentEngine
 
 	void Texture2D::BindTexture()
 	{
-		glActiveTexture(0);
+		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, m_TextureID);
 	}
 
 	void Texture2D::UnbindTexture()
 	{
-		glActiveTexture(0);
+		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 }

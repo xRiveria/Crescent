@@ -13,15 +13,15 @@ namespace CrescentEngine
 		RecursivelyUpdateBoneMatrices(animationID, m_ModelScene->mRootNode, glm::mat4(1), time * m_ModelScene->mAnimations[animationID]->mTicksPerSecond);
 		for (unsigned int i = 0; i < m_Meshes.size(); i++)
 		{		
-			m_Meshes[i].Draw(shader);
+			m_Meshes[i].Draw(shader, false, 0);
 		}
 	}
 
-	void Model::Draw(LearnShader& shader)
+	void Model::Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID)
 	{
 		for (unsigned int i = 0; i < m_Meshes.size(); i++)
 		{
-			m_Meshes[i].Draw(shader);
+			m_Meshes[i].Draw(shader, renderShadowMap, shadowMapTextureID);
 		}
 	}
 

@@ -144,6 +144,7 @@ namespace CrescentEngine
                  break;
              }
         }
+        glBindVertexArray(0);
     }
 
     void Primitive::DrawEditorSettings()
@@ -218,6 +219,7 @@ namespace CrescentEngine
         glBindVertexArray(m_VertexArrayID);
         shader.SetUniformMat4("model", modelMatrix);
         glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
     }
 
     void TransparentQuad::DrawTransparentQuad(LearnShader& shader, glm::mat4& modelMatrix, Texture2D& texture)

@@ -129,6 +129,7 @@ namespace CrescentEngine
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         glBindVertexArray(0);
+        m_CubemapShader.UnbindShader();
 
         glDepthFunc(GL_LESS); //Set depth function back to default.
     }

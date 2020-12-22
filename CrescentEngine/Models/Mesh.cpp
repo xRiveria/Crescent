@@ -13,35 +13,38 @@ namespace CrescentEngine
 		SetupMesh();
 	}
 
-	void Mesh::Draw(LearnShader& shader)
+	void Mesh::Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID)
 	{
 		unsigned int diffuseNr = 1;
 		unsigned int specularNr = 1;
-
-		for (unsigned int i = 0; i < textures.size(); i++)
-		{
-			glActiveTexture(GL_TEXTURE0 + i); //Activate proper texture unit before binding.
-			//Retrieve texture number (the N in diffuse_textureN)
-			std::string number;
-			std::string name = textures[i].type;
-			if (name == "texture_diffuse")
-			{
-				number = std::to_string(diffuseNr++); //Convert to string and return before incrementing.
-			}
-			else if (name == "texture_specular")
-			{
-				number = std::to_string(specularNr++);
-			}
-			glUniform1i(glGetUniformLocation(shader.GetShaderID(), (name + number).c_str()), i);
-			glBindTexture(GL_TEXTURE_2D, textures[i].id);
-
-		}
 		//Draw Mesh
 		glBindVertexArray(vertexArrayObject);
-		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
 
-		glActiveTexture(GL_TEXTURE0);
+		if (!renderShadowMap)
+		{
+			for (unsigned int i = 0; i < textures.size(); i++)
+			{
+				glActiveTexture(GL_TEXTURE0 + i); //Activate proper texture unit before binding.
+				//Retrieve texture number (the N in diffuse_textureN)
+				std::string number;
+				std::string name = textures[i].type;
+				if (name == "texture_diffuse")
+				{
+					number = std::to_string(diffuseNr++); //Convert to string and return before incrementing.
+				}
+				else if (name == "texture_specular")
+				{
+					number = std::to_string(specularNr++);
+				}
+				shader.UseShader();
+				glUniform1i(glGetUniformLocation(shader.GetShaderID(), (name + number).c_str()), i);
+				glBindTexture(GL_TEXTURE_2D, textures[i].id);
+			}
+		}
+
+		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
+		glBindVertexArray(0);
 	}
 
 	void Mesh::SetupMesh()
@@ -84,7 +87,5 @@ namespace CrescentEngine
 		glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(Vertex), (void*)(offsetof(Vertex, BoneWeights) + 4 * sizeof(float)));
 		
 		glBindVertexArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 }

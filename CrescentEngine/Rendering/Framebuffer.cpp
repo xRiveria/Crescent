@@ -37,6 +37,7 @@ namespace CrescentEngine
 
 		//Setup Depth Buffer.
 		glGenTextures(1, &m_DepthAttachmentID);
+		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, m_DepthAttachmentID);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, m_FramebufferWidth, m_FramebufferHeight, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
 		//glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_FramebufferWidth, m_FramebufferHeight, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, nullptr);
@@ -51,6 +52,7 @@ namespace CrescentEngine
 		{
 			CrescentInfo("All requirements passed. Successfully created Framebuffer.")
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glActiveTexture(0);
 		}
 		else
 		{
@@ -97,6 +99,7 @@ namespace CrescentEngine
 
 		//Create Depth Map Texture
 		glGenTextures(1, &m_DepthTextureID);
+		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, m_DepthTextureID);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_ShadowWidth, m_ShadowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

@@ -23,7 +23,7 @@ namespace CrescentEngine
 
 		void LoadModel(const std::string& filePath);
 		void Draw(uint32_t animationID, double time, bool loop, LearnShader& shader);
-		void Draw(LearnShader& shader);
+		void Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID);
 		std::vector<glm::mat4> m_BoneMatrices, m_BoneOffsets;
 
 	private:
