@@ -14,8 +14,6 @@
 #include <stb_image/stb_image.h>
 #include <imgui/imgui.h>
 
-glm::vec3 backpackModelPosition = { 0.0f, 1.5f, 0.0f };
-
 struct CoreSystems
 {
 	CrescentEngine::Window m_Window; //Setups our Window.
@@ -23,6 +21,7 @@ struct CoreSystems
 	CrescentEngine::Renderer m_Renderer; //Setups our OpenGL context.
 	CrescentEngine::Timestep m_Timestep; //Setups our Timestep.
 	CrescentEngine::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
+
 	float m_LastFrameTime = 0.0f;
 };
 
@@ -39,8 +38,10 @@ struct RenderingComponents
 struct Renderables  //Currently our base scene objects.
 {
 	CrescentEngine::Model m_BackpackModel;
+	glm::vec3 m_BackpackModelPosition{ 0.0f, 1.3f, 0.0f };
+
 	CrescentEngine::Model m_RedstoneLampModel;
-	CrescentEngine::Primitive m_Plane;
+	CrescentEngine::Primitive m_Plane; //Our base plane.
 	CrescentEngine::TransparentQuad m_TransparentQuad;
 
 	CrescentEngine::DirectionalLight m_LightDirection;
@@ -187,6 +188,7 @@ int main(int argc, int argv[])
 		glClear(GL_DEPTH_BUFFER_BIT);
 		RenderScene(g_Shaders.m_DepthShader, true);
 
+		g_Shaders.m_DepthShader.UnbindShader();
 		g_RenderingComponents.m_DepthMapFramebuffer.UnbindDepthFramebuffer();
 
 		//Bind Our Editor Window Framebuffer
@@ -240,28 +242,21 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 	g_Shaders.m_StaticModelShader.SetUniformVector3("viewPosition", g_CoreSystems.m_Camera.m_CameraPosition);
 	g_Shaders.m_StaticModelShader.SetUniformInteger("shadowMap", 3);
 
-	shader.UseShader();
-	glm::mat4 backpackModel = glm::mat4(1.0f);
-	backpackModel = glm::translate(backpackModel, backpackModelPosition);
-	backpackModel = glm::scale(backpackModel, glm::vec3(1.0f, 1.0f, 1.0f));
-	shader.SetUniformMat4("model", backpackModel);
-
+	//Models
 	if (renderShadowMap)
 	{
-		g_Renderables.m_BackpackModel.Draw(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID());
+		g_Renderables.m_BackpackModel.Draw(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_BackpackModelPosition);
 	}
 	else
 	{
-		g_Renderables.m_BackpackModel.Draw(shader, renderShadowMap, 0);
+		g_Renderables.m_BackpackModel.Draw(shader, renderShadowMap, 0, 1.0f, g_Renderables.m_BackpackModelPosition);
 	}
 
 	//Our Plane
-
 	g_Textures.m_MarbleTexture.BindTexture();
 	g_Renderables.m_Plane.DrawPrimitive(g_Shaders.m_StaticModelShader);
 
 	//Our Queues
-
 	g_Renderables.m_RenderQueue.RenderAllQueueItems(shader);
 
 	//Redstone Lamp Model
@@ -269,12 +264,8 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 	g_Shaders.m_PointLightObjectShader.SetUniformMat4("projection", projectionMatrix);
 	g_Shaders.m_PointLightObjectShader.SetUniformMat4("view", viewMatrix);
 
-	glm::mat4 redstoneLampModel = glm::mat4(1.0f);
-	redstoneLampModel = glm::translate(redstoneLampModel, g_Renderables.m_PointLight.pointLightPosition);
-	redstoneLampModel = glm::scale(redstoneLampModel, glm::vec3(0.01f)); //A smaller cube.     
-	g_Shaders.m_PointLightObjectShader.SetUniformMat4("model", redstoneLampModel);
-
-	g_Renderables.m_RedstoneLampModel.Draw(g_Shaders.m_PointLightObjectShader, false, 0);
+	//Rerouting through the object's editor settings.
+	g_Renderables.m_RedstoneLampModel.Draw(g_Shaders.m_PointLightObjectShader, false, 0, 0.01f, g_Renderables.m_PointLight.pointLightPosition);
 
 	//=======================================================================================================================
 
@@ -283,7 +274,6 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 
 	//Draw Cubemap
 	g_RenderingComponents.m_Cubemap.DrawCubemap(viewMatrix, projectionMatrix);
-
 	
 	//Grass Texture
 	g_Shaders.m_TransparentQuadShader.UseShader();
@@ -300,7 +290,6 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 	glm::mat4 windowMatrix = glm::mat4(1.0f);
 	windowMatrix = glm::translate(windowMatrix, glm::vec3(0.0f, 0.0f, 3.0f));
 	g_Renderables.m_TransparentQuad.DrawTransparentQuad(g_Shaders.m_TransparentQuadShader, windowMatrix, g_Textures.m_WindowTexture);
-	
 }
 
 void DrawEditorContent()
@@ -309,7 +298,6 @@ void DrawEditorContent()
 	g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
 
 	ImGui::Begin("Global Settings");
-	ImGui::DragFloat3("Backpack Position", glm::value_ptr(backpackModelPosition));
 	if (ImGui::Checkbox("Wireframe Rendering", &g_RenderingComponents.m_WireframeRendering))
 	{
 		g_CoreSystems.m_Renderer.ToggleWireframeRendering(g_RenderingComponents.m_WireframeRendering);
@@ -350,7 +338,9 @@ void DrawEditorContent()
 
 	g_Renderables.m_RenderQueue.RenderAllQueueEditorSettings();
 	g_Renderables.m_LightDirection.RenderSettingsInEditor();
+
 	g_Renderables.m_PointLight.RenderSettingsInEditor();
+	g_Renderables.m_BackpackModel.RenderSettingsInEditor(g_Renderables.m_BackpackModelPosition);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 	ImGui::Begin("Viewport");

@@ -3,26 +3,47 @@
 #include "GL/glew.h"
 #include "stb_image/stb_image.h"
 #include "glm/gtc/matrix_transform.hpp"
+#include <imgui/imgui.h>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace CrescentEngine
 {
 	unsigned int TextureFromFile(const std::string& path, const std::string& directory);
 
-	void Model::Draw(uint32_t animationID, double time, bool loop, LearnShader& shader)
+	void Model::Draw(uint32_t animationID, double time, bool loop, LearnShader& shader, const float& modelScale, const glm::vec3& modelTranslation)
 	{
+		shader.UseShader();
+		m_ModelMatrix = glm::mat4(1.0f);
+		m_ModelMatrix = glm::translate(m_ModelMatrix, modelTranslation);
+		m_ModelMatrix = glm::scale(m_ModelMatrix, glm::vec3(modelScale, modelScale, modelScale));
+		shader.SetUniformMat4("model", m_ModelMatrix);
+
 		RecursivelyUpdateBoneMatrices(animationID, m_ModelScene->mRootNode, glm::mat4(1), time * m_ModelScene->mAnimations[animationID]->mTicksPerSecond);
 		for (unsigned int i = 0; i < m_Meshes.size(); i++)
-		{		
+		{
 			m_Meshes[i].Draw(shader, false, 0);
 		}
 	}
 
-	void Model::Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID)
+	void Model::Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation) 
 	{
+		shader.UseShader();
+		m_ModelMatrix = glm::mat4(1.0f);
+		m_ModelMatrix = glm::translate(m_ModelMatrix, modelTranslation);
+		m_ModelMatrix = glm::scale(m_ModelMatrix, glm::vec3(modelScale, modelScale, modelScale));
+		shader.SetUniformMat4("model", m_ModelMatrix);
+
 		for (unsigned int i = 0; i < m_Meshes.size(); i++)
 		{
 			m_Meshes[i].Draw(shader, renderShadowMap, shadowMapTextureID);
 		}
+	}
+
+	void Model::RenderSettingsInEditor(glm::vec3& modelPosition) 
+	{
+		ImGui::Begin("Model");
+		ImGui::DragFloat3("Position", glm::value_ptr(modelPosition), 0.1f);
+		ImGui::End();
 	}
 
 	//Should consider creating a Shader automagically for each Model loaded.
@@ -192,7 +213,6 @@ namespace CrescentEngine
 	{
 		std::string filename = path;
 		filename = directory + '/' + filename;
-		std::cout << filename;
 
 		unsigned int textureID;
 		glGenTextures(1, &textureID);
@@ -219,10 +239,14 @@ namespace CrescentEngine
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 			stbi_image_free(data);
+
+			std::string infoText = "Successfully loaded texture at: " + filename;
+			CrescentInfo(infoText);
 		}
 		else
 		{
-			std::cout << "Texture failed to load at path: " << path << std::endl;
+			std::string infoText = "Failed to load path at: " + filename;
+			CrescentInfo(infoText);
 			stbi_image_free(data);
 		}
 

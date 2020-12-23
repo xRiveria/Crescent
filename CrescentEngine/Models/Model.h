@@ -22,8 +22,11 @@ namespace CrescentEngine
 		}
 
 		void LoadModel(const std::string& filePath);
-		void Draw(uint32_t animationID, double time, bool loop, LearnShader& shader);
-		void Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID);
+		void Draw(uint32_t animationID, double time, bool loop, LearnShader& shader, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
+		void Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
+
+		void RenderSettingsInEditor(glm::vec3& modelPosition);
+		glm::mat4 RetrieveModelMatrix() const { return m_ModelMatrix; }
 		std::vector<glm::mat4> m_BoneMatrices, m_BoneOffsets;
 
 	private:
@@ -42,6 +45,9 @@ namespace CrescentEngine
 		std::vector<Mesh> m_Meshes;
 		std::vector<Texture> m_TexturesLoaded;
 		std::string m_FileDirectory;
+
+		//Matrixes
+		glm::mat4 m_ModelMatrix = glm::mat4(1.0f);
 
 		//Skeletal Animations
 		BoneMapper m_BoneMapper;
