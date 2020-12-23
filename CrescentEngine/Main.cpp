@@ -107,7 +107,7 @@ glm::mat4 projectionMatrix = glm::mat4(1.0f);
 int main(int argc, int argv[])
 {
 	//Initializes GLFW.
-	g_CoreSystems.m_Window.CreateWindow("Crescent Engine", 1280.0f, 720.0f);
+	g_CoreSystems.m_Window.CreateNewWindow("Crescent Engine", 1280.0f, 720.0f);
 
 	//Callbacks
 	g_CoreSystems.m_Window.SetFramebufferCallback(FramebufferResizeCallback);
@@ -157,7 +157,6 @@ int main(int argc, int argv[])
 		//Check Projection Matrix
 		if (g_CoreSystems.m_Editor.RetrieveViewportWidth() > 0.0f && g_CoreSystems.m_Editor.RetrieveViewportHeight() > 0.0f && (g_RenderingComponents.m_Framebuffer.RetrieveFramebufferWidth() != g_CoreSystems.m_Editor.RetrieveViewportWidth() || g_RenderingComponents.m_Framebuffer.RetrieveFramebufferHeight() != g_CoreSystems.m_Editor.RetrieveViewportHeight()))
 		{
-			std::cout << "Not Correct! Updating Buffers!" << "\n";
 			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
 			projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
 		}

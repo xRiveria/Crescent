@@ -5,10 +5,10 @@ namespace CrescentEngine
 {
 	Window::Window(const std::string& windowName, const float& windowWidth, const float& windowHeight) : m_ApplicationName(windowName), m_WindowWidth(windowWidth), m_WindowHeight(windowHeight)
 	{
-		CreateWindow(windowName, windowWidth, windowHeight);
+		CreateNewWindow(windowName, windowWidth, windowHeight);
 	}
 
-	void Window::CreateWindow(const std::string& windowName, const float& windowWidth, const float& windowHeight)
+	void Window::CreateNewWindow(const std::string& windowName, const float& windowWidth, const float& windowHeight)
 	{
 		m_ApplicationName = windowName;
 		m_WindowWidth = windowWidth;

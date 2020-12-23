@@ -12,7 +12,7 @@ namespace CrescentEngine
 		Window() {}
 		Window(const std::string& windowName, const float& windowWidth, const float& windowHeight);
 
-		void CreateWindow(const std::string& windowName, const float& windowWidth, const float& windowHeight);
+		void CreateNewWindow(const std::string& windowName, const float& windowWidth, const float& windowHeight);
 		void TerminateWindow() { glfwSetWindowShouldClose(m_ApplicationWindow, true); }
 		void SwapBuffers() { glfwSwapBuffers(m_ApplicationWindow); }
 		void SetWindowContext(GLFWwindow* window) { glfwMakeContextCurrent(window); }
