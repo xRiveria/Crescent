@@ -186,7 +186,7 @@
     <ClCompile Include="Core\Window.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="LearnShader.cpp" />
-    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="MainLoop.cpp" />
     <ClCompile Include="Models\BoneMapper.cpp" />
     <ClCompile Include="Models\Mesh.cpp" />
     <ClCompile Include="Models\Model.cpp" />

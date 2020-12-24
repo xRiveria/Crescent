@@ -132,6 +132,7 @@ vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragmentPosition, v
     //Combine Results
     vec3 ambient = light.ambientIntensity * vec3(texture(texture_diffuse1, TexCoords));
     vec3 diffuse = light.diffuseIntensity * diff * vec3(texture(texture_diffuse1, TexCoords));
+
     vec3 specular = light.specularIntensity * spec * vec3(texture(texture_specular1, TexCoords));
 
     //Calculate Shadow
@@ -140,6 +141,7 @@ vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragmentPosition, v
     ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;
+
 
     return (ambient + (1.0 - shadow) * (diffuse + specular));
 }

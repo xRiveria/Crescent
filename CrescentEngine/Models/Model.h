@@ -9,6 +9,8 @@
 #include <glm/glm.hpp>
 #include "BoneMapper.h"
 #include <utility>
+#include <optional>
+#include "Window.h"
 
 namespace CrescentEngine
 {
@@ -16,12 +18,12 @@ namespace CrescentEngine
 	{
 	public:
 		Model() {}
-		Model(const std::string& filePath)
+		Model(const std::string& filePath, Window& window)
 		{
-			LoadModel(filePath);
+			LoadModel(filePath, window);
 		}
 
-		void LoadModel(const std::string& filePath);
+		void LoadModel(const std::string& filePath, Window& window);
 		void Draw(uint32_t animationID, double time, bool loop, LearnShader& shader, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
 		void Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
 
@@ -56,5 +58,6 @@ namespace CrescentEngine
 		//Assimp
 		Assimp::Importer m_Importer;
 		const aiScene* m_ModelScene;
+		Window* m_WindowContext;
 	};
 }

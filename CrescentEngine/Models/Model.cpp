@@ -5,6 +5,10 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <commdlg.h>
+#include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h> //Allows us to retrieve the Window handle.
 
 namespace CrescentEngine
 {
@@ -43,12 +47,19 @@ namespace CrescentEngine
 	{
 		ImGui::Begin("Model");
 		ImGui::DragFloat3("Position", glm::value_ptr(modelPosition), 0.1f);
-		ImGui::End();
+
+		if (ImGui::Button("Load Texture"))
+		{
+			m_Meshes[0].textures[0].path = "Stormtrooper_D.png";
+			m_Meshes[0].textures[0].id = TextureFromFile("Stormtrooper_D.png", m_FileDirectory);
+			
+		}
 	}
 
 	//Should consider creating a Shader automagically for each Model loaded.
-	void Model::LoadModel(const std::string& filePath)
+	void Model::LoadModel(const std::string& filePath, Window& window)
 	{
+		m_WindowContext = &window;
 		m_ModelScene = m_Importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs);
 
 		if (!m_ModelScene || m_ModelScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !m_ModelScene->mRootNode)
