@@ -45,6 +45,9 @@ uniform vec3 viewPosition;
 uniform PointLight pointLight;
 uniform DirectionalLight directionalLight;
 uniform bool blinn = true;
+uniform bool softShadows = true;
+uniform float pcfSampleAmount = 15.0f;
+
 uniform sampler2D shadowMap;
 
 in vec3 FragPosition;
@@ -70,7 +73,30 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     float currentDepth = projCoords.z;
     //Check whether current fragment position is in shadow.
     float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
-    float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+
+    float shadow = 0.0f;
+
+    if (!softShadows)
+    {
+        shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+    }
+    else
+    {
+
+        //PCF
+        shadow = 0.0f;
+        vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+        for (int x = -1; x <= 1; ++x)
+        {
+            for (int y = -1; y <= 1; ++y)
+            {
+                float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+                shadow += currentDepth - bias > pcfDepth ? 1.0f : 0.0f;
+            }
+        }
+
+        shadow /= pcfSampleAmount;
+    }
 
     if (projCoords.z > 1.0f)
     {

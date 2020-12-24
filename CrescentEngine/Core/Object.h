@@ -32,7 +32,7 @@ namespace CrescentEngine
 	{
 		PointLight() {}
 
-		glm::vec3 pointLightPosition = { 0.7f, 0.2f, 2.0f };
+		glm::vec3 pointLightPosition = { 0.7f, 2.0f, 2.0f };
 		glm::vec3 ambientIntensity = { 0.2f, 0.2f, 0.2f };
 		glm::vec3 diffuseIntensity = { 0.5f, 0.5f, 0.5f };
 		glm::vec3 specularIntensity = { 1.0f, 1.0f, 1.0f };

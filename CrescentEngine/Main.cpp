@@ -32,6 +32,8 @@ struct RenderingComponents
 	CrescentEngine::Cubemap m_Cubemap;
 
 	bool m_LightingModel[2] = { true, false };  //[0] for Blinn Phong, [1] for Phong.
+	float pcfSampleAmount = 15.0f;
+	bool m_SoftOrHardShadows[2] = { true, false }; //[0] for Soft, [1] for Hard.
 	bool m_WireframeRendering = false;
 };
 
@@ -319,6 +321,30 @@ void DrawEditorContent()
 
 		g_RenderingComponents.m_LightingModel[0] = false;
 	}
+
+	if (ImGui::Checkbox("Soft Shadows", &g_RenderingComponents.m_SoftOrHardShadows[0]))
+	{
+		g_Shaders.m_StaticModelShader.UseShader();
+		g_Shaders.m_StaticModelShader.SetUniformBool("softShadows", true);
+		g_Shaders.m_StaticModelShader.UnbindShader();
+		g_RenderingComponents.m_SoftOrHardShadows[1] = false;
+	}
+	ImGui::SameLine();
+	if (ImGui::Checkbox("Hard Shadows", &g_RenderingComponents.m_SoftOrHardShadows[1]))
+	{
+		g_Shaders.m_StaticModelShader.UseShader();
+		g_Shaders.m_StaticModelShader.SetUniformBool("softShadows", false);
+		g_Shaders.m_StaticModelShader.UnbindShader();
+		g_RenderingComponents.m_SoftOrHardShadows[0] = false;
+	}
+
+	if (ImGui::DragFloat("PCF Sample Amount", &g_RenderingComponents.pcfSampleAmount, 0.1f, 1.0f, 15.0f))
+	{
+		g_Shaders.m_StaticModelShader.UseShader();
+		g_Shaders.m_StaticModelShader.SetUniformFloat("pcfSampleAmount", g_RenderingComponents.pcfSampleAmount);
+		g_Shaders.m_StaticModelShader.UnbindShader();
+	}
+
 	ImGui::Image((void*)g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), ImVec2{ 200.0f, 200.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
 	ImGui::End();

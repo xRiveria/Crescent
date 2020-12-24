@@ -15,6 +15,7 @@ namespace CrescentEngine
 		{
 			currentColorID = colorID;
 		}
+		//Expensive, but managable for now.
 		SetConsoleTextAttribute(hConsole, currentColorID);
 	}
 
