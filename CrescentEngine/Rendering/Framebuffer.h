@@ -49,5 +49,6 @@ namespace CrescentEngine
 		unsigned int m_DepthmapFramebufferID = 0;
 		unsigned int m_DepthTextureID = 0;
 		const unsigned int m_ShadowWidth = 1024, m_ShadowHeight = 1024;
+		float m_BorderColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f }; //Color of the shadows outside a light source's frustrum. This will cause the GLSL texture function to always return a depth of 1.0f, producing a shadow value of 0.0f.
 	};
 }

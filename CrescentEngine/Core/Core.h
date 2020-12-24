@@ -18,6 +18,6 @@ namespace CrescentEngine
 		SetConsoleTextAttribute(hConsole, currentColorID);
 	}
 
-#define CrescentInfo(x)	   ChangeConsoleTextColor(2); std::cout << "[INFO] " << x << "\n";	
-#define CrescentError(x)   ChangeConsoleTextColor(4); std::cout << "[ERROR] " << x << "\n"; std::terminate();
+#define CrescentInfo(x)	   ChangeConsoleTextColor(2); std::cout << "[INFO] " << x << "\n"; ChangeConsoleTextColor(15);	
+#define CrescentError(x)   ChangeConsoleTextColor(4); std::cout << "[ERROR] " << x << "\n"; ChangeConsoleTextColor(15); std::terminate();
 }
