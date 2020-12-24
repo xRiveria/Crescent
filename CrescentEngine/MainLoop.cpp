@@ -44,8 +44,11 @@ struct Renderables  //Currently our base scene objects.
 	CrescentEngine::Model m_BackpackModel;
 	CrescentEngine::Model m_StormTrooperModel;
 	CrescentEngine::Model m_EggDogModel;
+	CrescentEngine::Model m_GeodudeModel;
+
 	glm::vec3 m_BackpackModelPosition = { 0.0f, 1.3f, 0.0f };
-	glm::vec3 m_StormTrooperPosition = { -3.7f, -0.5f, -4.1f };
+	glm::vec3 m_StormTrooperPosition = { -5.0f, -0.5f, -1.9f };
+	glm::vec3 m_GeodudePosition = { -27.5f, -5.9f, 66.5f };
 	glm::vec3 m_EggDogPosition = { 3.7f, -0.5f, -4.1f };
 
 	CrescentEngine::Model m_RedstoneLampModel;
@@ -162,8 +165,8 @@ int main(int argc, int argv[])
 	g_Renderables.m_RedstoneLampModel.LoadModel("Resources/Models/RedstoneLamp/Redstone-lamp.obj", g_CoreSystems.m_Window);
 	stbi_set_flip_vertically_on_load(false);
 	g_Renderables.m_EggDogModel.LoadModel("Resources/Models/Eggdog/source/Eggdog/Eggdog.obj", g_CoreSystems.m_Window);
-
 	g_Renderables.m_StormTrooperModel.LoadModel("Resources/Models/Stormtrooper/source/silly_dancing.fbx", g_CoreSystems.m_Window);
+	g_Renderables.m_GeodudeModel.LoadModel("Resources/Models/Pokeball/source/RufflesDuchessVisual.fbx", g_CoreSystems.m_Window);
 
 	while (!g_CoreSystems.m_Window.RetrieveWindowCloseStatus())
 	{
@@ -178,6 +181,10 @@ int main(int argc, int argv[])
 		float currentFrame = g_CoreSystems.m_Window.RetrieveCurrentTime();
 		g_CoreSystems.m_Timestep = currentFrame - g_CoreSystems.m_LastFrameTime;
 		animationTime += g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds();
+		if (animationTime > g_Renderables.m_StormTrooperModel.m_AnimationTime)
+		{
+			animationTime = 0.0f;
+		}
 		g_CoreSystems.m_LastFrameTime = currentFrame;
 
 		//Poll Events
@@ -285,6 +292,9 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 		g_Shaders.m_AnimationShader.SetUniformVectorMat4("uBoneMatrices", g_Renderables.m_StormTrooperModel.m_BoneMatrices);
 		g_Shaders.m_AnimationShader.SetUniformVector3("viewPosition", g_CoreSystems.m_Camera.m_CameraPosition);
 		g_Renderables.m_StormTrooperModel.Draw(0, animationTime, true, g_Shaders.m_AnimationShader, 1.0f, g_Renderables.m_StormTrooperPosition);
+
+		g_Shaders.m_AnimationShader.SetUniformVectorMat4("uBoneMatrices", g_Renderables.m_GeodudeModel.m_BoneMatrices);
+		g_Renderables.m_GeodudeModel.Draw(0, animationTime, true, g_Shaders.m_AnimationShader, 5.0f, g_Renderables.m_GeodudePosition);
 		g_Shaders.m_AnimationShader.UnbindShader();
 	}
 
@@ -405,8 +415,9 @@ void DrawEditorContent()
 	g_Renderables.m_LightDirection.RenderSettingsInEditor();
 
 	g_Renderables.m_PointLight.RenderSettingsInEditor();
-	//g_Renderables.m_BackpackModel.RenderSettingsInEditor(g_Renderables.m_BackpackModelPosition);
+	g_Renderables.m_BackpackModel.RenderSettingsInEditor(g_Renderables.m_BackpackModelPosition);
 	g_Renderables.m_StormTrooperModel.RenderSettingsInEditor(g_Renderables.m_StormTrooperPosition);
+	g_Renderables.m_GeodudeModel.RenderSettingsInEditor(g_Renderables.m_GeodudePosition);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 	ImGui::Begin("Viewport");

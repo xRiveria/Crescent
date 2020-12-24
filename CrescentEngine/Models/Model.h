@@ -29,7 +29,10 @@ namespace CrescentEngine
 
 		void RenderSettingsInEditor(glm::vec3& modelPosition);
 		glm::mat4 RetrieveModelMatrix() const { return m_ModelMatrix; }
+
+	public:
 		std::vector<glm::mat4> m_BoneMatrices, m_BoneOffsets;
+		float m_AnimationTime = 0.0f;
 
 	private:
 		void ProcessNode(aiNode* node);
@@ -42,11 +45,15 @@ namespace CrescentEngine
 		static glm::mat4 InterpolateRotationMatrix(aiQuatKey* keys, uint32_t n, double ticks);
 		static glm::mat4 InterpolateScalingMatrix(aiVectorKey* keys, uint32_t n, double ticks);
 
+		std::string ConvertUUIDToString() const;
+		std::optional<std::string> OpenFile(const char* filter);
+
 	private:
 		//Model Data
 		std::vector<Mesh> m_Meshes;
 		std::vector<Texture> m_TexturesLoaded;
 		std::string m_FileDirectory;
+		int m_TemporaryUUID = 0;
 
 		//Matrixes
 		glm::mat4 m_ModelMatrix = glm::mat4(1.0f);

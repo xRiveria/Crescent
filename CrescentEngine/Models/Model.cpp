@@ -5,6 +5,8 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
+
+#include <windows.h>
 #include <commdlg.h>
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -12,7 +14,31 @@
 
 namespace CrescentEngine
 {
+	static inline int temporaryUUID = 0;
+
 	unsigned int TextureFromFile(const std::string& path, const std::string& directory);
+
+	std::optional<std::string> Model::OpenFile(const char* filter)
+	{
+		OPENFILENAMEA fileDialog; //Passes data to and from GetOpenFileName & GetSaveFileName. It stores settings used to create the dialog box and the results of the user's selection. 
+		CHAR szFile[260] = { 0 }; //Our selected file path's buffer.
+		ZeroMemory(&fileDialog, sizeof(OPENFILENAME)); //Initialize openedFile's memory to 0.
+		
+		fileDialog.lStructSize = sizeof(OPENFILENAME); //Sets the struct size. We do this for every Win32 struct.
+		fileDialog.hwndOwner = glfwGetWin32Window(m_WindowContext->RetrieveWindow()); //Gets our currently open window and retrieves it HWND which we set as the struct's owner.
+		fileDialog.lpstrFile = szFile; //Buffer for our file.
+		fileDialog.nMaxFile = sizeof(szFile); //Size of our file buffer.
+		fileDialog.lpstrFilter = filter; //File filter.
+		fileDialog.nFilterIndex = 1; //Which filter is set by default. 
+		fileDialog.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR; //The last flag is very important. If you don't do this and call OpenFileName, it will change the working directory for your application to the folder you open the window from.  
+		
+		if (GetOpenFileNameA(&fileDialog) == true)
+		{
+			return fileDialog.lpstrFile; //We return the file path of the file we open and create a string out of the char* path.
+		}
+		
+		return std::nullopt; //Return empty string if no file is selected. It means the dialog has been cancelled.
+	}
 
 	void Model::Draw(uint32_t animationID, double time, bool loop, LearnShader& shader, const float& modelScale, const glm::vec3& modelTranslation)
 	{
@@ -43,22 +69,33 @@ namespace CrescentEngine
 		}
 	}
 
+	//Implement UUIDs / Texture Choosing
 	void Model::RenderSettingsInEditor(glm::vec3& modelPosition) 
 	{
-		ImGui::Begin("Model");
-		ImGui::DragFloat3("Position", glm::value_ptr(modelPosition), 0.1f);
+		ImGui::Begin((std::string("Model##") + ConvertUUIDToString()).c_str());
+		ImGui::DragFloat3((std::string("Position##Model") + ConvertUUIDToString()).c_str(), glm::value_ptr(modelPosition), 0.1f);
 
 		if (ImGui::Button("Load Texture"))
 		{
-			m_Meshes[0].textures[0].path = "Stormtrooper_D.png";
-			m_Meshes[0].textures[0].id = TextureFromFile("Stormtrooper_D.png", m_FileDirectory);
-			
+			std::optional<std::string> filePath = OpenFile("Textures");
+			if (filePath.has_value())
+			{
+				std::string path = filePath.value();
+				std::string file = path.substr(path.find_last_of('\\') + 1);
+				m_Meshes[0].textures[0].path = file;
+				m_Meshes[0].textures[0].id = TextureFromFile(file, m_FileDirectory);
+			}
+			else
+			{
+				return;
+			}
 		}
 	}
 
 	//Should consider creating a Shader automagically for each Model loaded.
 	void Model::LoadModel(const std::string& filePath, Window& window)
 	{
+		m_TemporaryUUID = temporaryUUID++;
 		m_WindowContext = &window;
 		m_ModelScene = m_Importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs);
 
@@ -67,11 +104,17 @@ namespace CrescentEngine
 			std::cout << "Error::Assimp::" << m_Importer.GetErrorString() << "\n";
 			return;
 		}
+		else
+		{
+			std::string infoString = "Load Model at " + filePath;
+			CrescentInfo(infoString);
+		}
 
 		m_AnimationChannelMap.clear();
 		for (int i = 0; i < m_ModelScene->mNumAnimations; i++)
 		{
 			auto animation = m_ModelScene->mAnimations[i];
+			m_AnimationTime = animation->mDuration / animation->mTicksPerSecond;
 
 			for (int j = 0; j < animation->mNumChannels; j++)
 			{
@@ -373,5 +416,15 @@ namespace CrescentEngine
 
 		float factor = (ticks - left_ptr->mTime) / (right_ptr->mTime - left_ptr->mTime);
 		return mat4_from_aivector3d(left_ptr->mValue * (1.0f - factor) + right_ptr->mValue * factor);
+	}
+
+	std::string Model::ConvertUUIDToString() const
+	{
+		std::string result;
+		std::stringstream convert;
+		convert << m_TemporaryUUID;
+		result = convert.str();
+
+		return convert.str();		
 	}
 }

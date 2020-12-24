@@ -105,7 +105,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\GLFW\lib-vc2019\;$(SolutionDir)CrescentEngine/Vendor/assimp/lib;$(SolutionDir)Dependencies\GLEW\lib\Release\x64\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>assimp-vc142-mtd.lib;glew32s.lib;glfw3.lib;opengl32.lib;user32.lib;Gdi32.lib;Shell32.lib;</AdditionalDependencies>
+      <AdditionalDependencies>comdlg32.lib;assimp-vc142-mtd.lib;glew32s.lib;glfw3.lib;opengl32.lib;user32.lib;Gdi32.lib;Shell32.lib;</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -123,7 +123,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\GLFW\lib-vc2019\;$(SolutionDir)CrescentEngine/Vendor/assimp/lib;$(SolutionDir)Dependencies\GLEW\lib\Release\x64\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>assimp-vc142-mtd.lib;glew32s.lib;glfw3.lib;opengl32.lib;user32.lib;Gdi32.lib;Shell32.lib;</AdditionalDependencies>
+      <AdditionalDependencies>comdlg32.lib;assimp-vc142-mtd.lib;glew32s.lib;glfw3.lib;opengl32.lib;user32.lib;Gdi32.lib;Shell32.lib;</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -145,7 +145,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\GLFW\lib-vc2019\;$(SolutionDir)CrescentEngine/Vendor/assimp/lib;$(SolutionDir)Dependencies\GLEW\lib\Release\x64\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>assimp-vc142-mtd.lib;glew32s.lib;glfw3.lib;opengl32.lib;user32.lib;Gdi32.lib;Shell32.lib;</AdditionalDependencies>
+      <AdditionalDependencies>comdlg32.lib;assimp-vc142-mtd.lib;glew32s.lib;glfw3.lib;opengl32.lib;user32.lib;Gdi32.lib;Shell32.lib;</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -167,7 +167,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\GLFW\lib-vc2019\;$(SolutionDir)CrescentEngine/Vendor/assimp/lib;$(SolutionDir)Dependencies\GLEW\lib\Release\x64\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>assimp-vc142-mtd.lib;glew32s.lib;glfw3.lib;opengl32.lib;user32.lib;Gdi32.lib;Shell32.lib;</AdditionalDependencies>
+      <AdditionalDependencies>comdlg32.lib;assimp-vc142-mtd.lib;glew32s.lib;glfw3.lib;opengl32.lib;user32.lib;Gdi32.lib;Shell32.lib;</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
