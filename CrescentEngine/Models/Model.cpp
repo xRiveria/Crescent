@@ -40,28 +40,36 @@ namespace CrescentEngine
 		return std::nullopt; //Return empty string if no file is selected. It means the dialog has been cancelled.
 	}
 
-	void Model::Draw(const float& deltaTime, bool renderShadowMap, LearnShader& shader, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation)
+	void Model::DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, LearnShader& shader, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation)
 	{
-		m_InternalDeltaTime += deltaTime;
-		if (m_InternalDeltaTime > m_AnimationTime)
-		{
-			m_InternalDeltaTime = 0.0f;
-		}
-
 		shader.UseShader();
 		m_ModelMatrix = glm::mat4(1.0f);
 		m_ModelMatrix = glm::translate(m_ModelMatrix, modelTranslation);
 		m_ModelMatrix = glm::scale(m_ModelMatrix, glm::vec3(modelScale, modelScale, modelScale));
 		shader.SetUniformMat4("model", m_ModelMatrix);
 
-		RecursivelyUpdateBoneMatrices(m_CurrentlyPlayingAnimation, m_ModelScene->mRootNode, glm::mat4(1), m_InternalDeltaTime * m_ModelScene->mAnimations[m_CurrentlyPlayingAnimation]->mTicksPerSecond);
+		if (renderShadowMap)
+		{
+			RecursivelyUpdateBoneMatrices(m_CurrentlyPlayingAnimation, m_ModelScene->mRootNode, glm::mat4(1), m_InternalDeltaTime * m_ModelScene->mAnimations[m_CurrentlyPlayingAnimation]->mTicksPerSecond);
+		}
+		else
+		{
+			m_InternalDeltaTime += deltaTime;
+			if (m_InternalDeltaTime > m_AnimationTime)
+			{
+				m_InternalDeltaTime = 0.0f;
+			}
+
+			RecursivelyUpdateBoneMatrices(m_CurrentlyPlayingAnimation, m_ModelScene->mRootNode, glm::mat4(1), m_InternalDeltaTime * m_ModelScene->mAnimations[m_CurrentlyPlayingAnimation]->mTicksPerSecond);
+		}
+
 		for (unsigned int i = 0; i < m_Meshes.size(); i++)
 		{
 			m_Meshes[i].Draw(shader, renderShadowMap, shadowMapTextureID);
 		}
 	}
 
-	void Model::Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation) 
+	void Model::DrawStaticModel(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation) 
 	{
 		shader.UseShader();
 		m_ModelMatrix = glm::mat4(1.0f);
@@ -81,40 +89,43 @@ namespace CrescentEngine
 		ImGui::Begin(m_ModelName.c_str());
 		ImGui::DragFloat3((std::string("Position##Model") + ConvertUUIDToString()).c_str(), glm::value_ptr(modelPosition), 0.1f);
 
-		if (ImGui::Button("Load Texture"))
+		if (ImGui::CollapsingHeader((std::string("Textures##" + m_ModelName).c_str())))
 		{
-			std::optional<std::string> filePath = OpenFile("Textures");
-			if (filePath.has_value())
+			for (Texture& texture : m_Meshes[0].textures)
 			{
-				std::string path = filePath.value();
-				std::string file = path.substr(path.find_last_of('\\') + 1);
-				m_Meshes[0].textures[0].path = file;
-				m_Meshes[0].textures[0].id = TextureFromFile(file, m_FileDirectory);
-			}
-			else
-			{
-				return;
-			}
-		}
-
-		for (Mesh& mesh : m_Meshes)
-		{
-			for (Texture& texture : mesh.textures)
-			{
+				ImGui::Image((void*)texture.id, ImVec2(80, 80), ImVec2(0, 1), ImVec2(1, 0));
+				if (ImGui::IsItemClicked())
+				{
+					std::optional<std::string> filePath = OpenFile("Textures");
+					if (filePath.has_value())
+					{
+						std::string path = filePath.value();
+						std::string file = path.substr(path.find_last_of('\\') + 1);
+						m_Meshes[0].textures[0].path = file;
+						m_Meshes[0].textures[0].id = TextureFromFile(file, m_FileDirectory);
+					}
+					else
+					{
+						return;
+					}
+				}
 				ImGui::Text("Texture Type: %s", texture.type.c_str());
 				ImGui::Text("Texture Path: %s", texture.path.c_str());
 				ImGui::Spacing();
-			}
-		}
-
-		for (int i = 0; i < m_Animations.size(); i++)
-		{
-			ImGui::Text("Duration: %0.2lf", m_Animations[i].first->mDuration / m_Animations[i].first->mTicksPerSecond);
-			if (ImGui::Button(m_Animations[i].first->mName.C_Str()))
-			{
-				m_CurrentlyPlayingAnimation = m_Animations[i].second;
-				m_AnimationTime = m_Animations[i].first->mDuration / m_Animations[i].first->mTicksPerSecond;
 			}		
+		}	
+
+		if (ImGui::CollapsingHeader((std::string("Animations##" + m_ModelName).c_str())))
+		{
+			for (int i = 0; i < m_Animations.size(); i++)
+			{
+				ImGui::Text("Duration: %0.2lf", m_Animations[i].first->mDuration / m_Animations[i].first->mTicksPerSecond);
+				if (ImGui::Button(m_Animations[i].first->mName.C_Str()))
+				{
+					m_CurrentlyPlayingAnimation = m_Animations[i].second;
+					m_AnimationTime = m_Animations[i].first->mDuration / m_Animations[i].first->mTicksPerSecond;
+				}
+			}
 		}
 	}
 
@@ -124,7 +135,7 @@ namespace CrescentEngine
 		m_ModelName = modelName;
 		m_TemporaryUUID = temporaryUUID++;
 		m_WindowContext = &window;
-		m_ModelScene = m_Importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs);
+		m_ModelScene = m_Importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_FlipUVs);
 
 		if (!m_ModelScene || m_ModelScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !m_ModelScene->mRootNode)
 		{
@@ -190,12 +201,14 @@ namespace CrescentEngine
 		{
 			Vertex vertex;
 			glm::vec3 vector; //We declare a placeholder vector 
-			// positions
+
+			// Positions
 			vector.x = mesh->mVertices[i].x;
 			vector.y = mesh->mVertices[i].y;
 			vector.z = mesh->mVertices[i].z;
 			vertex.Position = vector;
-			// normals
+
+			// Normals
 			if (mesh->HasNormals())
 			{
 				vector.x = mesh->mNormals[i].x;
@@ -212,6 +225,18 @@ namespace CrescentEngine
 				vec.x = mesh->mTextureCoords[0][i].x;
 				vec.y = mesh->mTextureCoords[0][i].y;
 				vertex.TexCoords = vec;
+
+				//Tangent
+				vector.x = mesh->mTangents[i].x;
+				vector.y = mesh->mTangents[i].y;
+				vector.z = mesh->mTangents[i].z;
+				vertex.Tangent = vector;
+
+				//Bitangent
+				vector.x = mesh->mBitangents[i].x;
+				vector.y = mesh->mBitangents[i].y;
+				vector.z = mesh->mBitangents[i].z;
+				vertex.Bitangent = vector;
 			}
 			else
 			{
@@ -235,11 +260,22 @@ namespace CrescentEngine
 
 		aiMaterial* material = m_ModelScene->mMaterials[mesh->mMaterialIndex];
 
+		//Diffuse Maps
 		std::vector<Texture> diffuseMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
 		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
+		//Specular Maps
 		std::vector<Texture> specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
 		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+
+		//Normal Maps
+		std::vector<Texture> normalMaps = LoadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+
+		//Height Maps
+		std::vector<Texture> heightMaps = LoadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
+		textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+
 		
 		for (int i = 0; i < mesh->mNumBones; i++)
 		{

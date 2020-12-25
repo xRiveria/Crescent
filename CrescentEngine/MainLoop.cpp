@@ -258,15 +258,17 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 	//Models
 	if (renderShadowMap)
 	{
-		g_Renderables.m_BackpackModel.Draw(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_BackpackModelPosition);
-		g_Renderables.m_EggDogModel.Draw(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_EggDogPosition);
-		
-		g_Renderables.m_StormTrooperModel.Draw(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), true, shader, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_StormTrooperPosition);
+		//Static
+		g_Renderables.m_BackpackModel.DrawStaticModel(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_BackpackModelPosition);
+		g_Renderables.m_EggDogModel.DrawStaticModel(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_EggDogPosition);	
+	
+		g_Renderables.m_StormTrooperModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), true, shader, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_StormTrooperPosition);
+		g_Renderables.m_RoyaleDogModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), true, shader, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_RoyalDogPosition);
 	}
 	else
 	{
-		g_Renderables.m_BackpackModel.Draw(shader, renderShadowMap, 0, 1.0f, g_Renderables.m_BackpackModelPosition);
-		g_Renderables.m_EggDogModel.Draw(shader, renderShadowMap, 0, 1.0f, g_Renderables.m_EggDogPosition);
+		g_Renderables.m_BackpackModel.DrawStaticModel(shader, renderShadowMap, 0, 1.0f, g_Renderables.m_BackpackModelPosition);
+		g_Renderables.m_EggDogModel.DrawStaticModel(shader, renderShadowMap, 0, 1.0f, g_Renderables.m_EggDogPosition);
 
 		g_Shaders.m_AnimationShader.UseShader();
 		g_Shaders.m_AnimationShader.SetUniformVector3("pointLight.lightPosition", g_Renderables.m_PointLight.pointLightPosition);
@@ -286,10 +288,10 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 		g_Shaders.m_AnimationShader.SetUniformMat4("view", viewMatrix);
 		g_Shaders.m_AnimationShader.SetUniformVectorMat4("uBoneMatrices", g_Renderables.m_StormTrooperModel.m_BoneMatrices);
 		g_Shaders.m_AnimationShader.SetUniformVector3("viewPosition", g_CoreSystems.m_Camera.m_CameraPosition);
-		g_Renderables.m_StormTrooperModel.Draw(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), false, g_Shaders.m_AnimationShader, 0, 1.0f, g_Renderables.m_StormTrooperPosition);
+		g_Renderables.m_StormTrooperModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), false, g_Shaders.m_AnimationShader, 0, 1.0f, g_Renderables.m_StormTrooperPosition);
 
 		g_Shaders.m_AnimationShader.SetUniformVectorMat4("uBoneMatrices", g_Renderables.m_RoyaleDogModel.m_BoneMatrices);
-		g_Renderables.m_RoyaleDogModel.Draw(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), false, g_Shaders.m_AnimationShader, 0, 5.0f, g_Renderables.m_RoyalDogPosition);
+		g_Renderables.m_RoyaleDogModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), false, g_Shaders.m_AnimationShader, 0, 5.0f, g_Renderables.m_RoyalDogPosition);
 		g_Shaders.m_AnimationShader.UnbindShader();
 	}
 
@@ -306,7 +308,7 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 	g_Shaders.m_PointLightObjectShader.SetUniformMat4("view", viewMatrix);
 
 	//Rerouting through the object's editor settings.
-	g_Renderables.m_RedstoneLampModel.Draw(g_Shaders.m_PointLightObjectShader, false, 0, 0.01f, g_Renderables.m_PointLight.pointLightPosition);
+	g_Renderables.m_RedstoneLampModel.DrawStaticModel(g_Shaders.m_PointLightObjectShader, false, 0, 0.01f, g_Renderables.m_PointLight.pointLightPosition);
 
 	//=======================================================================================================================
 

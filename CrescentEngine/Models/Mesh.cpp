@@ -15,8 +15,12 @@ namespace CrescentEngine
 
 	void Mesh::Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID)
 	{
+		//Bind appropriate textures.
 		unsigned int diffuseNr = 1;
 		unsigned int specularNr = 1;
+		unsigned int normalNr = 1;
+		unsigned int heightNr = 1;
+
 		//Draw Mesh
 		glBindVertexArray(vertexArrayObject);
 
@@ -39,6 +43,14 @@ namespace CrescentEngine
 				{
 					number = std::to_string(specularNr++);
 				}
+				else if (name == "texture_normal")
+				{
+					number = std::to_string(normalNr++);
+				}
+				else if (name == "texture_height")
+				{
+					number = std::to_string(heightNr++);
+				}
 
 				shader.UseShader();
 				glUniform1i(glGetUniformLocation(shader.GetShaderID(), (name + number).c_str()), i);
@@ -47,7 +59,15 @@ namespace CrescentEngine
 		}
 
 		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		for (int i = 0; i < 32; i++)
+		{
+			if (i == 3)
+			{
+				continue;
+			}
+			glActiveTexture(GL_TEXTURE0 + i);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
 
 		glBindVertexArray(0);
 	}
@@ -78,18 +98,26 @@ namespace CrescentEngine
 		//Vertex Texture Coodinates
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
-		
+
+		//Vertex Tangents
 		glEnableVertexAttribArray(3);
-		glVertexAttribIPointer(3, 4, GL_INT, sizeof(Vertex), (void*)(offsetof(Vertex, BoneIDs) + 0 * sizeof(int)));
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
 
+		//Vertex Bitangents
 		glEnableVertexAttribArray(4);
-		glVertexAttribIPointer(4, 4, GL_INT, sizeof(Vertex), (void*)(offsetof(Vertex, BoneIDs) + 4 * sizeof(int)));
-
+		glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+		
 		glEnableVertexAttribArray(5);
-		glVertexAttribPointer(5, 4, GL_FLOAT, false, sizeof(Vertex), (void*)(offsetof(Vertex, BoneWeights) + 0 * sizeof(float)));
+		glVertexAttribIPointer(5, 4, GL_INT, sizeof(Vertex), (void*)(offsetof(Vertex, BoneIDs) + 0 * sizeof(int)));
 
 		glEnableVertexAttribArray(6);
-		glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(Vertex), (void*)(offsetof(Vertex, BoneWeights) + 4 * sizeof(float)));
+		glVertexAttribIPointer(6, 4, GL_INT, sizeof(Vertex), (void*)(offsetof(Vertex, BoneIDs) + 4 * sizeof(int)));
+
+		glEnableVertexAttribArray(7);
+		glVertexAttribPointer(7, 4, GL_FLOAT, false, sizeof(Vertex), (void*)(offsetof(Vertex, BoneWeights) + 0 * sizeof(float)));
+
+		glEnableVertexAttribArray(8);
+		glVertexAttribPointer(8, 4, GL_FLOAT, false, sizeof(Vertex), (void*)(offsetof(Vertex, BoneWeights) + 4 * sizeof(float)));
 		
 		glBindVertexArray(0);
 	}
