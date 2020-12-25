@@ -40,18 +40,24 @@ namespace CrescentEngine
 		return std::nullopt; //Return empty string if no file is selected. It means the dialog has been cancelled.
 	}
 
-	void Model::Draw(uint32_t animationID, double time, bool loop, LearnShader& shader, const float& modelScale, const glm::vec3& modelTranslation)
+	void Model::Draw(const float& deltaTime, bool renderShadowMap, LearnShader& shader, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation)
 	{
+		m_InternalDeltaTime += deltaTime;
+		if (m_InternalDeltaTime > m_AnimationTime)
+		{
+			m_InternalDeltaTime = 0.0f;
+		}
+
 		shader.UseShader();
 		m_ModelMatrix = glm::mat4(1.0f);
 		m_ModelMatrix = glm::translate(m_ModelMatrix, modelTranslation);
 		m_ModelMatrix = glm::scale(m_ModelMatrix, glm::vec3(modelScale, modelScale, modelScale));
 		shader.SetUniformMat4("model", m_ModelMatrix);
 
-		RecursivelyUpdateBoneMatrices(animationID, m_ModelScene->mRootNode, glm::mat4(1), time * m_ModelScene->mAnimations[animationID]->mTicksPerSecond);
+		RecursivelyUpdateBoneMatrices(m_CurrentlyPlayingAnimation, m_ModelScene->mRootNode, glm::mat4(1), m_InternalDeltaTime * m_ModelScene->mAnimations[m_CurrentlyPlayingAnimation]->mTicksPerSecond);
 		for (unsigned int i = 0; i < m_Meshes.size(); i++)
 		{
-			m_Meshes[i].Draw(shader, false, 0);
+			m_Meshes[i].Draw(shader, renderShadowMap, shadowMapTextureID);
 		}
 	}
 
@@ -72,7 +78,7 @@ namespace CrescentEngine
 	//Implement UUIDs / Texture Choosing
 	void Model::RenderSettingsInEditor(glm::vec3& modelPosition) 
 	{
-		ImGui::Begin((std::string("Model##") + ConvertUUIDToString()).c_str());
+		ImGui::Begin(m_ModelName.c_str());
 		ImGui::DragFloat3((std::string("Position##Model") + ConvertUUIDToString()).c_str(), glm::value_ptr(modelPosition), 0.1f);
 
 		if (ImGui::Button("Load Texture"))
@@ -90,11 +96,32 @@ namespace CrescentEngine
 				return;
 			}
 		}
+
+		for (Mesh& mesh : m_Meshes)
+		{
+			for (Texture& texture : mesh.textures)
+			{
+				ImGui::Text("Texture Type: %s", texture.type.c_str());
+				ImGui::Text("Texture Path: %s", texture.path.c_str());
+				ImGui::Spacing();
+			}
+		}
+
+		for (int i = 0; i < m_Animations.size(); i++)
+		{
+			ImGui::Text("Duration: %0.2lf", m_Animations[i].first->mDuration / m_Animations[i].first->mTicksPerSecond);
+			if (ImGui::Button(m_Animations[i].first->mName.C_Str()))
+			{
+				m_CurrentlyPlayingAnimation = m_Animations[i].second;
+				m_AnimationTime = m_Animations[i].first->mDuration / m_Animations[i].first->mTicksPerSecond;
+			}		
+		}
 	}
 
 	//Should consider creating a Shader automagically for each Model loaded.
-	void Model::LoadModel(const std::string& filePath, Window& window)
+	void Model::LoadModel(const std::string& modelName, const std::string& filePath, Window& window)
 	{
+		m_ModelName = modelName;
 		m_TemporaryUUID = temporaryUUID++;
 		m_WindowContext = &window;
 		m_ModelScene = m_Importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs);
@@ -114,7 +141,9 @@ namespace CrescentEngine
 		for (int i = 0; i < m_ModelScene->mNumAnimations; i++)
 		{
 			auto animation = m_ModelScene->mAnimations[i];
-			m_AnimationTime = animation->mDuration / animation->mTicksPerSecond;
+			m_AnimationTime = m_ModelScene->mAnimations[0]->mDuration / m_ModelScene->mAnimations[0]->mTicksPerSecond;
+
+			m_Animations.push_back(std::pair<aiAnimation*, size_t>(animation, i));
 
 			for (int j = 0; j < animation->mNumChannels; j++)
 			{
@@ -300,7 +329,7 @@ namespace CrescentEngine
 		else
 		{
 			std::string infoText = "Failed to load path at: " + filename;
-			CrescentInfo(infoText);
+			CrescentWarn(infoText);
 			stbi_image_free(data);
 		}
 

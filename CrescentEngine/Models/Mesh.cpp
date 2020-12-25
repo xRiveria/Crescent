@@ -22,7 +22,6 @@ namespace CrescentEngine
 
 		shader.UseShader();
 
-
 		if (!renderShadowMap)
 		{
 			for (unsigned int i = 0; i < textures.size(); i++)

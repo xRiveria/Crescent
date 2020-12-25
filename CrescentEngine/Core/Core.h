@@ -20,5 +20,6 @@ namespace CrescentEngine
 	}
 
 #define CrescentInfo(x)	   ChangeConsoleTextColor(2); std::cout << "[INFO] " << x << "\n"; ChangeConsoleTextColor(15);	
+#define CrescentWarn(x)    ChangeConsoleTextColor(14); std::cout << "[WARN] " << x << "\n"; ChangeConsoleTextColor(15);	
 #define CrescentError(x)   ChangeConsoleTextColor(4); std::cout << "[ERROR] " << x << "\n"; ChangeConsoleTextColor(15); std::terminate();
 }

@@ -18,21 +18,26 @@ namespace CrescentEngine
 	{
 	public:
 		Model() {}
-		Model(const std::string& filePath, Window& window)
+		Model(const std::string& modelName, const std::string& filePath, Window& window)
 		{
-			LoadModel(filePath, window);
+			LoadModel(modelName, filePath, window);
 		}
 
-		void LoadModel(const std::string& filePath, Window& window);
-		void Draw(uint32_t animationID, double time, bool loop, LearnShader& shader, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
+		void LoadModel(const std::string& modelName, const std::string& filePath, Window& window);
+		
+		//Draw Animated Model
+		void Draw(const float& deltaTime, bool renderShadowMap, LearnShader& shader, unsigned int shadowMapTextureID, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
+		
+		//Draw Static Model
 		void Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
+				
+		float RetrieveAnimationTime() const { return m_AnimationTime; }
 
 		void RenderSettingsInEditor(glm::vec3& modelPosition);
 		glm::mat4 RetrieveModelMatrix() const { return m_ModelMatrix; }
 
 	public:
 		std::vector<glm::mat4> m_BoneMatrices, m_BoneOffsets;
-		float m_AnimationTime = 0.0f;
 
 	private:
 		void ProcessNode(aiNode* node);
@@ -50,6 +55,7 @@ namespace CrescentEngine
 
 	private:
 		//Model Data
+		std::string m_ModelName = "Model";
 		std::vector<Mesh> m_Meshes;
 		std::vector<Texture> m_TexturesLoaded;
 		std::string m_FileDirectory;
@@ -59,8 +65,14 @@ namespace CrescentEngine
 		glm::mat4 m_ModelMatrix = glm::mat4(1.0f);
 
 		//Skeletal Animations
+		int m_CurrentlyPlayingAnimation = 0;
 		BoneMapper m_BoneMapper;
 		std::map<std::pair<uint32_t, std::string>, uint32_t> m_AnimationChannelMap;
+		float m_InternalDeltaTime = 0;
+
+		//Animation Selection
+		std::vector<std::pair<aiAnimation*, size_t>> m_Animations;
+		float m_AnimationTime = 0.0f;
 
 		//Assimp
 		Assimp::Importer m_Importer;
