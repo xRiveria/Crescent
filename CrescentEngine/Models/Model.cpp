@@ -69,12 +69,13 @@ namespace CrescentEngine
 		}
 	}
 
-	void Model::DrawStaticModel(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation) 
+	void Model::DrawStaticModel(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation, const glm::vec3& modelRotation) 
 	{
 		shader.UseShader();
 		m_ModelMatrix = glm::mat4(1.0f);
 		m_ModelMatrix = glm::translate(m_ModelMatrix, modelTranslation);
 		m_ModelMatrix = glm::scale(m_ModelMatrix, glm::vec3(modelScale, modelScale, modelScale));
+		m_ModelMatrix = glm::rotate(m_ModelMatrix, 0.0f, modelRotation);
 		shader.SetUniformMat4("model", m_ModelMatrix);
 
 		for (unsigned int i = 0; i < m_Meshes.size(); i++)
@@ -91,24 +92,78 @@ namespace CrescentEngine
 
 		if (ImGui::CollapsingHeader((std::string("Textures##" + m_ModelName).c_str())))
 		{
+			if (ImGui::Button("Add Diffuse"))
+			{
+				std::optional<std::string> filePath = OpenFile("Textures");
+				if (filePath.has_value())
+				{
+					std::string path = filePath.value();
+					std::string file = path.substr(path.find_last_of('\\') + 1);
+					LoadDiffuseTexture(file);
+				}
+				else
+				{
+					return;
+				}
+			}
+
+			if (ImGui::Button("Add Normal"))
+			{
+				std::optional<std::string> filePath = OpenFile("Textures");
+				if (filePath.has_value())
+				{
+					std::string path = filePath.value();
+					std::string file = path.substr(path.find_last_of('\\') + 1);
+					LoadNormalTexture(file);
+				}
+				else
+				{
+					return;
+				}
+			}
+
 			for (Texture& texture : m_Meshes[0].textures)
 			{
 				ImGui::Image((void*)texture.id, ImVec2(80, 80), ImVec2(0, 1), ImVec2(1, 0));
-				if (ImGui::IsItemClicked())
+				
+				if (texture.type == "texture_diffuse")
 				{
-					std::optional<std::string> filePath = OpenFile("Textures");
-					if (filePath.has_value())
+					if (ImGui::IsItemClicked())
 					{
-						std::string path = filePath.value();
-						std::string file = path.substr(path.find_last_of('\\') + 1);
-						m_Meshes[0].textures[0].path = file;
-						m_Meshes[0].textures[0].id = TextureFromFile(file, m_FileDirectory);
-					}
-					else
-					{
-						return;
+						std::optional<std::string> filePath = OpenFile("Textures");
+						if (filePath.has_value())
+						{
+							std::string path = filePath.value();
+							std::string file = path.substr(path.find_last_of('\\') + 1);
+							m_Meshes[0].textures[0].path = file;
+							m_Meshes[0].textures[0].id = TextureFromFile(file, m_FileDirectory);
+						}
+						else
+						{
+							return;
+						}
 					}
 				}
+
+				if (texture.type == "texture_normal")
+				{
+					if (ImGui::IsItemClicked())
+					{
+						std::optional<std::string> filePath = OpenFile("Textures");
+						if (filePath.has_value())
+						{
+							std::string path = filePath.value();
+							std::string file = path.substr(path.find_last_of('\\') + 1);
+							m_Meshes[0].textures[1].path = file;
+							m_Meshes[0].textures[1].id = TextureFromFile(file, m_FileDirectory);
+						}
+						else
+						{
+							return;
+						}
+					}
+				}
+
 				ImGui::Text("Texture Type: %s", texture.type.c_str());
 				ImGui::Text("Texture Path: %s", texture.path.c_str());
 				ImGui::Spacing();
@@ -127,6 +182,26 @@ namespace CrescentEngine
 				}
 			}
 		}
+	}
+
+	void Model::LoadDiffuseTexture(const std::string& filePath)
+	{
+		Texture texture;
+		texture.id = TextureFromFile(filePath, this->m_FileDirectory);
+		texture.type = "texture_diffuse";
+		texture.path = filePath;
+		m_Meshes[0].textures.push_back(texture);
+		m_TexturesLoaded.push_back(texture); //Add to loaded textures;
+	}
+
+	void Model::LoadNormalTexture(const std::string& filePath)
+	{
+		Texture texture;
+		texture.id = TextureFromFile(filePath, this->m_FileDirectory);
+		texture.type = "texture_normal";
+		texture.path = filePath;
+		m_Meshes[0].textures.push_back(texture);
+		m_TexturesLoaded.push_back(texture); //Add to loaded textures;
 	}
 
 	//Should consider creating a Shader automagically for each Model loaded.

@@ -12,11 +12,17 @@ layout(location = 8) in vec4 aBoneWeights1;
 out vec2 TexCoords;
 out vec3 Normals;
 out vec3 FragPosition;
+out vec3 TangentLightPosition;
+out vec3 TangentViewPosition;
+out vec3 TangentFragPosition;
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 uBoneMatrices[100];
+
+uniform vec3 lightPosition;
+uniform vec3 viewPosition;
 
 mat4 CalcBoneMatrix() {
     mat4 boneMatrix = mat4(0);
@@ -29,6 +35,16 @@ mat4 CalcBoneMatrix() {
 
 void main()
 {
+    //Converting from world space to tangent space here.
+    vec3 T = normalize(vec3(model * vec4(aTangent, 0.0)));
+    vec3 B = normalize(vec3(model * vec4(aBitangent, 0.0)));
+    vec3 N = normalize(vec3(model * vec4(aNormal, 0.0)));
+    mat3 TBN = transpose(mat3(T, B, N));
+
+    TangentLightPosition = TBN * lightPosition;
+    TangentViewPosition = TBN * viewPosition;
+    TangentFragPosition = TBN * vec3(model * vec4(aPos, 1.0));
+
     mat4 boneMatrix = CalcBoneMatrix();
 
     TexCoords = aTexCoords;

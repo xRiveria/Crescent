@@ -47,6 +47,7 @@ uniform DirectionalLight directionalLight;
 uniform bool blinn = true;
 uniform bool softShadows = true;
 uniform float pcfSampleAmount = 15.0f;
+uniform bool selfCreatedPrimitive = false;
 
 uniform sampler2D shadowMap;
 
@@ -55,13 +56,17 @@ in vec2 TexCoords;
 in vec3 Normals;
 in vec4 FragPosLightSpace;
 
+in vec3 TangentLightPosition;
+in vec3 TangentViewPosition;
+in vec3 TangentFragPosition;
+
 uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_specular1;
+uniform sampler2D texture_normal1;
 
-float ShadowCalculation(vec4 fragPosLightSpace)
+float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal)
 {
     vec3 lightDir = normalize(pointLight.lightPosition - FragPosition);
-    vec3 normal = normalize(Normals);
 
     //Perform Perspective Divide
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
@@ -108,7 +113,16 @@ float ShadowCalculation(vec4 fragPosLightSpace)
 
 vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragmentPosition, vec3 viewDirection)
 {
-    vec3 lightDirection = normalize(light.lightPosition - fragmentPosition);
+    vec3 lightDirection;
+    if (selfCreatedPrimitive)
+    {
+        lightDirection = normalize(light.lightPosition - fragmentPosition);
+    }
+    else
+    {
+        lightDirection = normalize(TangentLightPosition - fragmentPosition);
+    }
+
     //Diffuse Shading
     float diff = max(dot(normal, lightDirection), 0.0);
 
@@ -136,7 +150,7 @@ vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragmentPosition, v
     vec3 specular = light.specularIntensity * spec * vec3(texture(texture_specular1, TexCoords));
 
     //Calculate Shadow
-    float shadow = ShadowCalculation(FragPosLightSpace);
+    float shadow = ShadowCalculation(FragPosLightSpace, normal);
 
     ambient *= attenuation;
     diffuse *= attenuation;
@@ -174,15 +188,37 @@ vec3 CalculateDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDir
 
 void main()
 {
+    vec3 normal;
     //Properties
-    vec3 normal = normalize(Normals);
-    vec3 viewDirection = normalize(viewPosition - FragPosition); //Direction from the camera to the fragment.
+    if (selfCreatedPrimitive)
+    {
+        normal = normalize(Normals);
 
-    //Phase 1: Directional Lighting
-    vec3 result = CalculateDirectionalLight(directionalLight, normal, viewDirection);
+        vec3 viewDirection = normalize(viewPosition - FragPosition); //Direction from the camera to the fragment.
 
-    //Phase 2: Point Light
-    result += CalculatePointLight(pointLight, normal, FragPosition, viewDirection);
+        //Phase 1: Directional Lighting
+        vec3 result = CalculateDirectionalLight(directionalLight, normal, viewDirection);
 
-    FragColor = vec4(result, 1.0f);
+        //Phase 2: Point Light
+        result += CalculatePointLight(pointLight, normal, FragPosition, viewDirection);
+
+        FragColor = vec4(result, 1.0f);
+    }
+    else
+    {
+        //Obtain normal from normal map in range [0, 1]
+        normal = texture(texture_normal1, TexCoords).rgb;
+        //Transform to [-1, 1] space.
+        normal = normalize(normal * 2.0 - 1.0);
+
+        vec3 viewDirection = normalize(TangentViewPosition - TangentFragPosition); //Direction from the camera to the fragment.
+
+        //Phase 1: Directional Lighting
+        vec3 result = CalculateDirectionalLight(directionalLight, normal, viewDirection);
+
+        //Phase 2: Point Light
+        result += CalculatePointLight(pointLight, normal, TangentFragPosition, viewDirection);
+
+        FragColor = vec4(result, 1.0f);
+    }
 }
