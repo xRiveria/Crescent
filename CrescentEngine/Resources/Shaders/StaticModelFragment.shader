@@ -64,6 +64,9 @@ uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_specular1;
 uniform sampler2D texture_normal1;
 
+uniform float exposureAmount;
+uniform sampler2D hdrBuffer;
+
 float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal)
 {
     vec3 lightDir = normalize(pointLight.lightPosition - FragPosition);
@@ -146,8 +149,11 @@ vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragmentPosition, v
     //Combine Results
     vec3 ambient = light.ambientIntensity * vec3(texture(texture_diffuse1, TexCoords));
     vec3 diffuse = light.diffuseIntensity * diff * vec3(texture(texture_diffuse1, TexCoords));
-
     vec3 specular = light.specularIntensity * spec * vec3(texture(texture_specular1, TexCoords));
+
+    //Exposure
+    vec3 hdrColor = texture(hdrBuffer, TexCoords).rgb;
+    vec3 mapped = vec3(1.0) - exp(-hdrColor * exposureAmount);
 
     //Calculate Shadow
     float shadow = ShadowCalculation(FragPosLightSpace, normal);
@@ -156,8 +162,7 @@ vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragmentPosition, v
     diffuse *= attenuation;
     specular *= attenuation;
 
-
-    return (ambient + (1.0 - shadow) * (diffuse + specular));
+    return (mapped + ambient + (1.0 - shadow) * (diffuse + specular));
 }
 
 vec3 CalculateDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDirection)
@@ -183,7 +188,12 @@ vec3 CalculateDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDir
     vec3 ambient = light.ambientIntensity * vec3(texture(texture_diffuse1, TexCoords));
     vec3 diffuse = light.diffuseIntensity * diff * vec3(texture(texture_diffuse1, TexCoords));
     vec3 specular = light.specularIntensity * spec * vec3(texture(texture_specular1, TexCoords));
-    return (ambient + diffuse + specular);
+
+    //Exposure
+    vec3 hdrColor = texture(hdrBuffer, TexCoords).rgb;
+    vec3 mapped = vec3(1.0) - exp(-hdrColor * exposureAmount);
+
+    return (mapped + ambient + diffuse + specular);
 }
 
 void main()

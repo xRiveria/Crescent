@@ -75,7 +75,8 @@ namespace CrescentEngine
 		m_ModelMatrix = glm::mat4(1.0f);
 		m_ModelMatrix = glm::translate(m_ModelMatrix, modelTranslation);
 		m_ModelMatrix = glm::scale(m_ModelMatrix, glm::vec3(modelScale, modelScale, modelScale));
-		m_ModelMatrix = glm::rotate(m_ModelMatrix, 0.0f, modelRotation);
+		//m_ModelMatrix = glm::rotate(m_ModelMatrix, 90.0f, modelRotation);
+
 		shader.SetUniformMat4("model", m_ModelMatrix);
 
 		for (unsigned int i = 0; i < m_Meshes.size(); i++)

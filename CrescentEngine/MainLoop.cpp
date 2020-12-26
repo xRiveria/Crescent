@@ -35,6 +35,7 @@ struct RenderingComponents
 	float pcfSampleAmount = 15.0f;
 	bool m_SoftOrHardShadows[2] = { true, false }; //[0] for Soft, [1] for Hard.
 	bool m_WireframeRendering = false;
+	float exposure = 0.0f;
 };
 
 struct Renderables  //Currently our base scene objects.
@@ -47,8 +48,8 @@ struct Renderables  //Currently our base scene objects.
 	glm::vec3 m_BackpackModelPosition = { 0.0f, 1.3f, 0.0f };
 	glm::vec3 m_StormTrooperPosition = { -5.0f, -0.5f, -1.9f };
 	glm::vec3 m_RoyalDogPosition = { -27.5f, -5.9f, 66.5f };
-	glm::vec3 m_HeadPosition = { 3.7f, -0.5f, -4.1f };
-	glm::vec3 m_HeadRotation = { 0.0f, 0.0f, 0.0f };
+	glm::vec3 m_HeadPosition = { 3.7f, 1.5f, -4.1f };
+	glm::vec3 m_HeadRotation = { 0.0f, 0.0f, 1.0f };
 
 	CrescentEngine::Model m_RedstoneLampModel;
 	CrescentEngine::Primitive m_Plane; //Our base plane.
@@ -153,6 +154,7 @@ int main(int argc, int argv[])
 
 	//Objects
 	g_Renderables.m_Plane.SetupPrimitiveBuffers(CrescentEngine::PrimitiveShape::PlanePrimitive);
+
 	g_Renderables.m_TransparentQuad.SetupTransparentQuadBuffers();
 	g_Textures.m_GrassTexture.LoadTexture("Resources/Textures/Grass.png");
 	g_Textures.m_WindowTexture.LoadTexture("Resources/Textures/TransparentWindow.png");
@@ -163,7 +165,7 @@ int main(int argc, int argv[])
 	g_Renderables.m_BackpackModel.LoadModel("Backpack", "Resources/Models/Backpack/backpack.obj", g_CoreSystems.m_Window);
 	g_Renderables.m_RedstoneLampModel.LoadModel("Light", "Resources/Models/RedstoneLamp/Redstone-lamp.obj", g_CoreSystems.m_Window);
 	stbi_set_flip_vertically_on_load(false);
-	g_Renderables.m_HeadModel.LoadModel("Head", "Resources/Models/Head/source/model.dae", g_CoreSystems.m_Window);
+	g_Renderables.m_HeadModel.LoadModel("Head", "Resources/Models/Head/source/craneo.obj", g_CoreSystems.m_Window);
 	g_Renderables.m_StormTrooperModel.LoadModel("Stormtrooper", "Resources/Models/Stormtrooper/source/silly_dancing.fbx", g_CoreSystems.m_Window);
 	g_Renderables.m_RoyaleDogModel.LoadModel("Royale Dog", "Resources/Models/Pokeball/source/RufflesDuchessVisual.fbx", g_CoreSystems.m_Window);
 
@@ -207,6 +209,7 @@ int main(int argc, int argv[])
 
 		//Bind Our Editor Window Framebuffer
 		g_RenderingComponents.m_Framebuffer.BindFramebuffer();
+
 		glViewport(0, 0, g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
 		g_CoreSystems.m_Renderer.ClearBuffers();
 
@@ -217,6 +220,23 @@ int main(int argc, int argv[])
 		g_Shaders.m_StaticModelShader.SetUniformVector3("lightPos", g_Renderables.m_PointLight.pointLightPosition);
 		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID());
+
+		////////////////////////////////////////////////////////////////////////////////////
+		g_Shaders.m_StaticModelShader.UseShader();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, g_RenderingComponents.m_Framebuffer.RetrieveColorAttachment());
+		g_Shaders.m_StaticModelShader.SetUniformFloat("exposureAmount", g_RenderingComponents.exposure);
+		g_Shaders.m_StaticModelShader.SetUniformInteger("hdrBuffer", 0);
+		g_Shaders.m_StaticModelShader.UnbindShader();
+
+		g_Shaders.m_AnimationShader.UseShader();
+		g_Shaders.m_AnimationShader.SetUniformFloat("exposureAmount", g_RenderingComponents.exposure);
+		g_Shaders.m_AnimationShader.SetUniformInteger("hdrBuffer", 0);
+		g_Shaders.m_AnimationShader.UnbindShader();
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+		////////////////////////////////////////////////////////////////////////////////////
+
 		RenderScene(g_Shaders.m_StaticModelShader, false);
 
 		g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
@@ -257,6 +277,7 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 	g_Shaders.m_StaticModelShader.SetUniformMat4("view", viewMatrix);
 	g_Shaders.m_StaticModelShader.SetUniformVector3("viewPosition", g_CoreSystems.m_Camera.m_CameraPosition);
 	g_Shaders.m_StaticModelShader.SetUniformInteger("shadowMap", 3);
+	g_Shaders.m_StaticModelShader.SetUniformFloat("exposureAmount", g_RenderingComponents.exposure);
 
 	//Models
 	if (renderShadowMap)
@@ -266,12 +287,12 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 		g_Renderables.m_HeadModel.DrawStaticModel(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_HeadPosition, g_Renderables.m_HeadRotation);	
 	
 		g_Renderables.m_StormTrooperModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), true, shader, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_StormTrooperPosition);
-		g_Renderables.m_RoyaleDogModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), true, shader, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_RoyalDogPosition);
+		//g_Renderables.m_RoyaleDogModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), true, shader, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_RoyalDogPosition);
 	}
 	else
 	{
 		g_Renderables.m_BackpackModel.DrawStaticModel(shader, renderShadowMap, 0, 1.0f, g_Renderables.m_BackpackModelPosition);
-		g_Renderables.m_HeadModel.DrawStaticModel(shader, renderShadowMap, 0, 1.0f, g_Renderables.m_HeadPosition);
+		g_Renderables.m_HeadModel.DrawStaticModel(shader, renderShadowMap, 0, 1.0f, g_Renderables.m_HeadPosition, g_Renderables.m_HeadRotation);
 
 		g_Shaders.m_AnimationShader.UseShader();
 		g_Shaders.m_AnimationShader.SetUniformVector3("pointLight.lightPosition", g_Renderables.m_PointLight.pointLightPosition);
@@ -295,7 +316,7 @@ void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
 		g_Renderables.m_StormTrooperModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), false, g_Shaders.m_AnimationShader, 0, 1.0f, g_Renderables.m_StormTrooperPosition);
 
 		g_Shaders.m_AnimationShader.SetUniformVectorMat4("uBoneMatrices", g_Renderables.m_RoyaleDogModel.m_BoneMatrices);
-		g_Renderables.m_RoyaleDogModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), false, g_Shaders.m_AnimationShader, 0, 5.0f, g_Renderables.m_RoyalDogPosition);
+		//g_Renderables.m_RoyaleDogModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), false, g_Shaders.m_AnimationShader, 0, 5.0f, g_Renderables.m_RoyalDogPosition);
 		g_Shaders.m_AnimationShader.UnbindShader();
 	}
 
@@ -349,6 +370,7 @@ void DrawEditorContent()
 	g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
 
 	ImGui::Begin("Global Settings");
+	ImGui::DragFloat("Exposure", &g_RenderingComponents.exposure, 0.05, 0.0f, 1.0f);
 	if (ImGui::Checkbox("Wireframe Rendering", &g_RenderingComponents.m_WireframeRendering))
 	{
 		g_CoreSystems.m_Renderer.ToggleWireframeRendering(g_RenderingComponents.m_WireframeRendering);
@@ -418,7 +440,7 @@ void DrawEditorContent()
 	g_Renderables.m_HeadModel.RenderSettingsInEditor(g_Renderables.m_HeadPosition);
 	g_Renderables.m_BackpackModel.RenderSettingsInEditor(g_Renderables.m_BackpackModelPosition);
 	g_Renderables.m_StormTrooperModel.RenderSettingsInEditor(g_Renderables.m_StormTrooperPosition);
-	g_Renderables.m_RoyaleDogModel.RenderSettingsInEditor(g_Renderables.m_RoyalDogPosition);
+	//g_Renderables.m_RoyaleDogModel.RenderSettingsInEditor(g_Renderables.m_RoyalDogPosition);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 	ImGui::Begin("Viewport");
