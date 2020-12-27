@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <glm/glm.hpp>
-#include "../LearnShader.h"
+#include "Shader.h"
 
 namespace CrescentEngine
 {
@@ -21,6 +21,6 @@ namespace CrescentEngine
 		unsigned int m_CubemapID;
 		unsigned int m_CubemapVertexArrayID;
 		unsigned int m_CubemapVertexBufferID;
-		LearnShader m_CubemapShader;
+		Shader m_CubemapShader;
 	};
 }

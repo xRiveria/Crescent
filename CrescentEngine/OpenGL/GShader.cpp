@@ -1,50 +1,50 @@
 #include "CrescentPCH.h"
-#include "Shader.h"
+#include "GShader.h"
 #include "OpenGLRenderer.h"
 #include "GL/glew.h"
 
-Shader::Shader(const std::string& filePath) : m_FilePath(filePath), m_RendererID(0)
+GShader::GShader(const std::string& filePath) : m_FilePath(filePath), m_RendererID(0)
 {
     ShaderProgramSource source = ParseShader(filePath);
     m_RendererID = CreateShader(source.VertexSource, source.FragmentSource);
 }
 
-Shader::~Shader()
+GShader::~GShader()
 {
     glDeleteProgram(m_RendererID);
 }
 
-void Shader::Bind() const
+void GShader::Bind() const
 {
     glUseProgram(m_RendererID);
 }
 
-void Shader::Unbind() const
+void GShader::Unbind() const
 {
     glUseProgram(0);
 }
 
-void Shader::SetUniform1i(const std::string& name, int value)
+void GShader::SetUniform1i(const std::string& name, int value)
 {
     glUniform1i(GetUniformLocation(name), value);
 }
 
-void Shader::SetUniform1f(const std::string& name, float value)
+void GShader::SetUniform1f(const std::string& name, float value)
 {
     glUniform1f(GetUniformLocation(name), value);
 }
 
-void Shader::SetUniform4f(const std::string& name, float v0, float v1, float v2, float v3)
+void GShader::SetUniform4f(const std::string& name, float v0, float v1, float v2, float v3)
 {
     glUniform4f(GetUniformLocation(name), v0, v1, v2, v3);
 }
 
-void Shader::SetUniformMat4f(const std::string& name, const glm::mat4& matrix)
+void GShader::SetUniformMat4f(const std::string& name, const glm::mat4& matrix)
 {
     glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, &matrix[0][0]);
 }
 
-int Shader::GetUniformLocation(const std::string& name)
+int GShader::GetUniformLocation(const std::string& name)
 {
     if (m_UniformLocationCache.find(name) != m_UniformLocationCache.end())
     {
@@ -60,7 +60,7 @@ int Shader::GetUniformLocation(const std::string& name)
     return location;
 }
 
-ShaderProgramSource Shader::ParseShader(const std::string& filePath)
+ShaderProgramSource GShader::ParseShader(const std::string& filePath)
 {
     std::ifstream stream(filePath);
 
@@ -95,7 +95,7 @@ ShaderProgramSource Shader::ParseShader(const std::string& filePath)
     return { ss[0].str(), ss[1].str() };
 }
 
-unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
+unsigned int GShader::CompileShader(unsigned int type, const std::string& source)
 {
     unsigned int id = glCreateShader(type);
     const char* src = source.c_str();
@@ -119,7 +119,7 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
     return id;
 }
 
-unsigned int Shader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
+unsigned int GShader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
 {
     unsigned int program = glCreateProgram();
     unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);

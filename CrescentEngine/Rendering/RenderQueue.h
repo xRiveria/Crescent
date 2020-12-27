@@ -12,7 +12,7 @@ namespace CrescentEngine
 		void SubmitToRenderQueue(const PrimitiveShape& primitiveShape);
 
 		//Rendering
-		void RenderAllQueueItems(LearnShader& shader);
+		void RenderAllQueueItems(Shader& shader);
 		void RenderAllQueueEditorSettings();
 
 	private:

@@ -9,7 +9,7 @@ namespace CrescentEngine
 		m_Primitives.push_back(selectedPrimitive);
 	}
 
-	void RenderQueue::RenderAllQueueItems(LearnShader& shader)
+	void RenderQueue::RenderAllQueueItems(Shader& shader)
 	{
 		for(Primitive& primitive : m_Primitives)
 		{

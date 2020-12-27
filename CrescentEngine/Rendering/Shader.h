@@ -4,11 +4,11 @@
 
 namespace CrescentEngine
 {
-	class LearnShader
+	class Shader
 	{
 	public:
-		LearnShader() {}
-		LearnShader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+		Shader() {}
+		Shader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
 		void CreateShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
 		void UseShader();
 		void UnbindShader();

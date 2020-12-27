@@ -40,7 +40,7 @@ namespace CrescentEngine
 		return std::nullopt; //Return empty string if no file is selected. It means the dialog has been cancelled.
 	}
 
-	void Model::DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, LearnShader& shader, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation)
+	void Model::DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, Shader& shader, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation)
 	{
 		shader.UseShader();
 		m_ModelMatrix = glm::mat4(1.0f);
@@ -69,7 +69,7 @@ namespace CrescentEngine
 		}
 	}
 
-	void Model::DrawStaticModel(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation, const glm::vec3& modelRotation) 
+	void Model::DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation, const glm::vec3& modelRotation) 
 	{
 		shader.UseShader();
 		m_ModelMatrix = glm::mat4(1.0f);

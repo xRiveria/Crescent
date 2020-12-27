@@ -82,12 +82,12 @@ struct Renderables  //Currently our base scene objects.
 
 struct Shaders
 {
-	CrescentEngine::LearnShader m_StaticModelShader;
-	CrescentEngine::LearnShader m_PointLightObjectShader;
-	CrescentEngine::LearnShader m_OutlineObjectShader;
-	CrescentEngine::LearnShader m_TransparentQuadShader;
-	CrescentEngine::LearnShader m_DepthShader;
-	CrescentEngine::LearnShader m_AnimationShader;
+	CrescentEngine::Shader m_StaticModelShader;
+	CrescentEngine::Shader m_PointLightObjectShader;
+	CrescentEngine::Shader m_OutlineObjectShader;
+	CrescentEngine::Shader m_TransparentQuadShader;
+	CrescentEngine::Shader m_DepthShader;
+	CrescentEngine::Shader m_AnimationShader;
 };
 
 struct Textures
@@ -106,7 +106,7 @@ Shaders g_Shaders; //Creates our shaders.
 Textures g_Textures; //Creates our textures.
 
 //Input Callbacks
-void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap);
+void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap);
 void DrawEditorContent();
 void ProcessKeyboardEvents(GLFWwindow* window);
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight);
@@ -251,7 +251,7 @@ int main(int argc, int argv[])
 	return 0;
 }
 
-void RenderScene(CrescentEngine::LearnShader& shader, bool renderShadowMap)
+void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap)
 {
 	//View/Projection Matrix
 	glm::mat4 viewMatrix = g_CoreSystems.m_Camera.GetViewMatrix();

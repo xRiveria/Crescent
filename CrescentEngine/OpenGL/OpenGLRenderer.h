@@ -2,7 +2,7 @@
 #include "GL/glew.h"
 #include "IndexBuffer.h"
 #include "VertexArray.h"
-#include "Shader.h"
+#include "../OpenGL/GShader.h"
 
 struct GraphicalInformation
 {
@@ -25,7 +25,7 @@ public:
     OpenGLRenderer();
     inline GraphicalInformation RetrieveGraphicalInformation() const { return systemInformation; }
     void Clear() const;
-    void Draw(const VertexArray& vertexArray, const IndexBuffer& indexBuffer, const Shader& shader);
+    void Draw(const VertexArray& vertexArray, const IndexBuffer& indexBuffer, const GShader& shader);
 private:
     static GraphicalInformation systemInformation;
 };

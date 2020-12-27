@@ -8,11 +8,11 @@ struct ShaderProgramSource
 	std::string FragmentSource;
 };
 
-class Shader
+class GShader
 {
 public:
-	Shader(const std::string& filePath);
-	~Shader();
+	GShader(const std::string& filePath);
+	~GShader();
 
 	void Bind() const;
 	void Unbind() const;

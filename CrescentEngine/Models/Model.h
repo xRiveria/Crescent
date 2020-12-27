@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include "Mesh.h"
-#include "../LearnShader.h"
+#include "../Rendering/Shader.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -28,10 +28,10 @@ namespace CrescentEngine
 		void LoadModel(const std::string& modelName, const std::string& filePath, Window& window);
 		
 		//Draw Animated Model
-		void DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, LearnShader& shader, unsigned int shadowMapTextureID, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
+		void DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, Shader& shader, unsigned int shadowMapTextureID, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
 		
 		//Draw Static Model
-		void DrawStaticModel(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f }, const glm::vec3& modelRotation = { 0.0f, 0.0f, 0.0f });
+		void DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f }, const glm::vec3& modelRotation = { 0.0f, 0.0f, 0.0f });
 				
 		float RetrieveAnimationTime() const { return m_AnimationTime; }
 

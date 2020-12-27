@@ -1,16 +1,16 @@
 #include "CrescentPCH.h"
-#include "LearnShader.h"
+#include "Shader.h"
 #include "GL/glew.h"
 #include <glm/gtc/type_ptr.hpp>
 
 namespace CrescentEngine
 {
-	LearnShader::LearnShader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath)
+	Shader::Shader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath)
 	{
 		CreateShaders(vertexShaderPath, fragmentShaderPath);
 	}
 
-	void LearnShader::CreateShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath)
+	void Shader::CreateShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath)
 	{
 		//Retrieve the vertex/fragment source code form filepath.
 		std::string vertexCode;
@@ -71,55 +71,55 @@ namespace CrescentEngine
 		glDeleteShader(fragment);
 	}
 
-	void LearnShader::UseShader()
+	void Shader::UseShader()
 	{
 		glUseProgram(m_ShaderID);
 	}
 
-	void LearnShader::UnbindShader()
+	void Shader::UnbindShader()
 	{
 		glUseProgram(0);
 	}
 
-	void LearnShader::DeleteShader()
+	void Shader::DeleteShader()
 	{
 		glDeleteProgram(m_ShaderID);
 	}
 
-	void LearnShader::SetUniformFloat(const std::string& name, float value) const
+	void Shader::SetUniformFloat(const std::string& name, float value) const
 	{
 		unsigned int uniformLocation = glGetUniformLocation(m_ShaderID, name.c_str());
 		glUniform1f(uniformLocation, value);
 	}
 
-	void LearnShader::SetUniformInteger(const std::string& name, int value) const
+	void Shader::SetUniformInteger(const std::string& name, int value) const
 	{
 		glUniform1i(glGetUniformLocation(m_ShaderID, name.c_str()), value);
 	}
 
-	void LearnShader::SetUniformBool(const std::string& name, bool value) const
+	void Shader::SetUniformBool(const std::string& name, bool value) const
 	{
 		glUniform1i(glGetUniformLocation(m_ShaderID, name.c_str()), (int)value);
 	}
 
-	void LearnShader::SetUniformVector3(const std::string& name, const glm::vec3& value)
+	void Shader::SetUniformVector3(const std::string& name, const glm::vec3& value)
 	{
 		unsigned int uniformLocation = glGetUniformLocation(m_ShaderID, name.c_str());
 		glUniform3fv(uniformLocation, 1, glm::value_ptr(value));
 	}
 
-	void LearnShader::SetUniformMat4(const std::string& name, const glm::mat4& value)
+	void Shader::SetUniformMat4(const std::string& name, const glm::mat4& value)
 	{
 		glUniformMatrix4fv(glGetUniformLocation(m_ShaderID, name.c_str()), 1, GL_FALSE, &value[0][0]);
 	}
 
-	void LearnShader::SetUniformVectorMat4(const std::string& identifier, const std::vector<glm::mat4>& value)
+	void Shader::SetUniformVectorMat4(const std::string& identifier, const std::vector<glm::mat4>& value)
 	{
 		auto location = glGetUniformLocation(m_ShaderID, identifier.c_str());
 		glUniformMatrix4fv(location, value.size(), GL_FALSE, value_ptr(value[0]));
 	}
 
-	void LearnShader::CheckCompileErrors(unsigned int shader, std::string type)
+	void Shader::CheckCompileErrors(unsigned int shader, std::string type)
 	{
 		int success;
 		char infoLog[1024];

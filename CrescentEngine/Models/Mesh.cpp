@@ -13,7 +13,7 @@ namespace CrescentEngine
 		SetupMesh();
 	}
 
-	void Mesh::Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID)
+	void Mesh::Draw(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID)
 	{
 		//Bind appropriate textures.
 		unsigned int diffuseNr = 1;

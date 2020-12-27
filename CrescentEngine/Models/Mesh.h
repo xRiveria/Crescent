@@ -3,7 +3,7 @@
 #include "glm/glm.hpp"
 #include <string>
 #include <vector>
-#include "../LearnShader.h"
+#include "../Rendering/Shader.h"
 #include <algorithm>
 
 namespace CrescentEngine
@@ -58,7 +58,7 @@ namespace CrescentEngine
 	{
 	public:
 		Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
-		void Draw(LearnShader& shader, bool renderShadowMap, unsigned int shadowMapTextureID);
+		void Draw(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID);
 
 	public:
 		std::vector<Vertex> vertices;

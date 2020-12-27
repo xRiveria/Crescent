@@ -31,7 +31,7 @@ void OpenGLRenderer::Clear() const
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void OpenGLRenderer::Draw(const VertexArray& vertexArray, const IndexBuffer& indexBuffer, const Shader& shader)
+void OpenGLRenderer::Draw(const VertexArray& vertexArray, const IndexBuffer& indexBuffer, const GShader& shader)
 {
     shader.Bind();
     vertexArray.Bind();

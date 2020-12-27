@@ -1,6 +1,6 @@
 #pragma once
 #include <GL/glew.h>
-#include "../LearnShader.h"
+#include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -22,7 +22,7 @@ namespace CrescentEngine
 
 		void SetupPrimitiveBuffers(const PrimitiveShape& primitiveShape);
 		void BindPrimitiveVertexArray() const;
-		void DrawPrimitive(LearnShader& shader);
+		void DrawPrimitive(Shader& shader);
 		void DrawEditorSettings();
 
 	private:
@@ -45,8 +45,8 @@ namespace CrescentEngine
 		void SetupTransparentQuadBuffers();
 		void BindTransparentQuadVertexArray() const { glBindVertexArray(m_VertexArrayID); }
 
-		void DrawTransparentQuad(LearnShader& shader, glm::mat4& modelMatrix);
-		void DrawTransparentQuad(LearnShader& shader, glm::mat4& modelMatrix, Texture2D& texture);	
+		void DrawTransparentQuad(Shader& shader, glm::mat4& modelMatrix);
+		void DrawTransparentQuad(Shader& shader, glm::mat4& modelMatrix, Texture2D& texture);	
 
 	private:
 		unsigned int m_VertexArrayID = 0;

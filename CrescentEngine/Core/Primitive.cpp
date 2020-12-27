@@ -117,7 +117,7 @@ namespace CrescentEngine
         glBindVertexArray(m_VertexArrayID);
     }
 
-    void Primitive::DrawPrimitive(LearnShader& shader)
+    void Primitive::DrawPrimitive(Shader& shader)
     {
         shader.UseShader();
         glBindVertexArray(m_VertexArrayID);
@@ -214,7 +214,7 @@ namespace CrescentEngine
         glBindVertexArray(0);
     }
 
-    void TransparentQuad::DrawTransparentQuad(LearnShader& shader, glm::mat4& modelMatrix)
+    void TransparentQuad::DrawTransparentQuad(Shader& shader, glm::mat4& modelMatrix)
     {
         shader.UseShader();
         glBindVertexArray(m_VertexArrayID);
@@ -223,7 +223,7 @@ namespace CrescentEngine
         glBindVertexArray(0);
     }
 
-    void TransparentQuad::DrawTransparentQuad(LearnShader& shader, glm::mat4& modelMatrix, Texture2D& texture)
+    void TransparentQuad::DrawTransparentQuad(Shader& shader, glm::mat4& modelMatrix, Texture2D& texture)
     {
         shader.UseShader();
         glBindVertexArray(m_VertexArrayID);
