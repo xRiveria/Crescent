@@ -16,6 +16,28 @@ namespace CrescentEngine
 		ResetFramebuffer();
 	}
 
+	void Framebuffer::ResetMSAAFramebuffer()
+	{
+		glGenFramebuffers(1, &m_MSAAFramebufferID);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_MSAAFramebufferID);
+
+		//Create a multisampled color attachment texture.
+		glGenTextures(1, &m_MSAAColorAttachmentID);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_MSAAColorAttachmentID);
+
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, m_MultisampleCount, GL_RGBA32F, m_FramebufferWidth, m_FramebufferHeight, GL_TRUE);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, m_MSAAColorAttachmentID, 0);
+
+		glGenRenderbuffers(1, &m_MSAARenderbufferStorage);
+		glBindRenderbuffer(GL_RENDERBUFFER, m_MSAARenderbufferStorage);
+		glRenderbufferStorageMultisample(GL_RENDERBUFFER, m_MultisampleCount, GL_DEPTH24_STENCIL8, m_FramebufferWidth, m_FramebufferHeight);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_MSAARenderbufferStorage);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
 	void Framebuffer::ResetFramebuffer(bool multisamplingEnabled)
 	{
 		ResetMSAAFramebuffer();
@@ -96,7 +118,7 @@ namespace CrescentEngine
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	void Framebuffer::ResizeFramebuffer(int newWindowWidth, int newWindowHeight, bool multisamplingEnabled)
+	void Framebuffer::ResizeFramebuffer(int newWindowWidth, int newWindowHeight, bool multisamplingEnabled, int multisamplingCount)
 	{
 		if (newWindowWidth == 0 || newWindowHeight == 0)
 		{
@@ -107,6 +129,7 @@ namespace CrescentEngine
 		m_FramebufferWidth = newWindowWidth;
 		m_FramebufferHeight = newWindowHeight;
 
+		m_MultisampleCount = multisamplingCount;
 		ResetFramebuffer(multisamplingEnabled);	
 	}
 
@@ -115,28 +138,6 @@ namespace CrescentEngine
 		glDeleteFramebuffers(1, &m_FramebufferID);
 		glDeleteTextures(2, m_ColorAttachmentIDs);
 		glDeleteTextures(1, &m_DepthAttachmentID);
-	}
-
-	void Framebuffer::ResetMSAAFramebuffer()
-	{
-		glGenFramebuffers(1, &m_MSAAFramebufferID);
-		glBindFramebuffer(GL_FRAMEBUFFER, m_MSAAFramebufferID);
-
-		//Create a multisampled color attachment texture.
-		glGenTextures(1, &m_MSAAColorAttachmentID);
-		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_MSAAColorAttachmentID);
-	
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 16, GL_RGB, m_FramebufferWidth, m_FramebufferHeight, GL_TRUE);
-		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, m_MSAAColorAttachmentID, 0);
-
-		glGenRenderbuffers(1, &m_MSAARenderbufferStorage);
-		glBindRenderbuffer(GL_RENDERBUFFER, m_MSAARenderbufferStorage);
-		glRenderbufferStorageMultisample(GL_RENDERBUFFER, 16, GL_DEPTH24_STENCIL8, m_FramebufferWidth, m_FramebufferHeight);
-		glBindRenderbuffer(GL_RENDERBUFFER, 0);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_MSAARenderbufferStorage);
-	
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
 	void DepthmapFramebuffer::SetupDepthMapFramebuffer()

@@ -14,7 +14,7 @@ namespace CrescentEngine
 		void ResetFramebuffer(bool multisamplingEnabled = true);
 		void BindFramebuffer();
 		void UnbindFramebuffer();
-		void ResizeFramebuffer(int newWindowWidth, int newWindowHeight, bool multisamplingEnabled);
+		void ResizeFramebuffer(int newWindowWidth, int newWindowHeight, bool multisamplingEnabled = true, int multisamplingCount = 16);
 
 		int RetrieveFramebufferWidth() const { return m_FramebufferWidth; }
 		int RetrieveFramebufferHeight() const { return m_FramebufferHeight; }
@@ -41,6 +41,7 @@ namespace CrescentEngine
 		unsigned int m_ColorAttachmentIDs[2];
 		unsigned int m_Attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
 		unsigned int m_DepthAttachmentID = 0;
+		int m_MultisampleCount = 16;
 
 		int m_FramebufferWidth = 0;
 		int m_FramebufferHeight = 0;

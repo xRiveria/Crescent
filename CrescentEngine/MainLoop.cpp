@@ -38,6 +38,7 @@ struct RenderingComponents
 	float exposure = 0.0f;
 	bool m_BloomEnabled = true;
 	bool m_MultisamplingEnabled = true;
+	int m_MultisampleCount = 16;
 };
 
 struct Renderables  //Currently our base scene objects.
@@ -180,7 +181,7 @@ int main(int argc, int argv[])
 		//Check Projection Matrix
 		if (g_CoreSystems.m_Editor.RetrieveViewportWidth() > 0.0f && g_CoreSystems.m_Editor.RetrieveViewportHeight() > 0.0f && (g_RenderingComponents.m_Framebuffer.RetrieveFramebufferWidth() != g_CoreSystems.m_Editor.RetrieveViewportWidth() || g_RenderingComponents.m_Framebuffer.RetrieveFramebufferHeight() != g_CoreSystems.m_Editor.RetrieveViewportHeight()))
 		{
-			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight(), g_RenderingComponents.m_MultisamplingEnabled);	
+			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight(), g_RenderingComponents.m_MultisamplingEnabled, g_RenderingComponents.m_MultisampleCount);
 		}
 		projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
 
@@ -427,12 +428,20 @@ void DrawEditorContent()
 		if (g_RenderingComponents.m_MultisamplingEnabled)
 		{
 			glEnable(GL_MULTISAMPLE);
-			g_RenderingComponents.m_Framebuffer.ResetFramebuffer(true);
+			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(true, g_RenderingComponents.m_MultisampleCount);
 		}
 		else
 		{
 			glDisable(GL_MULTISAMPLE);
-			g_RenderingComponents.m_Framebuffer.ResetFramebuffer(false);
+			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(false, g_RenderingComponents.m_MultisampleCount);
+		}
+	}
+
+	if (ImGui::DragInt("Sample Count", &g_RenderingComponents.m_MultisampleCount, 0.1f, 0, 16))
+	{
+		if (g_RenderingComponents.m_MultisamplingEnabled)
+		{
+			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(true, g_RenderingComponents.m_MultisampleCount);
 		}
 	}
 
@@ -480,7 +489,6 @@ void DrawEditorContent()
 	ImGui::Image((void*)g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), ImVec2{ 200.0f, 200.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 	ImGui::Image((void*)g_RenderingComponents.m_Framebuffer.m_PingPongColorAttachmentIDs[0], ImVec2{ 200.0f, 200.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 	ImGui::Image((void*)g_RenderingComponents.m_Framebuffer.m_PingPongColorAttachmentIDs[1], ImVec2{ 200.0f, 200.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
-
 
 	ImGui::End();
 

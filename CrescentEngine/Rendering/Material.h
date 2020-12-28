@@ -8,10 +8,10 @@
 namespace CrescentEngine
 {
 	/* 
-	A material object represents all relevant render states required for rendering a mesh. 
-	This includes shader parameters, texture samplers and GL states.
-	A material object is required for rendering any scene node. 
-	The renderer itself holds a list of common material defaults/templates for deriving or creating new materials. 
+		A material object represents all relevant render states required for rendering a mesh. 
+		This includes shader parameters, texture samplers and GL states.
+		A material object is required for rendering any scene node. 
+		The renderer itself holds a list of common material defaults/templates for deriving or creating new materials. 
 	*/
 	
 	enum Shader_Type
