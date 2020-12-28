@@ -1,5 +1,6 @@
 #version 330 core
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;
 
 struct SpotLight
 {
@@ -48,6 +49,7 @@ uniform bool blinn = true;
 uniform bool softShadows = true;
 uniform float pcfSampleAmount = 15.0f;
 uniform bool selfCreatedPrimitive = false;
+uniform bool bloomEnabled = true;
 
 uniform sampler2D shadowMap;
 
@@ -63,6 +65,7 @@ in vec3 TangentFragPosition;
 uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_specular1;
 uniform sampler2D texture_normal1;
+uniform sampler2D bloomBlur;
 
 uniform float exposureAmount;
 uniform sampler2D hdrBuffer;
@@ -155,6 +158,12 @@ vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 fragmentPosition, v
     vec3 hdrColor = texture(hdrBuffer, TexCoords).rgb;
     vec3 mapped = vec3(1.0) - exp(-hdrColor * exposureAmount);
 
+    if (bloomEnabled)
+    {
+        vec3 bloomColor = texture(bloomBlur, TexCoords).rgb;
+        hdrColor += bloomColor; //Additive Blending
+    }
+
     //Calculate Shadow
     float shadow = ShadowCalculation(FragPosLightSpace, normal);
 
@@ -192,6 +201,11 @@ vec3 CalculateDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDir
     //Exposure
     vec3 hdrColor = texture(hdrBuffer, TexCoords).rgb;
     vec3 mapped = vec3(1.0) - exp(-hdrColor * exposureAmount);
+    if (bloomEnabled)
+    { 
+        vec3 bloomColor = texture(bloomBlur, TexCoords).rgb;
+        hdrColor += bloomColor; //Additive Blending
+    }
 
     return (mapped + ambient + diffuse + specular);
 }
@@ -212,6 +226,18 @@ void main()
         //Phase 2: Point Light
         result += CalculatePointLight(pointLight, normal, FragPosition, viewDirection);
 
+        //Check whether fragment output is higher than threshold. If so, output as brightness color.
+        float brightness = dot(FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        if (brightness > 1.0)
+        {
+            BrightColor = vec4(result, 1.0f);
+        }
+        else
+        {
+            BrightColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+
+
         FragColor = vec4(result, 1.0f);
     }
     else
@@ -228,6 +254,18 @@ void main()
 
         //Phase 2: Point Light
         result += CalculatePointLight(pointLight, normal, TangentFragPosition, viewDirection);
+
+        //Check whether fragment output is higher than threshold. If so, output as brightness color.
+        float brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
+        if (brightness > 1.0)
+        {
+            BrightColor = vec4(result, 1.0f);
+        }
+        else
+        {
+            BrightColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+
 
         FragColor = vec4(result, 1.0f);
     }

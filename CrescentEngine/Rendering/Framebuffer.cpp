@@ -27,13 +27,21 @@ namespace CrescentEngine
 		glBindFramebuffer(GL_FRAMEBUFFER, m_FramebufferID);
 
 		//Setup Color Buffer.
-		glGenTextures(1, &m_ColorAttachmentID);
-		glBindTexture(GL_TEXTURE_2D, m_ColorAttachmentID);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glGenTextures(2, m_ColorAttachmentIDs);
 
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorAttachmentID, 0);
+		for (unsigned int i = 0; i < 2; i++)
+		{
+			glBindTexture(GL_TEXTURE_2D, m_ColorAttachmentIDs[i]);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, m_ColorAttachmentIDs[i], 0);
+		}
+
+		glDrawBuffers(2, m_Attachments);
 
 		//Setup Depth Buffer.
 		glGenTextures(1, &m_DepthAttachmentID);
@@ -58,6 +66,21 @@ namespace CrescentEngine
 		{
 			CrescentError("Framebuffer creation failed.");
 		}
+
+		glGenFramebuffers(2, m_PingPongFramebuffers);
+		glGenTextures(2, m_PingPongColorAttachmentIDs);
+		for (unsigned int i = 0; i < 2; i++)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, m_PingPongFramebuffers[i]);
+			glBindTexture(GL_TEXTURE_2D, m_PingPongColorAttachmentIDs[i]);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_FLOAT, nullptr);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_PingPongColorAttachmentIDs[i], 0);
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
 	void Framebuffer::BindFramebuffer()
@@ -68,6 +91,7 @@ namespace CrescentEngine
 
 	void Framebuffer::UnbindFramebuffer()
 	{
+		glDrawBuffers(1, &m_Attachments[0]);
 		//Once bound, all operations will be done to bound framebuffer. To resume all operations on the main window, we set the default framebuffer active again at Index 0.
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
@@ -89,7 +113,7 @@ namespace CrescentEngine
 	void Framebuffer::DeleteFramebuffer()
 	{
 		glDeleteFramebuffers(1, &m_FramebufferID);
-		glDeleteTextures(1, &m_ColorAttachmentID);
+		glDeleteTextures(2, m_ColorAttachmentIDs);
 		glDeleteTextures(1, &m_DepthAttachmentID);
 	}
 

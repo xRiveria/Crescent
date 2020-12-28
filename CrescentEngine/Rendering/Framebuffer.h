@@ -19,7 +19,12 @@ namespace CrescentEngine
 		int RetrieveFramebufferWidth() const { return m_FramebufferWidth; }
 		int RetrieveFramebufferHeight() const { return m_FramebufferHeight; }
 		unsigned int RetrieveFramebuffer() const { return m_FramebufferID; }
-		unsigned int RetrieveColorAttachment() const { return m_ColorAttachmentID; }
+		unsigned int RetrieveColorAttachment() const { return m_ColorAttachmentIDs[0]; }
+		unsigned int RetrieveBloomColorAttachment() const { return m_ColorAttachmentIDs[1]; }
+
+	public:
+		unsigned int m_PingPongFramebuffers[2];
+		unsigned int m_PingPongColorAttachmentIDs[2];
 
 	private:
 		void DeleteFramebuffer();
@@ -28,7 +33,8 @@ namespace CrescentEngine
 		unsigned int m_FramebufferID = 0;
 		//Attachments are memory locations that can act as a buffer for the framebuffer, think of it as an image.
 		//When creating attachments, we have two options to take: textures or renderbuffer objects.
-		unsigned int m_ColorAttachmentID = 0;
+		unsigned int m_ColorAttachmentIDs[2];
+		unsigned int m_Attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
 		unsigned int m_DepthAttachmentID = 0;
 
 		int m_FramebufferWidth = 0;

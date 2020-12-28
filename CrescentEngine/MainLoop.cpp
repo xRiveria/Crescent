@@ -36,6 +36,7 @@ struct RenderingComponents
 	bool m_SoftOrHardShadows[2] = { true, false }; //[0] for Soft, [1] for Hard.
 	bool m_WireframeRendering = false;
 	float exposure = 0.0f;
+	bool m_BloomEnabled = true;
 };
 
 struct Renderables  //Currently our base scene objects.
@@ -88,6 +89,7 @@ struct Shaders
 	CrescentEngine::Shader m_TransparentQuadShader;
 	CrescentEngine::Shader m_DepthShader;
 	CrescentEngine::Shader m_AnimationShader;
+	CrescentEngine::Shader m_GaussianBlurShader;
 };
 
 struct Textures
@@ -151,6 +153,7 @@ int main(int argc, int argv[])
 	g_Shaders.m_TransparentQuadShader.CreateShaders("Resources/Shaders/TransparentVertex.shader", "Resources/Shaders/TransparentFragment.shader");
 	g_Shaders.m_DepthShader.CreateShaders("Resources/Shaders/DepthVertex.shader", "Resources/Shaders/DepthFragment.shader");
 	g_Shaders.m_AnimationShader.CreateShaders("Resources/Shaders/AnimationVertex.shader", "Resources/Shaders/AnimationFragment.shader");
+	g_Shaders.m_GaussianBlurShader.CreateShaders("Resources/Shaders/BlurVertex.shader", "Resources/Shaders/BlurFragment.shader");
 
 	//Objects
 	g_Renderables.m_Plane.SetupPrimitiveBuffers(CrescentEngine::PrimitiveShape::PlanePrimitive);
@@ -207,6 +210,22 @@ int main(int argc, int argv[])
 		g_Shaders.m_DepthShader.UnbindShader();
 		g_RenderingComponents.m_DepthMapFramebuffer.UnbindDepthFramebuffer();
 
+		/* Blur Filter
+		bool horizontal = true, first_iteration = true;
+		int amount = 10;
+		g_Shaders.m_GaussianBlurShader.UseShader();
+		for (unsigned int i = 0; i < amount; i++)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, g_RenderingComponents.m_Framebuffer.m_PingPongFramebuffers[horizontal]);
+			g_Shaders.m_GaussianBlurShader.SetUniformInteger("image", 0);
+			g_Shaders.m_GaussianBlurShader.SetUniformInteger("horizontal", horizontal);
+			glBindTexture(GL_TEXTURE_2D, first_iteration ? g_RenderingComponents.m_Framebuffer.RetrieveBloomColorAttachment() : g_RenderingComponents.m_Framebuffer.m_PingPongColorAttachmentIDs[!horizontal]);
+			RenderScene(g_Shaders.m_StaticModelShader, false);
+			horizontal = !horizontal;
+			if (first_iteration) { first_iteration = false; }
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
+
 		//Bind Our Editor Window Framebuffer
 		g_RenderingComponents.m_Framebuffer.BindFramebuffer();
 
@@ -218,6 +237,9 @@ int main(int argc, int argv[])
 		g_Shaders.m_StaticModelShader.SetUniformInteger("shadowMap", 3);
 		g_Shaders.m_StaticModelShader.SetUniformMat4("lightSpaceMatrix", lightSpaceMatrix);
 		g_Shaders.m_StaticModelShader.SetUniformVector3("lightPos", g_Renderables.m_PointLight.pointLightPosition);
+		g_Shaders.m_StaticModelShader.SetUniformBool("bloomEnabled", g_RenderingComponents.m_BloomEnabled);
+		g_Shaders.m_StaticModelShader.SetUniformInteger("bloomBlur", 1);
+
 		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID());
 
@@ -225,6 +247,8 @@ int main(int argc, int argv[])
 		g_Shaders.m_StaticModelShader.UseShader();
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, g_RenderingComponents.m_Framebuffer.RetrieveColorAttachment());
+		//glActiveTexture(GL_TEXTURE1);
+		//glBindTexture(GL_TEXTURE_2D, g_RenderingComponents.m_Framebuffer.m_PingPongColorAttachmentIDs[!horizontal]);
 		g_Shaders.m_StaticModelShader.SetUniformFloat("exposureAmount", g_RenderingComponents.exposure);
 		g_Shaders.m_StaticModelShader.SetUniformInteger("hdrBuffer", 0);
 		g_Shaders.m_StaticModelShader.UnbindShader();
@@ -371,6 +395,7 @@ void DrawEditorContent()
 
 	ImGui::Begin("Global Settings");
 	ImGui::DragFloat("Exposure", &g_RenderingComponents.exposure, 0.05, 0.0f, 1.0f);
+	ImGui::Checkbox("Bloom", &g_RenderingComponents.m_BloomEnabled);
 	if (ImGui::Checkbox("Wireframe Rendering", &g_RenderingComponents.m_WireframeRendering))
 	{
 		g_CoreSystems.m_Renderer.ToggleWireframeRendering(g_RenderingComponents.m_WireframeRendering);
@@ -418,6 +443,9 @@ void DrawEditorContent()
 	}
 
 	ImGui::Image((void*)g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), ImVec2{ 200.0f, 200.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+	ImGui::Image((void*)g_RenderingComponents.m_Framebuffer.m_PingPongColorAttachmentIDs[0], ImVec2{ 200.0f, 200.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+	ImGui::Image((void*)g_RenderingComponents.m_Framebuffer.m_PingPongColorAttachmentIDs[1], ImVec2{ 200.0f, 200.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
 
 	ImGui::End();
 

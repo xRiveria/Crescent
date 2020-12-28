@@ -641,6 +641,8 @@
   <ItemGroup>
     <None Include="Resources\Shaders\AnimationFragment.shader" />
     <None Include="Resources\Shaders\AnimationVertex.shader" />
+    <None Include="Resources\Shaders\BlurFragment.shader" />
+    <None Include="Resources\Shaders\BlurVertex.shader" />
     <None Include="Resources\Shaders\CubemapFragment.shader" />
     <None Include="Resources\Shaders\CubemapVertex.shader" />
     <None Include="Resources\Shaders\DepthFragment.shader" />
