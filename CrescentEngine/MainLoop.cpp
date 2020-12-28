@@ -177,9 +177,9 @@ int main(int argc, int argv[])
 		//Check Projection Matrix
 		if (g_CoreSystems.m_Editor.RetrieveViewportWidth() > 0.0f && g_CoreSystems.m_Editor.RetrieveViewportHeight() > 0.0f && (g_RenderingComponents.m_Framebuffer.RetrieveFramebufferWidth() != g_CoreSystems.m_Editor.RetrieveViewportWidth() || g_RenderingComponents.m_Framebuffer.RetrieveFramebufferHeight() != g_CoreSystems.m_Editor.RetrieveViewportHeight()))
 		{
-			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
-			projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
+			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());	
 		}
+		projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
 
 		//Retrieve Delta Time
 		float currentFrame = g_CoreSystems.m_Window.RetrieveCurrentTime();
@@ -349,11 +349,10 @@ void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap)
 	g_Shaders.m_StaticModelShader.UseShader();
 	g_Shaders.m_StaticModelShader.SetUniformBool("selfCreatedPrimitive", true);
 	g_Renderables.m_Plane.DrawPrimitive(g_Shaders.m_StaticModelShader);
-	g_Shaders.m_StaticModelShader.SetUniformBool("selfCreatedPrimitive", false);
-	g_Shaders.m_StaticModelShader.UnbindShader();
-
 	//Our Queues
 	g_Renderables.m_RenderQueue.RenderAllQueueItems(shader);
+	g_Shaders.m_StaticModelShader.SetUniformBool("selfCreatedPrimitive", false);
+	g_Shaders.m_StaticModelShader.UnbindShader();
 
 	//Redstone Lamp Model
 	g_Shaders.m_PointLightObjectShader.UseShader();
