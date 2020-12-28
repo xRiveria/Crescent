@@ -11,10 +11,10 @@ namespace CrescentEngine
 		~Framebuffer();
 
 		void InitializeFramebuffer(int windowWidth, int windowHeight);
-		void ResetFramebuffer();
+		void ResetFramebuffer(bool multisamplingEnabled = true);
 		void BindFramebuffer();
 		void UnbindFramebuffer();
-		void ResizeFramebuffer(int newWindowWidth, int newWindowHeight);
+		void ResizeFramebuffer(int newWindowWidth, int newWindowHeight, bool multisamplingEnabled);
 
 		int RetrieveFramebufferWidth() const { return m_FramebufferWidth; }
 		int RetrieveFramebufferHeight() const { return m_FramebufferHeight; }
@@ -26,8 +26,13 @@ namespace CrescentEngine
 		unsigned int m_PingPongFramebuffers[2];
 		unsigned int m_PingPongColorAttachmentIDs[2];
 
+		unsigned int m_MSAAFramebufferID = 0;
+		unsigned int m_MSAAColorAttachmentID = 0;
+		unsigned int m_MSAARenderbufferStorage = 0;
+
 	private:
 		void DeleteFramebuffer();
+		void ResetMSAAFramebuffer();
 
 	private:
 		unsigned int m_FramebufferID = 0;

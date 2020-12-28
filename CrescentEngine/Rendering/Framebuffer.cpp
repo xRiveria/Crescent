@@ -16,8 +16,10 @@ namespace CrescentEngine
 		ResetFramebuffer();
 	}
 
-	void Framebuffer::ResetFramebuffer()
+	void Framebuffer::ResetFramebuffer(bool multisamplingEnabled)
 	{
+		ResetMSAAFramebuffer();
+
 		if (m_FramebufferID) //If a framebuffer exists.
 		{
 			DeleteFramebuffer();
@@ -27,21 +29,18 @@ namespace CrescentEngine
 		glBindFramebuffer(GL_FRAMEBUFFER, m_FramebufferID);
 
 		//Setup Color Buffer.
-		glGenTextures(2, m_ColorAttachmentIDs);
+		glGenTextures(1, m_ColorAttachmentIDs);
 
-		for (unsigned int i = 0; i < 2; i++)
-		{
-			glBindTexture(GL_TEXTURE_2D, m_ColorAttachmentIDs[i]);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glBindTexture(GL_TEXTURE_2D, m_ColorAttachmentIDs[0]);
 
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, m_ColorAttachmentIDs[i], 0);
-		}
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorAttachmentIDs[0], 0);
 
-		glDrawBuffers(2, m_Attachments);
+		//glDrawBuffers(2, m_Attachments);
 
 		//Setup Depth Buffer.
 		glGenTextures(1, &m_DepthAttachmentID);
@@ -60,7 +59,7 @@ namespace CrescentEngine
 		{
 			CrescentInfo("All requirements passed. Successfully created Framebuffer.")
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glActiveTexture(0);
+			glActiveTexture(GL_TEXTURE0);
 		}
 		else
 		{
@@ -72,6 +71,7 @@ namespace CrescentEngine
 		for (unsigned int i = 0; i < 2; i++)
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, m_PingPongFramebuffers[i]);
+
 			glBindTexture(GL_TEXTURE_2D, m_PingPongColorAttachmentIDs[i]);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_FLOAT, nullptr);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -91,12 +91,12 @@ namespace CrescentEngine
 
 	void Framebuffer::UnbindFramebuffer()
 	{
-		glDrawBuffers(1, &m_Attachments[0]);
+		//glDrawBuffers(1, &m_Attachments[0]);
 		//Once bound, all operations will be done to bound framebuffer. To resume all operations on the main window, we set the default framebuffer active again at Index 0.
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	void Framebuffer::ResizeFramebuffer(int newWindowWidth, int newWindowHeight)
+	void Framebuffer::ResizeFramebuffer(int newWindowWidth, int newWindowHeight, bool multisamplingEnabled)
 	{
 		if (newWindowWidth == 0 || newWindowHeight == 0)
 		{
@@ -107,7 +107,7 @@ namespace CrescentEngine
 		m_FramebufferWidth = newWindowWidth;
 		m_FramebufferHeight = newWindowHeight;
 
-		ResetFramebuffer();
+		ResetFramebuffer(multisamplingEnabled);	
 	}
 
 	void Framebuffer::DeleteFramebuffer()
@@ -115,6 +115,28 @@ namespace CrescentEngine
 		glDeleteFramebuffers(1, &m_FramebufferID);
 		glDeleteTextures(2, m_ColorAttachmentIDs);
 		glDeleteTextures(1, &m_DepthAttachmentID);
+	}
+
+	void Framebuffer::ResetMSAAFramebuffer()
+	{
+		glGenFramebuffers(1, &m_MSAAFramebufferID);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_MSAAFramebufferID);
+
+		//Create a multisampled color attachment texture.
+		glGenTextures(1, &m_MSAAColorAttachmentID);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_MSAAColorAttachmentID);
+	
+        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 16, GL_RGB, m_FramebufferWidth, m_FramebufferHeight, GL_TRUE);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, m_MSAAColorAttachmentID, 0);
+
+		glGenRenderbuffers(1, &m_MSAARenderbufferStorage);
+		glBindRenderbuffer(GL_RENDERBUFFER, m_MSAARenderbufferStorage);
+		glRenderbufferStorageMultisample(GL_RENDERBUFFER, 16, GL_DEPTH24_STENCIL8, m_FramebufferWidth, m_FramebufferHeight);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_MSAARenderbufferStorage);
+	
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
 	void DepthmapFramebuffer::SetupDepthMapFramebuffer()

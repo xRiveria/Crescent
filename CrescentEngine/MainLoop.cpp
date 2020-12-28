@@ -37,6 +37,7 @@ struct RenderingComponents
 	bool m_WireframeRendering = false;
 	float exposure = 0.0f;
 	bool m_BloomEnabled = true;
+	bool m_MultisamplingEnabled = true;
 };
 
 struct Renderables  //Currently our base scene objects.
@@ -120,6 +121,8 @@ glm::mat4 projectionMatrix = glm::mat4(1.0f);
 
 int main(int argc, int argv[])
 {
+	glfwWindowHint(GLFW_SAMPLES, 16);
+
 	//Initializes GLFW.
 	g_CoreSystems.m_Window.CreateNewWindow("Crescent Engine", 1280.0f, 720.0f);
 
@@ -177,7 +180,7 @@ int main(int argc, int argv[])
 		//Check Projection Matrix
 		if (g_CoreSystems.m_Editor.RetrieveViewportWidth() > 0.0f && g_CoreSystems.m_Editor.RetrieveViewportHeight() > 0.0f && (g_RenderingComponents.m_Framebuffer.RetrieveFramebufferWidth() != g_CoreSystems.m_Editor.RetrieveViewportWidth() || g_RenderingComponents.m_Framebuffer.RetrieveFramebufferHeight() != g_CoreSystems.m_Editor.RetrieveViewportHeight()))
 		{
-			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());	
+			g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight(), g_RenderingComponents.m_MultisamplingEnabled);	
 		}
 		projectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
 
@@ -226,12 +229,6 @@ int main(int argc, int argv[])
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
 
-		//Bind Our Editor Window Framebuffer
-		g_RenderingComponents.m_Framebuffer.BindFramebuffer();
-
-		glViewport(0, 0, g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
-		g_CoreSystems.m_Renderer.ClearBuffers();
-
 		//Draws our Scene
 		g_Shaders.m_StaticModelShader.UseShader();
 		g_Shaders.m_StaticModelShader.SetUniformInteger("shadowMap", 3);
@@ -261,9 +258,34 @@ int main(int argc, int argv[])
 		glBindTexture(GL_TEXTURE_2D, 0);
 		////////////////////////////////////////////////////////////////////////////////////
 
-		RenderScene(g_Shaders.m_StaticModelShader, false);
+		//Draw scene as normal using our multisampled buffers.
+		
+		if (g_RenderingComponents.m_MultisamplingEnabled)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, g_RenderingComponents.m_Framebuffer.m_MSAAFramebufferID);
+			glViewport(0, 0, g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
+			g_CoreSystems.m_Renderer.ClearBuffers();
 
+			RenderScene(g_Shaders.m_StaticModelShader, false);
+
+			g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
+
+			// Blit framebuffers.
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, g_RenderingComponents.m_Framebuffer.m_MSAAFramebufferID);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_RenderingComponents.m_Framebuffer.RetrieveFramebuffer());
+			glBlitFramebuffer(0, 0, g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight(), 0, 0, g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		}
+		else
+		{
+			g_RenderingComponents.m_Framebuffer.BindFramebuffer();
+
+			glViewport(0, 0, g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
+			g_CoreSystems.m_Renderer.ClearBuffers();
+			RenderScene(g_Shaders.m_StaticModelShader, false);
+		}
+		
 		g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
+		g_CoreSystems.m_Renderer.ClearBuffers();
 
 		//We reset the framebuffer back to normal here for our Editor.
 		DrawEditorContent();
@@ -398,6 +420,20 @@ void DrawEditorContent()
 	if (ImGui::Checkbox("Wireframe Rendering", &g_RenderingComponents.m_WireframeRendering))
 	{
 		g_CoreSystems.m_Renderer.ToggleWireframeRendering(g_RenderingComponents.m_WireframeRendering);
+	}
+
+	if (ImGui::Checkbox("Multisampling", &g_RenderingComponents.m_MultisamplingEnabled))
+	{
+		if (g_RenderingComponents.m_MultisamplingEnabled)
+		{
+			glEnable(GL_MULTISAMPLE);
+			g_RenderingComponents.m_Framebuffer.ResetFramebuffer(true);
+		}
+		else
+		{
+			glDisable(GL_MULTISAMPLE);
+			g_RenderingComponents.m_Framebuffer.ResetFramebuffer(false);
+		}
 	}
 
 	if (ImGui::Checkbox("Blinn Phong", &g_RenderingComponents.m_LightingModel[0]))
