@@ -11,6 +11,8 @@
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h> //Allows us to retrieve the Window handle.
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
 
 namespace CrescentEngine
 {
@@ -40,13 +42,12 @@ namespace CrescentEngine
 		return std::nullopt; //Return empty string if no file is selected. It means the dialog has been cancelled.
 	}
 
-	void Model::DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, Shader& shader, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation)
+	void Model::DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, Shader& shader, unsigned int shadowMapTextureID, const glm::vec3& modelScale, const glm::vec3& modelTranslation)
 	{
 		shader.UseShader();
-		m_ModelMatrix = glm::mat4(1.0f);
-		m_ModelMatrix = glm::translate(m_ModelMatrix, modelTranslation);
-		m_ModelMatrix = glm::scale(m_ModelMatrix, glm::vec3(modelScale, modelScale, modelScale));
-		shader.SetUniformMat4("model", m_ModelMatrix);
+		glm::mat4 rotation = glm::toMat4(glm::quat(m_ModelRotation));
+		glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), modelTranslation) * rotation * glm::scale(glm::mat4(1.0f), modelScale);
+		shader.SetUniformMat4("model", modelMatrix);
 
 		if (renderShadowMap)
 		{
@@ -69,15 +70,13 @@ namespace CrescentEngine
 		}
 	}
 
-	void Model::DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale, const glm::vec3& modelTranslation, const glm::vec3& modelRotation) 
+	void Model::DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const glm::vec3& modelScale, const glm::vec3& modelTranslation) 
 	{
 		shader.UseShader();
-		m_ModelMatrix = glm::mat4(1.0f);
-		m_ModelMatrix = glm::translate(m_ModelMatrix, modelTranslation);
-		m_ModelMatrix = glm::scale(m_ModelMatrix, glm::vec3(modelScale, modelScale, modelScale));
-		//m_ModelMatrix = glm::rotate(m_ModelMatrix, 90.0f, modelRotation);
+		glm::mat4 rotation = glm::toMat4(glm::quat(m_ModelRotation));
+		glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), modelTranslation) * rotation * glm::scale(glm::mat4(1.0f), modelScale);
 
-		shader.SetUniformMat4("model", m_ModelMatrix);
+		shader.SetUniformMat4("model", modelMatrix);
 
 		for (unsigned int i = 0; i < m_Meshes.size(); i++)
 		{
@@ -86,10 +85,12 @@ namespace CrescentEngine
 	}
 
 	//Implement UUIDs / Texture Choosing
-	void Model::RenderSettingsInEditor(glm::vec3& modelPosition) 
+	void Model::RenderSettingsInEditor(glm::vec3& modelPosition, glm::vec3& modelScale) 
 	{
 		ImGui::Begin(m_ModelName.c_str());
-		ImGui::DragFloat3((std::string("Position##Model") + ConvertUUIDToString()).c_str(), glm::value_ptr(modelPosition), 0.1f);
+		ImGui::DragFloat3((std::string("Position##Model") + ConvertUUIDToString()).c_str(), glm::value_ptr(modelPosition), 0.05f);
+		ImGui::DragFloat3((std::string("Rotation##") + ConvertUUIDToString()).c_str(), glm::value_ptr(m_ModelRotation), 0.05f);
+		ImGui::DragFloat3((std::string("Scale##") + ConvertUUIDToString()).c_str(), glm::value_ptr(modelScale), 0.05f);
 
 		if (ImGui::CollapsingHeader((std::string("Textures##" + m_ModelName).c_str())))
 		{

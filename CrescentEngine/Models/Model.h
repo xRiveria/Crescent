@@ -28,15 +28,15 @@ namespace CrescentEngine
 		void LoadModel(const std::string& modelName, const std::string& filePath, Window& window);
 		
 		//Draw Animated Model
-		void DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, Shader& shader, unsigned int shadowMapTextureID, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
+		void DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, Shader& shader, unsigned int shadowMapTextureID, const glm::vec3& modelScale, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
 		
 		//Draw Static Model
-		void DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const float& modelScale = 1.0f, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f }, const glm::vec3& modelRotation = { 0.0f, 0.0f, 0.0f });
+		void DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const glm::vec3& modelScale, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
 				
 		float RetrieveAnimationTime() const { return m_AnimationTime; }
 
-		void RenderSettingsInEditor(glm::vec3& modelPosition);
-		glm::mat4 RetrieveModelMatrix() const { return m_ModelMatrix; }
+		void RenderSettingsInEditor(glm::vec3& modelPosition, glm::vec3& modelScale);
+		//glm::mat4 RetrieveModelMatrix() const { return m_ModelMatrix; }
 
 	public:
 		std::vector<glm::mat4> m_BoneMatrices, m_BoneOffsets;
@@ -62,9 +62,8 @@ namespace CrescentEngine
 		std::vector<Texture> m_TexturesLoaded;
 		std::string m_FileDirectory;
 		int m_TemporaryUUID = 0;
-
-		//Matrixes
-		glm::mat4 m_ModelMatrix = glm::mat4(1.0f);
+		glm::vec3 m_ModelRotation = { 0.0f, 0.0f, 0.0f };
+		glm::vec3 m_ModelScale = { 1.0f, 1.0f, 1.0f };
 
 		//Skeletal Animations
 		int m_CurrentlyPlayingAnimation = 0;

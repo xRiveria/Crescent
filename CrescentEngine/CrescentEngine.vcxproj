@@ -185,6 +185,8 @@
     <ClCompile Include="Core\Editor.cpp" />
     <ClCompile Include="Core\Window.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
+    <ClCompile Include="Rendering\MaterialLibrary.cpp" />
+    <ClCompile Include="Rendering\Resources.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
     <ClCompile Include="MainLoop.cpp" />
     <ClCompile Include="Models\BoneMapper.cpp" />
@@ -254,6 +256,9 @@
     <ClInclude Include="Core\Editor.h" />
     <ClInclude Include="Core\Object.h" />
     <ClInclude Include="Core\Window.h" />
+    <ClInclude Include="Rendering\MaterialLibrary.h" />
+    <ClInclude Include="Rendering\RenderTarget.h" />
+    <ClInclude Include="Rendering\Resources.h" />
     <ClInclude Include="Rendering\Shader.h" />
     <ClInclude Include="Models\BoneMapper.h" />
     <ClInclude Include="Models\Mesh.h" />
@@ -274,6 +279,7 @@
     <ClInclude Include="Resources\Shaders\ReflectiveVertex.shader" />
     <ClInclude Include="Utilities\Camera.h" />
     <ClInclude Include="Rendering\Cubemap.h" />
+    <ClInclude Include="Utilities\StringID.h" />
     <ClInclude Include="Utilities\Timestep.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\ai_assert.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\anim.h" />

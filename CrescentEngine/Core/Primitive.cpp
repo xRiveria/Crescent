@@ -3,6 +3,8 @@
 #include <imgui/imgui.h>
 #include <sstream>
 #include <glm/gtc/type_ptr.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
 
 static int temporaryUUID = 0;
 
@@ -122,8 +124,9 @@ namespace CrescentEngine
         shader.UseShader();
         glBindVertexArray(m_VertexArrayID);
 
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
-        modelMatrix = glm::translate(modelMatrix, m_PrimitivePosition);
+        glm::mat4 rotation = glm::toMat4(glm::quat(m_PrimitiveRotation));
+        glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), m_PrimitivePosition) * rotation * glm::scale(glm::mat4(1.0f), m_PrimitiveScale);
+
         shader.SetUniformMat4("model", modelMatrix);
 
         switch (m_PrimitiveShape)
@@ -151,7 +154,9 @@ namespace CrescentEngine
     void Primitive::DrawEditorSettings()
     {
         ImGui::Begin((ConvertPrimitiveEnumToString() + ConvertUUIDToChar()).c_str());
-        ImGui::DragFloat3((std::string("Position##") + ConvertUUIDToChar()).c_str(), glm::value_ptr(m_PrimitivePosition));
+        ImGui::DragFloat3((std::string("Position##") + ConvertUUIDToChar()).c_str(), glm::value_ptr(m_PrimitivePosition), 0.05f);
+        ImGui::DragFloat3((std::string("Rotation##") + ConvertUUIDToChar()).c_str(), glm::value_ptr(m_PrimitiveRotation), 0.05f);
+        ImGui::DragFloat3((std::string("Scale##") + ConvertUUIDToChar()).c_str(), glm::value_ptr(m_PrimitiveScale));
         ImGui::End();
     }
 

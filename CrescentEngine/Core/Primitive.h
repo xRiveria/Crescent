@@ -36,6 +36,8 @@ namespace CrescentEngine
 		PrimitiveShape m_PrimitiveShape; 
 
 		glm::vec3 m_PrimitivePosition = { 0.0f, 0.0f, 0.0f };
+		glm::vec3 m_PrimitiveRotation = { 0.0f, 0.0f, 0.0f };
+		glm::vec3 m_PrimitiveScale = { 1.0f, 1.0f, 1.0f };
 	};
 
 	class TransparentQuad
