@@ -83,6 +83,8 @@ namespace CrescentEngine
 		Shader* RetrieveMaterialShader() const { return m_Shader; }
 		void SetMaterialShader(Shader* shader) { m_Shader = shader; }
 
+		Material Copy();
+
 		//Uniforms
 		std::map<std::string, UniformValue>* GetUniforms();
 		std::map<std::string, UniformSamplerValue>* GetSamplerUniforms();

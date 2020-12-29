@@ -13,6 +13,32 @@ namespace CrescentEngine
 		m_Shader = shader;
 	}
 
+	Material Material::Copy()
+	{
+		Material copiedMaterial(m_Shader);
+
+		copiedMaterial.m_MaterialType = m_MaterialType;
+		copiedMaterial.m_Color = m_Color;
+
+		copiedMaterial.m_DepthTestEnabled = m_DepthTestEnabled;
+		copiedMaterial.m_DepthWritingEnabled = m_DepthWritingEnabled;
+		copiedMaterial.m_DepthTestComparisonFactor = m_DepthTestComparisonFactor;
+
+		copiedMaterial.m_FaceCullingEnabled = m_FaceCullingEnabled;
+		copiedMaterial.m_CulledFace = m_CulledFace;
+		copiedMaterial.m_CullWindingOrder = m_CullWindingOrder;
+
+		copiedMaterial.m_BlendingEnabled = m_BlendingEnabled;
+		copiedMaterial.m_BlendSource = m_BlendSource;
+		copiedMaterial.m_BlendDestination = m_BlendDestination;
+		copiedMaterial.m_BlendEquation = m_BlendEquation;
+
+		copiedMaterial.m_Uniforms = m_Uniforms;
+		copiedMaterial.m_SamplerUniforms = m_SamplerUniforms;
+
+		return copiedMaterial;
+	}
+
 	std::map<std::string, UniformValue>* Material::GetUniforms()
 	{
 		return &m_Uniforms;

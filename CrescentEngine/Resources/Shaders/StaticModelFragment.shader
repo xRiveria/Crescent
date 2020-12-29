@@ -1,6 +1,6 @@
 #version 330 core
-layout (location = 0) out vec4 FragColor;
-layout (location = 1) out vec4 BrightColor;
+layout(location = 0) out vec4 FragColor;
+layout(location = 1) out vec4 BrightColor;
 
 struct SpotLight
 {
@@ -77,7 +77,7 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal)
     //Perform Perspective Divide
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     //Transform to [0, 1] range.
-    projCoords = projCoords * 0.5 + 0.5; 
+    projCoords = projCoords * 0.5 + 0.5;
     //Get closest depth value from light's perspective, using [0 ,1] range from fragPosLight as coords.
     float closestDepth = texture(shadowMap, projCoords.xy).r;
     //Get depth of current fragment from light's perspective.
@@ -202,7 +202,7 @@ vec3 CalculateDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDir
     vec3 hdrColor = texture(hdrBuffer, TexCoords).rgb;
     vec3 mapped = vec3(1.0) - exp(-hdrColor * exposureAmount);
     if (bloomEnabled)
-    { 
+    {
         vec3 bloomColor = texture(bloomBlur, TexCoords).rgb;
         hdrColor += bloomColor; //Additive Blending
     }

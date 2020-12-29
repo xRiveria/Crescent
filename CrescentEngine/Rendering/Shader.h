@@ -9,6 +9,7 @@ namespace CrescentEngine
 	public:
 		Shader() {}
 		Shader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+		Shader(const std::string& shaderName, const std::string& vertexShaderFilePath, const std::string& fragmentShaderFilePath, std::vector<std::string> defines = std::vector<std::string>());
 		void CreateShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
 		void UseShader();
 		void UnbindShader();

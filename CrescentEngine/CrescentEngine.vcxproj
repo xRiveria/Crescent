@@ -651,6 +651,8 @@
     <None Include="Resources\Shaders\BlurVertex.shader" />
     <None Include="Resources\Shaders\CubemapFragment.shader" />
     <None Include="Resources\Shaders\CubemapVertex.shader" />
+    <None Include="Resources\Shaders\Deferred\LightingPassFragment.shader" />
+    <None Include="Resources\Shaders\Deferred\LightingPassVertex.shader" />
     <None Include="Resources\Shaders\DepthFragment.shader" />
     <None Include="Resources\Shaders\DepthVertex.shader" />
     <None Include="Resources\Shaders\OutlineFragment.shader" />
