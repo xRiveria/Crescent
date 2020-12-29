@@ -530,6 +530,10 @@ void DrawEditorContent()
 	g_CoreSystems.m_Editor.EndEditorRenderLoop();
 }
 
+
+
+
+
 //Event Callbacks - To Be Further Abstracted.
 void ProcessKeyboardEvents(GLFWwindow* window)
 {
@@ -601,3 +605,4 @@ void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHe
 	//g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(windowWidth, windowHeight);
 	g_CoreSystems.m_Window.ResizeWindow((float)windowWidth, (float)windowHeight);
 }
+

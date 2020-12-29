@@ -63,4 +63,23 @@ namespace CrescentEngine
 		const unsigned int m_ShadowWidth = 1024, m_ShadowHeight = 1024;
 		float m_BorderColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f }; //Color of the shadows outside a light source's frustrum. This will cause the GLSL texture function to always return a depth of 1.0f, producing a shadow value of 0.0f.
 	};
+
+	class GBuffer
+	{
+	public:
+		unsigned int ResetGBuffer();
+		void ResizeFramebuffer(int newWidth, int newHeight);
+		void ClearGBuffer();
+
+	private:
+		unsigned int m_GBufferID;
+		unsigned int m_GBufferPositionTextureID;
+		unsigned int m_GBufferNormalsTextureID;
+		unsigned int m_GBufferAlbedoSpecularTextureID;
+		unsigned int m_GBufferRenderBufferObjectID;
+		unsigned int m_UtilizedGBufferColorAttachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+
+		int m_FramebufferWidth = 0;
+		int m_FramebufferHeight = 0;
+	};
 }

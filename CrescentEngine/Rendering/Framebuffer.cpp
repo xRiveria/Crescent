@@ -18,6 +18,13 @@ namespace CrescentEngine
 
 	void Framebuffer::ResetMSAAFramebuffer()
 	{
+		if (m_MSAAFramebufferID)
+		{
+			glDeleteFramebuffers(1, &m_MSAAFramebufferID);
+			glDeleteTextures(1, &m_MSAAColorAttachmentID);
+			glDeleteFramebuffers(1, &m_MSAARenderbufferStorage);
+		}
+
 		glGenFramebuffers(1, &m_MSAAFramebufferID);
 		glBindFramebuffer(GL_FRAMEBUFFER, m_MSAAFramebufferID);
 
@@ -142,6 +149,11 @@ namespace CrescentEngine
 
 	void DepthmapFramebuffer::SetupDepthMapFramebuffer()
 	{
+		if (m_DepthmapFramebufferID)
+		{
+			glDeleteFramebuffers(1, &m_DepthmapFramebufferID);
+			glDeleteTextures(1, &m_DepthTextureID);
+		}
 		glGenFramebuffers(1, &m_DepthmapFramebufferID);
 
 		//Create Depth Map Texture
@@ -172,6 +184,77 @@ namespace CrescentEngine
 	void DepthmapFramebuffer::UnbindDepthFramebuffer()
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	unsigned int GBuffer::ResetGBuffer()
+	{
+		if (m_GBufferID)
+		{
+			ClearGBuffer();
+		}
+
+		glGenFramebuffers(1, &m_GBufferID);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_GBufferID);
+
+		//Position Color Buffer. Note that we allocate more memory for Positions and Normals as they ought to be high precision for accurate results. 
+		glGenTextures(1, &m_GBufferPositionTextureID);
+		glBindTexture(GL_TEXTURE_2D, m_GBufferPositionTextureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_FLOAT, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_GBufferPositionTextureID, 0);
+
+		//Normals Color Buffer.
+		glGenTextures(1, &m_GBufferNormalsTextureID);
+		glBindTexture(GL_TEXTURE_2D, m_GBufferNormalsTextureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, m_GBufferNormalsTextureID, 0);
+
+		//Color + Specular Color Buffer.
+		glGenTextures(1, &m_GBufferAlbedoSpecularTextureID);
+		glBindTexture(GL_TEXTURE_2D, m_GBufferAlbedoSpecularTextureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_FramebufferWidth, m_FramebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, m_GBufferAlbedoSpecularTextureID, 0);
+
+		//Tells OpenGL to draw to all our highlighted color attachments.
+		glDrawBuffers(3, m_UtilizedGBufferColorAttachments);
+
+		//We also add our render buffer object as depth buffer and check for completeness.
+		glGenRenderbuffers(1, &m_GBufferRenderBufferObjectID);
+		glBindRenderbuffer(GL_RENDERBUFFER, m_GBufferRenderBufferObjectID);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_FramebufferWidth, m_FramebufferHeight);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_GBufferRenderBufferObjectID);
+
+		//Finally, check if our framebuffer is complete.
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+			CrescentInfo("GBuffer creation failed.");
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		return m_GBufferID;
+	}
+
+	void GBuffer::ResizeFramebuffer(int newWidth, int newHeight)
+	{
+		m_FramebufferWidth = newWidth;
+		m_FramebufferHeight = newHeight;
+
+		ResetGBuffer();
+	}
+
+	void GBuffer::ClearGBuffer()
+	{
+		glDeleteFramebuffers(1, &m_GBufferID);
+		glDeleteTextures(1, &m_GBufferAlbedoSpecularTextureID);
+		glDeleteTextures(1, &m_GBufferNormalsTextureID);
+		glDeleteTextures(1, &m_GBufferPositionTextureID);
+		glDeleteRenderbuffers(1, &m_GBufferRenderBufferObjectID);
 	}
 }
 
