@@ -10,6 +10,11 @@ namespace CrescentEngine
 		CreateShaders(vertexShaderPath, fragmentShaderPath);
 	}
 
+	Shader::Shader(const std::string& shaderName, const std::string& vertexShaderFilePath, const std::string& fragmentShaderFilePath, std::vector<std::string> defines)
+	{
+
+	}
+
 	void Shader::CreateShaders(const std::string& vertexShaderPath, const std::string& fragmentShaderPath)
 	{
 		//Retrieve the vertex/fragment source code form filepath.

@@ -520,7 +520,7 @@ void DrawEditorContent()
 	g_Renderables.m_HeadModel.RenderSettingsInEditor(g_Renderables.m_HeadPosition, g_Renderables.m_HeadScale);
 	g_Renderables.m_BackpackModel.RenderSettingsInEditor(g_Renderables.m_BackpackModelPosition, g_Renderables.m_BackpackScale);
 	g_Renderables.m_StormTrooperModel.RenderSettingsInEditor(g_Renderables.m_StormTrooperPosition, g_Renderables.m_StormtrooperScale);
-	g_Renderables.m_SponzaModel.RenderSettingsInEditor(g_Renderables.m_SponzaPosition, g_Renderables.m_SponzaScale);
+	//g_Renderables.m_SponzaModel.RenderSettingsInEditor(g_Renderables.m_SponzaPosition, g_Renderables.m_SponzaScale);
 	//g_Renderables.m_RoyaleDogModel.RenderSettingsInEditor(g_Renderables.m_RoyalDogPosition);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
@@ -536,10 +536,6 @@ void DrawEditorContent()
 	ImGui::End(); //Closes the docking context.
 	g_CoreSystems.m_Editor.EndEditorRenderLoop();
 }
-
-
-
-
 
 //Event Callbacks - To Be Further Abstracted.
 void ProcessKeyboardEvents(GLFWwindow* window)

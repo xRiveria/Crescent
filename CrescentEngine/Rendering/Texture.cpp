@@ -4,6 +4,15 @@
 
 namespace CrescentEngine
 {
+	void Texture2D::GenerateTexture(unsigned int textureWidth, GLenum textureInternalFormat, GLenum textureFormat, GLenum textureDataType, void* textureData)
+	{
+	}
+	void Texture2D::GenerateTexture(unsigned int textureWidth, unsigned int textureHeight, GLenum textureInternalFormat, GLenum textureFormat, GLenum textureDataType, void* textureData)
+	{
+	}
+	void Texture2D::GenerateTexture(unsigned int textureWidth, unsigned int textureHeight, unsigned int textureDepth, GLenum textureInternalFormat, GLenum textureFormat, GLenum textureDataType, void* textureData)
+	{
+	}
 	void Texture2D::LoadTexture(const std::string& filePath)
 	{
 		glGenTextures(1, &m_TextureID);
