@@ -3,12 +3,14 @@
 #include "../Utilities/StringID.h"
 #include "ShaderLoader.h"
 #include "TextureLoader.h"
+#include "MeshLoader.h"
 
 namespace CrescentEngine
 {
 	std::map<unsigned int, Shader> Resources::m_Shaders				= std::map<unsigned int, Shader>();
 	std::map<unsigned int, Texture2D> Resources::m_Textures			= std::map<unsigned int, Texture2D>();
-	std::map<unsigned int, TextureCube> Resources::m_TextureCubes	= std::map<unsigned int, TextureCube>();;
+	std::map<unsigned int, TextureCube> Resources::m_TextureCubes	= std::map<unsigned int, TextureCube>();
+	std::map<unsigned int, SceneEntity*> Resources::m_Meshes	    = std::map<unsigned int, SceneEntity*>();
 
 	void Resources::InitializeResourceManager()
 	{
@@ -151,4 +153,23 @@ namespace CrescentEngine
 			return nullptr;
 		}
 	}
+
+	SceneNode* Resources::LoadMesh(Renderer* renderer, const std::string& name, const std::string& filePath)
+	{
+		unsigned int ID = StringID(name);
+
+		//If a mesh's scene entity was already loaded before, copy the scene entity's memory and return the copied reference. We return a copy as the moment the global scene deletes the
+		//returned entity, all other and next requested scene entities of this model will end up as dangling pointers.
+		if (Resources::m_Meshes.find(ID) != Resources::m_Meshes.end())
+		{
+			
+		}
+	}
+
+	SceneNode* Resources::RetrieveMesh(const std::string& name)
+	{
+		return nullptr;
+	}
+
+	
 }

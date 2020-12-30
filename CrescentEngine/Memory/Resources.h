@@ -1,7 +1,9 @@
 #pragma once
+#include "../Rendering/Renderer.h"
 #include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
 #include "../Rendering/TextureCube.h"
+#include "Scene/SceneNode.h"
 #include <map>
 #include <vector>
 
@@ -24,14 +26,15 @@ namespace CrescentEngine
 
 		//Textures
 		static Texture2D* LoadTexture(const std::string& name, const std::string& filePath, GLenum textureTarget = GL_TEXTURE_2D, GLenum textureInternalFormat = GL_RGBA, bool srgb = false);
+		static Texture2D* LoadHDRTexture(const std::string& name, const std::string& filePath);
 		static Texture2D* RetrieveTexture(const std::string& name);
-
-		//Texture Cubes
+		
 		static TextureCube* LoadTextureCube(const std::string& name, const std::string& texturesFolderPath);
 		static TextureCube* RetrieveTextureCube(const std::string name);
 
-		//HDR
-		static Texture2D* LoadHDRTexture(const std::string& name, const std::string& filePath);
+		//Mesh/Scene Resources
+		static SceneNode* LoadMesh(Renderer* renderer, const std::string& name, const std::string& filePath);
+		static SceneNode* RetrieveMesh(const std::string& name);
 
 	private:
 		//Disallow creation of any Resources object. This is a static object.
@@ -42,5 +45,6 @@ namespace CrescentEngine
 		static std::map<unsigned int, Shader> m_Shaders;
 		static std::map<unsigned int, Texture2D> m_Textures;
 		static std::map<unsigned int, TextureCube> m_TextureCubes;
+		static std::map<unsigned int, SceneNode*> m_Meshes;
 	};
 }

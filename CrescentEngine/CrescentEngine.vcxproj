@@ -183,8 +183,10 @@
     </ClCompile>
     <ClCompile Include="Core\Primitive.cpp" />
     <ClCompile Include="Core\Editor.cpp" />
+    <ClCompile Include="Core\Scene\Scene.cpp" />
     <ClCompile Include="Core\Window.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
+    <ClCompile Include="Memory\MeshLoader.cpp" />
     <ClCompile Include="Memory\ShaderLoader.cpp" />
     <ClCompile Include="Memory\TextureLoader.cpp" />
     <ClCompile Include="Rendering\MaterialLibrary.cpp" />
@@ -258,7 +260,10 @@
     <ClInclude Include="Core\Primitive.h" />
     <ClInclude Include="Core\Editor.h" />
     <ClInclude Include="Core\Object.h" />
+    <ClInclude Include="Core\Scene\Scene.h" />
+    <ClInclude Include="Core\Scene\SceneNode.h" />
     <ClInclude Include="Core\Window.h" />
+    <ClInclude Include="Memory\MeshLoader.h" />
     <ClInclude Include="Memory\ShaderLoader.h" />
     <ClInclude Include="Memory\TextureLoader.h" />
     <ClInclude Include="Rendering\MaterialLibrary.h" />

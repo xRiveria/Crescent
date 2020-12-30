@@ -54,7 +54,7 @@ namespace CrescentEngine
 				}
 				else
 				{
-					CrescentWarn("Shader: " + shaderName + ": include: " + includePath + " failed top open.");
+					CrescentWarn("Shader: " + shaderName + ": include: " + includePath + " failed to open.");
 				}
 				includeFile.close();
 			}
