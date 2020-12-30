@@ -1,6 +1,7 @@
 #pragma once
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include "../Rendering/Material.h"
 
 namespace CrescentEngine
 {
@@ -15,6 +16,9 @@ namespace CrescentEngine
 		void ToggleWireframeRendering(bool value);
 		void ToggleBlending(bool value);
 		void ToggleFaceCulling(bool value);
+		
+		Material* CreateMaterial();
+		Material* CreateMaterial(const std::string& base);
 
 		void ClearBuffers();
 

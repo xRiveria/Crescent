@@ -4,6 +4,7 @@
 #include "ShaderLoader.h"
 #include "TextureLoader.h"
 #include "MeshLoader.h"
+#include "Scene/Scene.h"
 
 namespace CrescentEngine
 {
@@ -20,6 +21,12 @@ namespace CrescentEngine
 
 	void Resources::Clean()
 	{
+		//Traverse all stored mesh scene nodes and delete accordingly.
+		//Note that this point, we don't care about deleting dangling pointers as each scene node is unique and shouldn't reference other scene nodes than their children.
+		for (auto iterator = m_Meshes.begin(); iterator != m_Meshes.end(); iterator++)
+		{
+			delete iterator->second;
+		}
 	}
 
 	Shader* Resources::LoadShader(const std::string& name, const std::string& vertexShaderFilePath, const std::string& fragmentShaderFilePath, std::vector<std::string> defines)
@@ -162,14 +169,31 @@ namespace CrescentEngine
 		//returned entity, all other and next requested scene entities of this model will end up as dangling pointers.
 		if (Resources::m_Meshes.find(ID) != Resources::m_Meshes.end())
 		{
-			
+			return Scene::MakeSceneNode(Resources::m_Meshes[ID]);
 		}
+
+		//MeshLoader::LoadMesh initializes a scene node hierarchy on the heap. We are responsible for managing the memory; keep a reference to the root node of the model scene.
+		SceneNode* node = MeshLoader::LoadMesh(renderer, filePath);
+		Resources::m_Meshes[ID] = node;
+
+		//Return a copied reference through the scene to prevent dangling pointers.
+		return Scene::MakeSceneNode(node);
 	}
 
 	SceneNode* Resources::RetrieveMesh(const std::string& name)
 	{
-		return nullptr;
-	}
+		unsigned int ID = StringID(name);
 
-	
+		//If a mesh's scene node was already loaded before, copy the scene node's memory and return the copied reference. We return a copy as the moment the global scene deletes the 
+		//returned node, all other and next requested scene nodes of this model will end up as dangling pointers.
+		if (Resources::m_Meshes.find(ID) != Resources::m_Meshes.end())
+		{
+			return Scene::MakeSceneNode(Resources::m_Meshes[ID]);
+		}
+		else
+		{
+			CrescentWarn("Requested mesh: " + name + " not found!");
+			return nullptr;
+		}
+	}	
 }

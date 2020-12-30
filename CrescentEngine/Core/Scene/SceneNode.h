@@ -54,8 +54,8 @@ namespace CrescentEngine
 		Material* m_Material;
 
 		//Bounding Box
-		glm::vec3 m_BoxMinimum = glm::vec3(-99999.0f);
-		glm::vec3 m_BoxMaximum = glm::vec3(99999.0f);
+		glm::vec3 m_BoundingBoxMinimum = glm::vec3(-99999.0f);
+		glm::vec3 m_BoundingBoxMaximum = glm::vec3(99999.0f);
 
 	private:
 		std::vector<SceneNode*> m_ChildNodes;

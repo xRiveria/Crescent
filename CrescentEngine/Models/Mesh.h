@@ -8,6 +8,16 @@
 
 namespace CrescentEngine
 {
+	enum Topology
+	{
+		POINTS,
+		LINES,
+		LINE_STRIP,
+		Triangles,
+		TRIANGLE_STRIP,
+		TRIANGLE_FAN,
+	};
+
 	struct Vertex  //Defined for each vertice on a mesh.
 	{
 		glm::vec3 Position;
@@ -57,10 +67,24 @@ namespace CrescentEngine
 	class Mesh
 	{
 	public:
+		Mesh();
 		Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
 		void Draw(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID);
 
 	public:
+		// commits all buffers and attributes to the GPU driver
+		void Finalize(bool interleaved = true);
+
+	public:
+		//New Structure
+		std::vector<glm::vec3> m_Positions;
+		std::vector<glm::vec2> m_UV;
+		std::vector<glm::vec3> m_Normals;
+		std::vector<glm::vec3> m_Tangents;
+		std::vector<glm::vec3> m_Bitangents;
+		std::vector<unsigned int> m_Indices;
+		Topology m_Topology = Triangles;
+
 		std::vector<Vertex> vertices;
 		std::vector<unsigned int> indices;
 		std::vector<Texture> textures;
