@@ -21,7 +21,7 @@ namespace CrescentEngine
 		//Similar to the CreateSceneNode function, but directly builds a node with an attached mesh and material.
 		static SceneNode* CreateSceneNode(Mesh* mesh, Material* material);
 
-		//Because the scene manages, we have to copy the nodes from here.
+		//Copy scene node. Manually copies each node due to how our scene is arranged.
 		static SceneNode* MakeSceneNode(SceneNode* node);
 
 		//Deletes a scene node from the global scene hierarchy (together with its children).

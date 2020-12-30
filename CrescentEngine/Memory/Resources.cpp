@@ -10,7 +10,7 @@ namespace CrescentEngine
 	std::map<unsigned int, Shader> Resources::m_Shaders				= std::map<unsigned int, Shader>();
 	std::map<unsigned int, Texture2D> Resources::m_Textures			= std::map<unsigned int, Texture2D>();
 	std::map<unsigned int, TextureCube> Resources::m_TextureCubes	= std::map<unsigned int, TextureCube>();
-	std::map<unsigned int, SceneEntity*> Resources::m_Meshes	    = std::map<unsigned int, SceneEntity*>();
+	std::map<unsigned int, SceneNode*> Resources::m_Meshes			= std::map<unsigned int, SceneNode*>();
 
 	void Resources::InitializeResourceManager()
 	{

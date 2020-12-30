@@ -1,4 +1,5 @@
 #include "Scene.h"
+#include <stack>
 
 namespace CrescentEngine
 {
@@ -15,7 +16,7 @@ namespace CrescentEngine
 	{
 		SceneNode* node = new SceneNode(Scene::m_CounterID++);
 		//Keep a global reference to this scene node so that we can clear the scene's nodes for memory management at the end of the program or when switching scenes.
-		m_RootNode->AddChild(node);
+		m_RootNode->AddChildNode(node);
 
 		return node;
 	}
@@ -28,18 +29,59 @@ namespace CrescentEngine
 		node->m_Material = material;
 
 		//Keeps a global reference to this scene node so that we can clear the scene's nodes for memory management at the end of the program or when switching scenes.
-		m_RootNode->AddChild(node);
+		m_RootNode->AddChildNode(node);
 
 		return node;
 	}
 
 	SceneNode* Scene::MakeSceneNode(SceneNode* node)
 	{
-		return nullptr;
+		SceneNode* newNode = new SceneNode(Scene::m_CounterID++);
+
+		newNode->m_Mesh = node->m_Mesh;
+		newNode->m_Material = node->m_Material;
+		newNode->m_BoxMinimum = node->m_BoxMinimum;
+		newNode->m_BoxMaximum = node->m_BoxMaximum;
+
+		//Traverse through the list of children and add them correspondingly.
+		std::stack<SceneNode*> nodeStack; //LIFO (Last-In, First-Out)
+		for (unsigned int i = 0; i < node->GetChildNodeCount(); ++i)
+		{
+			nodeStack.push(node->GetChildByIndex(i));
+		}
+
+		while (!nodeStack.empty())
+		{
+			SceneNode* childNode = nodeStack.top();
+			nodeStack.pop();
+
+			//Simiarly create SceneNode for each child and push to scene node memory list. 
+			SceneNode* newChild = new SceneNode(Scene::m_CounterID++);
+			newChild->m_Mesh = childNode->m_Mesh;
+			newChild->m_Material = childNode->m_Material;
+			newChild->m_BoxMinimum = childNode->m_BoxMinimum;
+			newChild->m_BoxMaximum = childNode->m_BoxMaximum;
+			
+			newNode->AddChildNode(newChild);
+
+			for (unsigned int i = 0; i < childNode->GetChildNodeCount(); ++i)
+			{
+				nodeStack.push(childNode->GetChildByIndex(i));
+			}
+		}
+
+		m_RootNode->AddChildNode(newNode);
+		return newNode;
 	}
 
 	void Scene::DeleteSceneNode(SceneNode* node)
 	{
+		if (node->GetParentNode())
+		{
+			node->GetParentNode()->RemoveChildNode(node->GetNodeID());
+		}
 
+		//All delete logic is contained within each scene node's destructor.
+		delete node;
 	}
 }

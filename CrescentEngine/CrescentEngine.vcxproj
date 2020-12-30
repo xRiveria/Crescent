@@ -184,6 +184,7 @@
     <ClCompile Include="Core\Primitive.cpp" />
     <ClCompile Include="Core\Editor.cpp" />
     <ClCompile Include="Core\Scene\Scene.cpp" />
+    <ClCompile Include="Core\Scene\SceneNode.cpp" />
     <ClCompile Include="Core\Window.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Memory\MeshLoader.cpp" />
