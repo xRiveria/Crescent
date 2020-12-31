@@ -6,6 +6,7 @@ namespace CrescentEngine
 {
 	std::vector<Mesh*> MeshLoader::m_MeshLibrary = std::vector<Mesh*>();
 
+
 	void MeshLoader::ClearMeshLibrary()
 	{
 		for (unsigned int i = 0; i < MeshLoader::m_MeshLibrary.size(); ++i)

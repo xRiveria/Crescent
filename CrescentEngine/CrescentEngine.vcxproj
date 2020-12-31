@@ -185,7 +185,9 @@
     <ClCompile Include="Core\Editor.cpp" />
     <ClCompile Include="Core\Scene\Scene.cpp" />
     <ClCompile Include="Core\Scene\SceneNode.cpp" />
+    <ClCompile Include="Core\Scene\Skybox.cpp" />
     <ClCompile Include="Core\Window.cpp" />
+    <ClCompile Include="DemoScene.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Memory\MeshLoader.cpp" />
     <ClCompile Include="Memory\ShaderLoader.cpp" />
@@ -263,6 +265,7 @@
     <ClInclude Include="Core\Object.h" />
     <ClInclude Include="Core\Scene\Scene.h" />
     <ClInclude Include="Core\Scene\SceneNode.h" />
+    <ClInclude Include="Core\Scene\Skybox.h" />
     <ClInclude Include="Core\Window.h" />
     <ClInclude Include="Memory\MeshLoader.h" />
     <ClInclude Include="Memory\ShaderLoader.h" />

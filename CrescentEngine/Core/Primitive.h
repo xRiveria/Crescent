@@ -4,6 +4,7 @@
 #include "../Rendering/Texture.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include "../Models/Mesh.h"
 
 namespace CrescentEngine
 {
@@ -12,6 +13,11 @@ namespace CrescentEngine
 		PlanePrimitive,
 		CubePrimitive,
 		QuadPrimitive
+	};
+
+	class Cube : public Mesh
+	{
+
 	};
 
 	class Primitive

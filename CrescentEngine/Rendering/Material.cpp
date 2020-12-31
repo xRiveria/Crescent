@@ -98,6 +98,19 @@ namespace CrescentEngine
 		}
 	}
 
+	void Material::SetShaderTextureCube(const std::string& uniformName, TextureCube* value, unsigned int textureUnit)
+	{
+		m_SamplerUniforms[uniformName].m_TextureUnit = textureUnit;
+		m_SamplerUniforms[uniformName].m_UniformType = Shader_Type_SamplerCube;
+		m_SamplerUniforms[uniformName].m_TextureCube = value;
+
+		if (m_Shader)
+		{
+			m_Shader->UseShader();
+			m_Shader->SetUniformInteger(uniformName, textureUnit);
+		}
+	}
+
 	void Material::SetShaderVector2(const std::string& uniformName, const glm::vec2& value)
 	{
 		m_Uniforms[uniformName].m_UniformType = Shader_Type_Vec2;

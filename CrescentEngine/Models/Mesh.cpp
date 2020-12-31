@@ -4,6 +4,11 @@
 
 namespace CrescentEngine
 {
+	Mesh::Mesh()
+	{
+
+	}
+
 	Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures)
 	{
 		this->vertices = vertices;
@@ -120,5 +125,8 @@ namespace CrescentEngine
 		glVertexAttribPointer(8, 4, GL_FLOAT, false, sizeof(Vertex), (void*)(offsetof(Vertex, BoneWeights) + 4 * sizeof(float)));
 		
 		glBindVertexArray(0);
+	}
+	void Mesh::Finalize(bool interleaved)
+	{
 	}
 }

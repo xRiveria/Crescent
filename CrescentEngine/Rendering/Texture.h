@@ -28,9 +28,9 @@ namespace CrescentEngine
 		GLenum m_DataType = GL_UNSIGNED_BYTE;
 		GLenum m_MinificationFilter = GL_LINEAR_MIPMAP_LINEAR;	 //What filter method to use during minification.
 		GLenum m_MagnificationFilter = GL_LINEAR;				 //What filter method to use during magnification.
-		GLenum m_WrapS = GL_REPEAT;								 //Wrapping method of the S coordinate.
-		GLenum m_WrapR = GL_REPEAT;								 //Wrapping method of the T coordinate.
-		GLenum m_WrapT = GL_REPEAT;								 //Wrapping method of the T coordinate.
+		GLenum m_WrapS = GL_REPEAT;								 //Wrapping method of the S (X) coordinate.
+		GLenum m_WrapT = GL_REPEAT;								 //Wrapping method of the T (Y) coordinate.
+		GLenum m_WrapR = GL_REPEAT;								 //Wrapping method of the R (Z) coordinate.
 		bool m_MipmappingEnabled = true;		
 
 		unsigned int m_TextureWidth = 0;

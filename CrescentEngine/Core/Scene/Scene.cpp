@@ -41,8 +41,8 @@ namespace CrescentEngine
 
 		newNode->m_Mesh = node->m_Mesh;
 		newNode->m_Material = node->m_Material;
-		newNode->m_BoxMinimum = node->m_BoxMinimum;
-		newNode->m_BoxMaximum = node->m_BoxMaximum;
+		newNode->m_BoundingBoxMinimum = node->m_BoundingBoxMinimum;
+		newNode->m_BoundingBoxMaximum = node->m_BoundingBoxMaximum;
 
 		//Traverse through the list of children and add them correspondingly.
 		std::stack<SceneNode*> nodeStack; //LIFO (Last-In, First-Out)
@@ -60,8 +60,8 @@ namespace CrescentEngine
 			SceneNode* newChild = new SceneNode(Scene::m_CounterID++);
 			newChild->m_Mesh = childNode->m_Mesh;
 			newChild->m_Material = childNode->m_Material;
-			newChild->m_BoxMinimum = childNode->m_BoxMinimum;
-			newChild->m_BoxMaximum = childNode->m_BoxMaximum;
+			newChild->m_BoundingBoxMinimum = childNode->m_BoundingBoxMinimum;
+			newChild->m_BoundingBoxMaximum = childNode->m_BoundingBoxMaximum;
 			
 			newNode->AddChildNode(newChild);
 

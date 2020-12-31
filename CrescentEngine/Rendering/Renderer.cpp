@@ -33,6 +33,16 @@ namespace CrescentEngine
 		value ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE);
 	}
 
+	Material* Renderer::CreateMaterial()
+	{
+		return nullptr;
+	}
+
+	Material* Renderer::CreateMaterial(const std::string& base)
+	{
+		return nullptr;
+	}
+
 	void Renderer::ClearBuffers()
 	{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);

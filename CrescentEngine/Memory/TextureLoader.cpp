@@ -134,7 +134,7 @@ namespace CrescentEngine
 					textureFormat = GL_RGBA;
 				}
 
-				texture.GenerateCubeTextures(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, textureWidth, textureHeight, textureFormat, GL_UNSIGNED_INT, textureData);
+				texture.GenerateCubeFace(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, textureWidth, textureHeight, textureFormat, GL_UNSIGNED_INT, textureData);
 				stbi_image_free(textureData);
 			}
 			else
@@ -155,7 +155,7 @@ namespace CrescentEngine
 
 	TextureCube TextureLoader::LoadTextureCube(const std::string& texturesFolderPath)
 	{
-		return TextureLoader::LoadTextureCube(texturesFolderPath + "top.jpg", texturesFolderPath + "bottom.jpg", texturesFolderPath + "left.jpg", 
-			texturesFolderPath + "right.jpg", texturesFolderPath + "front.jpg", texturesFolderPath + "back.jpg");
+		return TextureLoader::LoadTextureCube(texturesFolderPath + "right.jpg", texturesFolderPath + "left.jpg", texturesFolderPath + "top.jpg", 
+			texturesFolderPath + "bottom.jpg", texturesFolderPath + "front.jpg", texturesFolderPath + "back.jpg");
 	}
 }

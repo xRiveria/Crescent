@@ -1,6 +1,7 @@
 #pragma once
 #include "Shader.h"
 #include "Texture.h"
+#include "TextureCube.h"
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <map>
@@ -22,6 +23,7 @@ namespace CrescentEngine
 		Shader_Type_Sampler1D,
 		Shader_Type_Sampler2D,
 		Shader_Type_Sampler3D,
+		Shader_Type_SamplerCube,
 		Shader_Type_Vec2,
 		Shader_Type_Vec3,
 		Shader_Type_Vec4,
@@ -61,6 +63,7 @@ namespace CrescentEngine
 		union
 		{
 			Texture2D* m_Texture;
+			TextureCube* m_TextureCube;
 		};
 
 		UniformSamplerValue() {}
@@ -93,6 +96,7 @@ namespace CrescentEngine
 		void SetShaderInt(const std::string& uniformName, const int& value);
 		void SetShaderFloat(const std::string& uniformName, const float& value);
 		void SetShaderTexture(const std::string& uniformName, Texture2D* value, unsigned int textureUnit = 0);
+		void SetShaderTextureCube(const std::string& uniformName, TextureCube* value, unsigned int textureUnit = 0);
 		void SetShaderVector2(const std::string& uniformName, const glm::vec2& value);
 		void SetShaderVector3(const std::string& uniformName, const glm::vec3& value);
 		void SetShaderVector3(const std::string& uniformName, const glm::vec4& value);
