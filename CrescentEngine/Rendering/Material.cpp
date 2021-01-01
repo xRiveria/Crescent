@@ -87,7 +87,7 @@ namespace CrescentEngine
 				break;
 
 			case GL_TEXTURE_CUBE_MAP:
-				//m_SamplerUniforms[uniformName].m_UniformType = Shader_Type_SamplerCube;
+				m_SamplerUniforms[uniformName].m_UniformType = Shader_Type_SamplerCube;
 				break;
 		}
 

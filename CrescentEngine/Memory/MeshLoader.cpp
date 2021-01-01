@@ -154,7 +154,7 @@ namespace CrescentEngine
 		mesh->m_Bitangents = meshBitangents;
 		mesh->m_Indices = meshIndices;
 		mesh->m_Topology = Triangles;
-		mesh->Finalize(true);
+		mesh->FinalizeMesh(true);
 
 		outMin.x = pMin.x;
 		outMin.y = pMin.y;
