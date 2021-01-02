@@ -43,6 +43,21 @@ namespace CrescentEngine
 		return nullptr;
 	}
 
+	Material* Renderer::CreateCustomMaterial(Shader* shader)
+	{
+		return nullptr;
+	}
+
+	Material* Renderer::CreatePostProcessingMaterial(Shader* shader)
+	{
+		return nullptr;
+	}
+
+	PBRCapture* Renderer::GetSkyCapture()
+	{
+		return nullptr;
+	}
+
 	void Renderer::ClearBuffers()
 	{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);

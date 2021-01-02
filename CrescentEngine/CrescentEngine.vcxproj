@@ -195,6 +195,7 @@
     <ClCompile Include="Models\DefaultShapes.cpp" />
     <ClCompile Include="Rendering\MaterialLibrary.cpp" />
     <ClCompile Include="Memory\Resources.cpp" />
+    <ClCompile Include="Rendering\PBRCapture.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
     <ClCompile Include="MainLoop.cpp" />
     <ClCompile Include="Models\BoneMapper.cpp" />
@@ -273,6 +274,7 @@
     <ClInclude Include="Memory\TextureLoader.h" />
     <ClInclude Include="Models\DefaultShapes.h" />
     <ClInclude Include="Rendering\MaterialLibrary.h" />
+    <ClInclude Include="Rendering\PBRCapture.h" />
     <ClInclude Include="Rendering\RenderTarget.h" />
     <ClInclude Include="Memory\Resources.h" />
     <ClInclude Include="Rendering\Shader.h" />

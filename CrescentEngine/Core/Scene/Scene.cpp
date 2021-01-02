@@ -35,7 +35,7 @@ namespace CrescentEngine
 		return node;
 	}
 
-	SceneNode* Scene::MakeSceneNode(SceneNode* node)
+	SceneNode* Scene::CreateSceneNode(SceneNode* node)
 	{
 		SceneNode* newNode = new SceneNode(Scene::m_CounterID++);
 

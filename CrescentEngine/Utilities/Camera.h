@@ -15,16 +15,16 @@ namespace CrescentEngine
 	};
 
 	//Default Camera Values
-	bool g_CameraMode = false;
-	bool g_IsCameraFirstMove = true;
-	float g_CameraLastXPosition = 0.0f;
-	float g_CameraLastYPosition = 0.0f;
+	inline bool g_CameraMode = false;
+	inline bool g_IsCameraFirstMove = true;
+	inline float g_CameraLastXPosition = 0.0f;
+	inline float g_CameraLastYPosition = 0.0f;
 
-	const float g_CameraYaw = -90.0f; //Horizontal rotation.
-	const float g_CameraPitch = 0.0f; //Vertical rotation.
-	const float g_CameraSensitivity = 0.1f;
-	const float g_CameraSpeed = 2.5f;
-	const float g_CameraZoom = 45.0f;
+	inline const float g_CameraYaw = -90.0f; //Horizontal rotation.
+	inline const float g_CameraPitch = 0.0f; //Vertical rotation.
+	inline const float g_CameraSensitivity = 0.1f;
+	inline const float g_CameraSpeed = 2.5f;
+	inline const float g_CameraZoom = 45.0f;
 
 	//An abstract camera class that processes input and calculates the corresponding Euler Angles, Vectors and Matrices for use in OpenGL.
 	class Camera

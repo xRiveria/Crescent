@@ -2,6 +2,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include "../Rendering/Material.h"
+#include "PBRCapture.h"
 
 namespace CrescentEngine
 {
@@ -19,6 +20,9 @@ namespace CrescentEngine
 		
 		Material* CreateMaterial();
 		Material* CreateMaterial(const std::string& base);
+		Material* CreateCustomMaterial(Shader* shader);
+		Material* CreatePostProcessingMaterial(Shader* shader);
+		PBRCapture* GetSkyCapture();
 
 		void ClearBuffers();
 

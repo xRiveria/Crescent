@@ -22,7 +22,7 @@ namespace CrescentEngine
 		static SceneNode* CreateSceneNode(Mesh* mesh, Material* material);
 
 		//Copy scene node. Manually copies each node due to how our scene is arranged.
-		static SceneNode* MakeSceneNode(SceneNode* node);
+		static SceneNode* CreateSceneNode(SceneNode* node);
 
 		//Deletes a scene node from the global scene hierarchy (together with its children).
 		static void DeleteSceneNode(SceneNode* node);

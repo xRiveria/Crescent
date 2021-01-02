@@ -169,7 +169,7 @@ namespace CrescentEngine
 		//returned entity, all other and next requested scene entities of this model will end up as dangling pointers.
 		if (Resources::m_Meshes.find(ID) != Resources::m_Meshes.end())
 		{
-			return Scene::MakeSceneNode(Resources::m_Meshes[ID]);
+			return Scene::CreateSceneNode(Resources::m_Meshes[ID]);
 		}
 
 		//MeshLoader::LoadMesh initializes a scene node hierarchy on the heap. We are responsible for managing the memory; keep a reference to the root node of the model scene.
@@ -177,7 +177,7 @@ namespace CrescentEngine
 		Resources::m_Meshes[ID] = node;
 
 		//Return a copied reference through the scene to prevent dangling pointers.
-		return Scene::MakeSceneNode(node);
+		return Scene::CreateSceneNode(node);
 	}
 
 	SceneNode* Resources::RetrieveMesh(const std::string& name)
@@ -188,7 +188,7 @@ namespace CrescentEngine
 		//returned node, all other and next requested scene nodes of this model will end up as dangling pointers.
 		if (Resources::m_Meshes.find(ID) != Resources::m_Meshes.end())
 		{
-			return Scene::MakeSceneNode(Resources::m_Meshes[ID]);
+			return Scene::CreateSceneNode(Resources::m_Meshes[ID]);
 		}
 		else
 		{
