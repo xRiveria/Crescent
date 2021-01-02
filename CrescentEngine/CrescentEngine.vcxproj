@@ -192,6 +192,7 @@
     <ClCompile Include="Memory\MeshLoader.cpp" />
     <ClCompile Include="Memory\ShaderLoader.cpp" />
     <ClCompile Include="Memory\TextureLoader.cpp" />
+    <ClCompile Include="Models\DefaultShapes.cpp" />
     <ClCompile Include="Rendering\MaterialLibrary.cpp" />
     <ClCompile Include="Memory\Resources.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
@@ -270,6 +271,7 @@
     <ClInclude Include="Memory\MeshLoader.h" />
     <ClInclude Include="Memory\ShaderLoader.h" />
     <ClInclude Include="Memory\TextureLoader.h" />
+    <ClInclude Include="Models\DefaultShapes.h" />
     <ClInclude Include="Rendering\MaterialLibrary.h" />
     <ClInclude Include="Rendering\RenderTarget.h" />
     <ClInclude Include="Memory\Resources.h" />

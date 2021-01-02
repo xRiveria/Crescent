@@ -14,12 +14,7 @@ namespace CrescentEngine
 		CubePrimitive,
 		QuadPrimitive
 	};
-
-	class Cube : public Mesh
-	{
-
-	};
-
+	
 	class Primitive
 	{
 	public:

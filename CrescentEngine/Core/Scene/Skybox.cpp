@@ -2,7 +2,7 @@
 #include "Skybox.h"
 #include "../Memory/Resources.h"
 #include "../Rendering/Material.h"
-#include "../Core/Primitive.h"
+#include "../Models/DefaultShapes.h"
 
 namespace CrescentEngine
 {

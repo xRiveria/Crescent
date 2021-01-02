@@ -101,8 +101,8 @@ namespace CrescentEngine
 		std::vector<Texture> textures;
 
 	private:
-		void CalculateMeshNormals(bool smoothing = true);
-		void CalculateMeshTangents();
+		//void CalculateMeshNormals(bool smoothing = true);
+		//void CalculateMeshTangents();
 
 	private:
 		//Render Data

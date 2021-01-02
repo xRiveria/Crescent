@@ -182,7 +182,40 @@ namespace CrescentEngine
 		else
 		{
 			size_t offsetData = 0;
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offsetData);
+			offsetData += m_Positions.size() * sizeof(float);
+
+			if (m_UV.size() > 0)
+			{
+				glEnableVertexAttribArray(1);
+				glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offsetData);
+				offsetData += m_UV.size() * sizeof(float);
+			}
+
+			if (m_Normals.size() > 0)
+			{
+				glEnableVertexAttribArray(2);
+				glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offsetData);
+				offsetData += m_Normals.size() * sizeof(float);
+			}
+
+			if (m_Tangents.size() > 0)
+			{
+				glEnableVertexAttribArray(3);
+				glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offsetData);
+				offsetData += m_Tangents.size() * sizeof(float);
+			}
+
+			if (m_Bitangents.size() > 0)
+			{
+				glEnableVertexAttribArray(4);
+				glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offsetData);
+				offsetData += m_Bitangents.size() * sizeof(float);
+			}
 		}
+
+		glBindVertexArray(0);
 	}
 
 	
