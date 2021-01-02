@@ -4,7 +4,7 @@
 #include <vector>
 #include "../Rendering/Shader.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	/*
 		A static helper class that does the relevant file IO, custom shader pre-processing to load and parse shader code.

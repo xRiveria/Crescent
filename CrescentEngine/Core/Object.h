@@ -5,11 +5,11 @@
 
 //Create Base Entity Class Please.
 
-namespace CrescentEngine
+namespace Crescent
 {
-	struct DirectionalLight
+	struct DirectionalLightD
 	{
-		DirectionalLight() {}
+		DirectionalLightD() {}
 
 		glm::vec3 lightDirection = { -0.2f, -1.0f, -0.3f };
 		glm::vec3 ambientIntensity = { 0.2f, 0.2f, 0.2f };
@@ -28,9 +28,9 @@ namespace CrescentEngine
 		}
 	};
 
-	struct PointLight
+	struct PointLightD
 	{
-		PointLight() {}
+		PointLightD() {}
 
 		glm::vec3 pointLightPosition = { 0.7f, 2.0f, 2.0f };
 		glm::vec3 ambientIntensity = { 0.2f, 0.2f, 0.2f };

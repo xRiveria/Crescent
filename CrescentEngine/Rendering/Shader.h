@@ -2,7 +2,7 @@
 #include <string>
 #include <glm/glm.hpp>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	class Shader
 	{

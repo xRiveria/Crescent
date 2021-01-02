@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "Material.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	Material::Material()
 	{

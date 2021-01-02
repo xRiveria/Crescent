@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "Framebuffer.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	Framebuffer::~Framebuffer()
 	{

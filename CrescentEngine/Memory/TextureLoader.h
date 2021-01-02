@@ -4,7 +4,7 @@
 #include "../Rendering/Texture.h"
 #include "../Rendering/TextureCube.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	/*
 		Manages all custom logic for loading a variety of different texture files.

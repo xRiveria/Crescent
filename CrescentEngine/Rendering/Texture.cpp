@@ -2,7 +2,7 @@
 #include "Texture.h"
 #include <stb_image/stb_image.h>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	void Texture2D::GenerateTexture(unsigned int textureWidth, GLenum textureInternalFormat, GLenum textureFormat, GLenum textureDataType, void* textureData)
 	{

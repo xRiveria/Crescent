@@ -14,12 +14,12 @@
 #include "Scene/Skybox.h"
 #include "Rendering/PBRCapture.h"
 
-CrescentEngine::Window m_Window;
-CrescentEngine::Renderer* m_Renderer;
+Crescent::Window m_Window;
+Crescent::Renderer* m_Renderer;
 glm::mat4 m_ProjectionMatrix = glm::mat4(1.0f);
-CrescentEngine::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
-CrescentEngine::Editor m_Editor; //Setups our ImGui context.
-CrescentEngine::Timestep m_Timestep; //Setups our Timestep.
+Crescent::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
+Crescent::Editor m_Editor; //Setups our ImGui context.
+Crescent::Timestep m_Timestep; //Setups our Timestep.
 float m_LastFrameTime = 0.0f;
 
 void ProcessKeyboardEvents(GLFWwindow* window);
@@ -52,21 +52,21 @@ int mainYetToCome(int argc, int argv[])
 	//Initialize Renderer
 
 	//Basic Shapes
-	CrescentEngine::Plane plane(16, 16);
-	CrescentEngine::Sphere sphere(64, 64);
-	CrescentEngine::Sphere tSphere(256, 256);
-	CrescentEngine::Torus torus(2.0f, 0.4f, 32, 32);
-	CrescentEngine::Cube cube;
+	Crescent::Plane plane(16, 16);
+	Crescent::Sphere sphere(64, 64);
+	Crescent::Sphere tSphere(256, 256);
+	Crescent::Torus torus(2.0f, 0.4f, 32, 32);
+	Crescent::Cube cube;
 
 	//Material Setup
-	CrescentEngine::Material* materialPBR = m_Renderer->CreateMaterial();
-	CrescentEngine::Shader* plasmaOrbShader = CrescentEngine::Resources::LoadShader("Plasma Orb", "Resources/Shaders/Custom/PlasmaOrb.vs", "Resources/Shaders/Custom/PlasmaOrb.fs");
-	CrescentEngine::Material* materialPlasmaOrb = m_Renderer->CreateCustomMaterial(plasmaOrbShader);
+	Crescent::Material* materialPBR = m_Renderer->CreateMaterial();
+	Crescent::Shader* plasmaOrbShader = Crescent::Resources::LoadShader("Plasma Orb", "Resources/Shaders/Custom/PlasmaOrb.vs", "Resources/Shaders/Custom/PlasmaOrb.fs");
+	Crescent::Material* materialPlasmaOrb = m_Renderer->CreateCustomMaterial(plasmaOrbShader);
 	materialPlasmaOrb->m_FaceCullingEnabled = false;
 	materialPlasmaOrb->m_BlendingEnabled = true;
 	materialPlasmaOrb->m_BlendSource = GL_ONE;
 	materialPlasmaOrb->m_BlendDestination = GL_ONE;
-	materialPlasmaOrb->SetShaderTexture("TexPerlin", CrescentEngine::Resources::LoadTexture("Perlin Noise", "Resources/Textures/Perlin.png"), 0);
+	materialPlasmaOrb->SetShaderTexture("TexPerlin", Crescent::Resources::LoadTexture("Perlin Noise", "Resources/Textures/Perlin.png"), 0);
 	materialPlasmaOrb->SetShaderFloat("Strength", 1.5f);
 	materialPlasmaOrb->SetShaderFloat("Speed", 0.083f);
 
@@ -74,10 +74,10 @@ int mainYetToCome(int argc, int argv[])
 	m_ProjectionMatrix = glm::perspective(glm::radians(m_Camera.m_MouseZoom), ((float)m_Editor.RetrieveViewportWidth() / (float)m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
 
 	//Scene Setup
-	CrescentEngine::SceneNode* mainTorus = CrescentEngine::Scene::CreateSceneNode(&torus, materialPBR);
-	CrescentEngine::SceneNode* secondTorus = CrescentEngine::Scene::CreateSceneNode(&torus, materialPBR);
-	CrescentEngine::SceneNode* thirdTorus = CrescentEngine::Scene::CreateSceneNode(&torus, materialPBR);
-	CrescentEngine::SceneNode* plasmaOrb = CrescentEngine::Scene::CreateSceneNode(&torus, materialPBR);
+	Crescent::SceneNode* mainTorus = Crescent::Scene::CreateSceneNode(&torus, materialPBR);
+	Crescent::SceneNode* secondTorus = Crescent::Scene::CreateSceneNode(&torus, materialPBR);
+	Crescent::SceneNode* thirdTorus = Crescent::Scene::CreateSceneNode(&torus, materialPBR);
+	Crescent::SceneNode* plasmaOrb = Crescent::Scene::CreateSceneNode(&torus, materialPBR);
 
 	mainTorus->AddChildNode(secondTorus);
 	secondTorus->AddChildNode(thirdTorus);
@@ -92,20 +92,20 @@ int mainYetToCome(int argc, int argv[])
 	plasmaOrb->SetScale(0.6f);
 
 	//Background
-	CrescentEngine::Skybox* skybox = new CrescentEngine::Skybox;
-	CrescentEngine::PBRCapture* pbrEnvironment = m_Renderer->GetSkyCapture();
+	Crescent::Skybox* skybox = new Crescent::Skybox;
+	Crescent::PBRCapture* pbrEnvironment = m_Renderer->GetSkyCapture();
 	skybox->SetCubeMap(pbrEnvironment->m_Prefiltered);
 	float lodLevel = 1.5f;
 	skybox->m_Material->SetShaderFloat("lodLevel", lodLevel);
 
 	//Post-Processing
-	CrescentEngine::Shader* postProcessingShader1 = CrescentEngine::Resources::LoadShader("PostProcessing1", "Resources/Shaders/ScreenQuad.vs", "Resources/Shaders/CustomPostProcessing1.fs");
-	CrescentEngine::Shader* postProcessingShader2 = CrescentEngine::Resources::LoadShader("PostProcessing2", "Resources/Shaders/ScreenQuad.vs", "Resources/Shaders/CustomPostProcessing2.fs");
-	CrescentEngine::Material* customPostProcessingMaterial1 = m_Renderer->CreatePostProcessingMaterial(postProcessingShader1);
-	CrescentEngine::Material* customPostProcessingMaterial2 = m_Renderer->CreatePostProcessingMaterial(postProcessingShader2);
+	Crescent::Shader* postProcessingShader1 = Crescent::Resources::LoadShader("PostProcessing1", "Resources/Shaders/ScreenQuad.vs", "Resources/Shaders/CustomPostProcessing1.fs");
+	Crescent::Shader* postProcessingShader2 = Crescent::Resources::LoadShader("PostProcessing2", "Resources/Shaders/ScreenQuad.vs", "Resources/Shaders/CustomPostProcessing2.fs");
+	Crescent::Material* customPostProcessingMaterial1 = m_Renderer->CreatePostProcessingMaterial(postProcessingShader1);
+	Crescent::Material* customPostProcessingMaterial2 = m_Renderer->CreatePostProcessingMaterial(postProcessingShader2);
 
 	//Mesh
-	CrescentEngine::SceneNode* sponzaModel = CrescentEngine::Resources::LoadMesh(m_Renderer, "Sponza", "Resources/Models/sponza/sponza.obj");
+	Crescent::SceneNode* sponzaModel = Crescent::Resources::LoadMesh(m_Renderer, "Sponza", "Resources/Models/sponza/sponza.obj");
 	sponzaModel->SetPosition(glm::vec3(0.0f, -1.0f, 0.0f));
 	sponzaModel->SetScale(0.01f);
 

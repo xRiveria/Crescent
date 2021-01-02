@@ -6,7 +6,7 @@
 #include "../Rendering/Shader.h"
 #include <algorithm>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	/*
 		Manually define a list of topology types to avoid linking a mesh to an OpenGL topology type directly. For cross compatability purposes.

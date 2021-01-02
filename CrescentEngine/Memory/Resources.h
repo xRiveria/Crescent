@@ -7,7 +7,7 @@
 #include <map>
 #include <vector>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	/*
 		Global resource manager. This class manages and maintains all resource memory used throughout the rendering application.

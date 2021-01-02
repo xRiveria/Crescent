@@ -3,7 +3,7 @@
 #include "RenderTarget.h"
 #include <vector>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	/*
 		Manages and maintains a list of common render materials, either for storing a template list of common materials or for storing internal renderer materials.	

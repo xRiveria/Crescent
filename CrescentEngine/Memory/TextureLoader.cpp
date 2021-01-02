@@ -2,7 +2,7 @@
 #include "TextureLoader.h"
 #include <stb_image/stb_image.h>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	Texture2D TextureLoader::LoadTexture(const std::string& filePath, GLenum textureTarget, GLenum textureInternalFormat, bool srgb)
 	{

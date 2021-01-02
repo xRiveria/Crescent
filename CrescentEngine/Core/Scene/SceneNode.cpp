@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "SceneNode.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	SceneNode::SceneNode(unsigned int ID) : m_NodeID(ID)
 	{

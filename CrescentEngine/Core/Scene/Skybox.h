@@ -2,7 +2,7 @@
 #include "Scene.h"
 #include "../Rendering/TextureCube.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	/*
 		A skybox represents as a scene node for easy scene management. The skybox scene node is setup in a way that when passed to the renderer, it will

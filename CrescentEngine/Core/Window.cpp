@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "Window.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	Window::Window(const std::string& windowName, const float& windowWidth, const float& windowHeight) : m_ApplicationName(windowName), m_WindowWidth(windowWidth), m_WindowHeight(windowHeight)
 	{

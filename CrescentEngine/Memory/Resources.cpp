@@ -6,7 +6,7 @@
 #include "MeshLoader.h"
 #include "Scene/Scene.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	std::map<unsigned int, Shader> Resources::m_Shaders				= std::map<unsigned int, Shader>();
 	std::map<unsigned int, Texture2D> Resources::m_Textures			= std::map<unsigned int, Texture2D>();

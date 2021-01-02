@@ -1,6 +1,6 @@
 #pragma once
 
-namespace CrescentEngine
+namespace Crescent
 {
 	class RenderTarget
 	{

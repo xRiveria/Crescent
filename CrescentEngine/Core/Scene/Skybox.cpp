@@ -4,7 +4,7 @@
 #include "../Rendering/Material.h"
 #include "../Models/DefaultShapes.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	Skybox::Skybox() : SceneNode(Scene::m_CounterID++)
 	{

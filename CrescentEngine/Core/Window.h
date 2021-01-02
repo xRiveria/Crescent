@@ -4,7 +4,7 @@
 #include <string>
 #include <functional>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	class Window
 	{

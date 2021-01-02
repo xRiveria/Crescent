@@ -16,20 +16,20 @@
 
 struct CoreSystems
 {
-	CrescentEngine::Window m_Window; //Setups our Window.
-	CrescentEngine::Editor m_Editor; //Setups our ImGui context.
-	CrescentEngine::Renderer m_Renderer; //Setups our OpenGL context.
-	CrescentEngine::Timestep m_Timestep; //Setups our Timestep.
-	CrescentEngine::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
+	Crescent::Window m_Window; //Setups our Window.
+	Crescent::Editor m_Editor; //Setups our ImGui context.
+	Crescent::Renderer m_Renderer; //Setups our OpenGL context.
+	Crescent::Timestep m_Timestep; //Setups our Timestep.
+	Crescent::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
 
 	float m_LastFrameTime = 0.0f;
 };
 
 struct RenderingComponents
 {
-	CrescentEngine::Framebuffer m_Framebuffer;
-	CrescentEngine::DepthmapFramebuffer m_DepthMapFramebuffer;
-	CrescentEngine::Cubemap m_Cubemap;
+	Crescent::Framebuffer m_Framebuffer;
+	Crescent::DepthmapFramebuffer m_DepthMapFramebuffer;
+	Crescent::Cubemap m_Cubemap;
 
 	bool m_LightingModel[2] = { true, false };  //[0] for Blinn Phong, [1] for Phong.
 	float pcfSampleAmount = 15.0f;
@@ -43,11 +43,11 @@ struct RenderingComponents
 
 struct Renderables  //Currently our base scene objects.
 {
-	CrescentEngine::Model m_BackpackModel;
-	CrescentEngine::Model m_StormTrooperModel;
-	CrescentEngine::Model m_HeadModel;
-	CrescentEngine::Model m_RoyaleDogModel;
-	CrescentEngine::Model m_SponzaModel;
+	Crescent::Model m_BackpackModel;
+	Crescent::Model m_StormTrooperModel;
+	Crescent::Model m_HeadModel;
+	Crescent::Model m_RoyaleDogModel;
+	Crescent::Model m_SponzaModel;
 
 	glm::vec3 m_BackpackModelPosition = { 0.0f, 1.3f, 0.0f };
 	glm::vec3 m_StormTrooperPosition = { -5.0f, -0.5f, -1.9f };
@@ -61,14 +61,14 @@ struct Renderables  //Currently our base scene objects.
 	glm::vec3 m_RedstoneLampScale = { 0.01f, 0.01f, 0.01f };
 	glm::vec3 m_SponzaScale = { 1.0f, 1.0f, 1.0f };
 
-	CrescentEngine::Model m_RedstoneLampModel;
-	CrescentEngine::Primitive m_Plane; //Our base plane.
-	CrescentEngine::TransparentQuad m_TransparentQuad;
+	Crescent::Model m_RedstoneLampModel;
+	Crescent::Primitive m_Plane; //Our base plane.
+	Crescent::TransparentQuad m_TransparentQuad;
 
-	CrescentEngine::DirectionalLight m_LightDirection;
-	CrescentEngine::PointLight m_PointLight;
+	Crescent::DirectionalLightD m_LightDirection;
+	Crescent::PointLightD m_PointLight;
 
-	CrescentEngine::RenderQueue m_RenderQueue;
+	Crescent::RenderQueue m_RenderQueue;
 
 	//Cubemap
 	std::vector<std::string> m_OceanCubemap = {
@@ -92,21 +92,21 @@ struct Renderables  //Currently our base scene objects.
 
 struct Shaders
 {
-	CrescentEngine::Shader m_StaticModelShader;
-	CrescentEngine::Shader m_PointLightObjectShader;
-	CrescentEngine::Shader m_OutlineObjectShader;
-	CrescentEngine::Shader m_TransparentQuadShader;
-	CrescentEngine::Shader m_DepthShader;
-	CrescentEngine::Shader m_AnimationShader;
-	CrescentEngine::Shader m_GaussianBlurShader;
+	Crescent::Shader m_StaticModelShader;
+	Crescent::Shader m_PointLightObjectShader;
+	Crescent::Shader m_OutlineObjectShader;
+	Crescent::Shader m_TransparentQuadShader;
+	Crescent::Shader m_DepthShader;
+	Crescent::Shader m_AnimationShader;
+	Crescent::Shader m_GaussianBlurShader;
 };
 
 struct Textures
 {
-	CrescentEngine::Texture2D m_GrassTexture;
-	CrescentEngine::Texture2D m_WindowTexture;
-	CrescentEngine::Texture2D m_MarbleTexture;
-	CrescentEngine::Texture2D m_WoodTexture;
+	Crescent::Texture2D m_GrassTexture;
+	Crescent::Texture2D m_WindowTexture;
+	Crescent::Texture2D m_MarbleTexture;
+	Crescent::Texture2D m_WoodTexture;
 };
 
 //Our Systems	
@@ -117,7 +117,7 @@ Shaders g_Shaders; //Creates our shaders.
 Textures g_Textures; //Creates our textures.
 
 //Input Callbacks
-void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap);
+void RenderScene(Crescent::Shader& shader, bool renderShadowMap);
 void DrawEditorContent();
 void ProcessKeyboardEvents(GLFWwindow* window);
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight);
@@ -167,7 +167,7 @@ int main(int argc, int argv[])
 	g_Shaders.m_GaussianBlurShader.CreateShaders("Resources/Shaders/BlurVertex.shader", "Resources/Shaders/BlurFragment.shader");
 
 	//Objects
-	g_Renderables.m_Plane.SetupPrimitiveBuffers(CrescentEngine::PrimitiveShape::PlanePrimitive);
+	g_Renderables.m_Plane.SetupPrimitiveBuffers(Crescent::PrimitiveShape::PlanePrimitive);
 
 	g_Renderables.m_TransparentQuad.SetupTransparentQuadBuffers();
 	g_Textures.m_GrassTexture.LoadTexture("Resources/Textures/Grass.png");
@@ -306,7 +306,7 @@ int main(int argc, int argv[])
 	return 0;
 }
 
-void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap)
+void RenderScene(Crescent::Shader& shader, bool renderShadowMap)
 {
 	//View/Projection Matrix
 	glm::mat4 viewMatrix = g_CoreSystems.m_Camera.GetViewMatrix();
@@ -504,12 +504,12 @@ void DrawEditorContent()
 	ImGui::Begin("Primitive Creation");
 	if (ImGui::Button("Create Plane"))
 	{
-		g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::PlanePrimitive);
+		g_Renderables.m_RenderQueue.SubmitToRenderQueue(Crescent::PrimitiveShape::PlanePrimitive);
 	}
 
 	if (ImGui::Button("Create Cube"))
 	{
-		g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::CubePrimitive);
+		g_Renderables.m_RenderQueue.SubmitToRenderQueue(Crescent::PrimitiveShape::CubePrimitive);
 	}
 	ImGui::End();
 
@@ -548,19 +548,19 @@ void ProcessKeyboardEvents(GLFWwindow* window)
 	const float cameraSpeed = g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds() * 2.5f;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Forward, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Forward, cameraSpeed);
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Backward, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Backward, cameraSpeed);
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Left, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Left, cameraSpeed);
 	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Right, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Right, cameraSpeed);
 	}
 }
 
@@ -568,30 +568,30 @@ void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mo
 {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
 	{
-		CrescentEngine::g_CameraMode = true;
+		Crescent::g_CameraMode = true;
 	}
 	else
 	{
-		CrescentEngine::g_CameraMode = false;
+		Crescent::g_CameraMode = false;
 	}
 }
 
 void CameraMovementCallback(GLFWwindow* window, double xPos, double yPos)
 {
-	if (CrescentEngine::g_IsCameraFirstMove)
+	if (Crescent::g_IsCameraFirstMove)
 	{
-		CrescentEngine::g_CameraLastXPosition = xPos;
-		CrescentEngine::g_CameraLastYPosition = yPos;
-		CrescentEngine::g_IsCameraFirstMove = false;
+		Crescent::g_CameraLastXPosition = xPos;
+		Crescent::g_CameraLastYPosition = yPos;
+		Crescent::g_IsCameraFirstMove = false;
 	}
 
-	float xOffset = xPos - CrescentEngine::g_CameraLastXPosition;
-	float yOffset = CrescentEngine::g_CameraLastYPosition - yPos; //Reversed since Y Coordinates go from bottom to top.
-	CrescentEngine::g_CameraLastXPosition = xPos;
+	float xOffset = xPos - Crescent::g_CameraLastXPosition;
+	float yOffset = Crescent::g_CameraLastYPosition - yPos; //Reversed since Y Coordinates go from bottom to top.
+	Crescent::g_CameraLastXPosition = xPos;
 
-	CrescentEngine::g_CameraLastYPosition = yPos;
+	Crescent::g_CameraLastYPosition = yPos;
 
-	if (CrescentEngine::g_CameraMode)
+	if (Crescent::g_CameraMode)
 	{
 		g_CoreSystems.m_Camera.ProcessMouseMovement(xOffset, yOffset);
 	}

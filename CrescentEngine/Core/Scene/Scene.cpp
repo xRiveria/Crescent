@@ -2,7 +2,7 @@
 #include "Scene.h"
 #include <stack>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	SceneNode* Scene::m_RootNode = new SceneNode(0);
 	unsigned int Scene::m_CounterID = 0;

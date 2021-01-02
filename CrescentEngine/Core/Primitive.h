@@ -6,7 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "../Models/Mesh.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	enum PrimitiveShape
 	{

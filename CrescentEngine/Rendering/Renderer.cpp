@@ -1,8 +1,11 @@
 #include "CrescentPCH.h";
 #include "Renderer.h";
 
-namespace CrescentEngine
+namespace Crescent
 {
+	Renderer::~Renderer()
+	{
+	}
 	void Renderer::InitializeOpenGL()
 	{
 		if (glewInit() != GLEW_OK)

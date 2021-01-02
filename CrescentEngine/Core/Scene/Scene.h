@@ -3,7 +3,7 @@
 #include "../Models/Mesh.h"
 #include "../Rendering/Material.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	/*
 		This is our global scene object. It will always hold a core root node to which other scene nodes can be attached. 

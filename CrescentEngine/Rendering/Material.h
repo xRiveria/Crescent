@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 #include <map>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	/* 
 		A material object represents all relevant render states required for rendering a mesh. 

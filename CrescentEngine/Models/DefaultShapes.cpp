@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "DefaultShapes.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
     const float PI = 3.14159265359f;
     const float TAU = 6.28318530717f;

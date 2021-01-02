@@ -1,7 +1,7 @@
 #pragma once
 #include "Mesh.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	//A 3D cube in the range [-0.5f, 0.5f]. Vertices are hard-coded.
 	class Cube : public Mesh

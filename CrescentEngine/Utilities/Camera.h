@@ -2,7 +2,7 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	//Defines several possible options for camera movement. Used as abstractions to stay away from windows specific input methods.
 

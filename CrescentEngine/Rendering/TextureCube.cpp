@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "TextureCube.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	TextureCube::TextureCube()
 	{

@@ -2,7 +2,7 @@
 #include "Mesh.h"
 #include "GL/glew.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	Mesh::Mesh()
 	{

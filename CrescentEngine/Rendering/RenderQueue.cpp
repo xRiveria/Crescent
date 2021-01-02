@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "RenderQueue.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	void RenderQueue::SubmitToRenderQueue(const PrimitiveShape& primitiveShape)
 	{

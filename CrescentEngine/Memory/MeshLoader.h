@@ -7,7 +7,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	class MeshLoader
 	{

@@ -2,7 +2,7 @@
 #include "MeshLoader.h"
 #include "Resources.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	std::vector<Mesh*> MeshLoader::m_MeshLibrary = std::vector<Mesh*>();
 

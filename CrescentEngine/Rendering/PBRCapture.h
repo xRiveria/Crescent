@@ -2,7 +2,7 @@
 #include "TextureCube.h"
 #include <glm/glm.hpp>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	//Container object for holding all per-environemnt specific pre-computed PBR data.
 	struct PBRCapture

@@ -3,7 +3,7 @@
 #include "../Utilities/StringID.h"
 #include <string>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	Shader ShaderLoader::LoadShader(const std::string& shaderName, const std::string& vertexShaderFilePath, const std::string& fragmentShaderFilePath, std::vector<std::string> defines)
 	{
