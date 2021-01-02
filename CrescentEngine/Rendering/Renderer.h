@@ -5,7 +5,15 @@
 #include "PBRCapture.h"
 #include "RenderQueue.h"
 #include "RenderTarget.h"
+#include "CommandBuffer.h"
 #include "GLStateCache.h"
+#include "../Lighting/Lights.h"
+#include "MaterialLibrary.h"
+#include "../Utilities/Camera.h"
+#include "../Models/DefaultShapes.h"
+#include "PostProcessor.h"
+#include "PBR.h"
+#include "Scene/SceneNode.h"
 
 namespace Crescent
 {
@@ -20,22 +28,65 @@ namespace Crescent
 		Renderer() {}
 		~Renderer();
 
+		//Cleanup.
 		void InitializeOpenGL();
 		void SetApplicationContext(GLFWwindow* window) { m_ApplicationContext = window; }
 		void ClearBuffers();
-
-		//Cleanup.
 		void ToggleDepthTesting(bool value);
 		void ToggleWireframeRendering(bool value);
 		void ToggleBlending(bool value);
 		void ToggleFaceCulling(bool value);
 		
+		//===============================================================================================================
+		void InitializeRenderer();
+		void SetRenderViewportSize(unsigned int newWidth, unsigned int newHeight);
+		glm::vec2 RetrieveRenderViewportSize() const;
 
-		Material* CreateMaterial();
-		Material* CreateMaterial(const std::string& base);
-		Material* CreateCustomMaterial(Shader* shader);
-		Material* CreatePostProcessingMaterial(Shader* shader);
+		void SetRenderTarget(RenderTarget* renderTaget, GLenum target = GL_TEXTURE_2D);
+		Camera* RetrieveCamera();
+		void SetCamera(Camera* camera);
+
+		PostProcessor* RetrievePostProcessor();
+
+		//Create either a deffered defualt material (based on a default set of materials avaliable (like glass), or a custom material (with custom, you have to supply your own shader).
+		Material* CreateMaterial(const std::string& base = "Default"); //These don't have the custom flag set (default material has default state and uses checkerboard texture as Albedo (and black metallic, half roughness, purple normals, white AO).
+		Material* CreateCustomMaterial(Shader* shader); //These have the custom flag set and will be rendered in the forward pass.
+		Material* CreatePostProcessingMaterial(Shader* shader); //These have the post-processing flag set (will be rendered after deferred/forward pass). 
+
+		//Render Queue Pushing
+		void PushRenderCommand(Mesh* mesh, Material* material, glm::mat4 transform = glm::mat4(1.0f), glm::mat4 previousFrameTransform = glm::mat4(1.0f));
+		void PushRenderCommand(SceneNode* node);
+		void PushPostProcessingCommand(Material* postprocessingMaterial);
+
+		//Lights
+		void AddLight(DirectionalLight* directionalLight);
+		void AddLight(PointLight* pointLight);
+
+		void RenderCommandQueueObjects();
+
+		void Blit(Texture* source, RenderTarget* destination = nullptr, Material* material = nullptr, std::string textureUniformName = "TexSrc");
+
+		//PBR
+		void SetSkyCapture(PBRCapture* pbrEnvironment);
 		PBRCapture* GetSkyCapture();
+		void AddIrradianceProbe(glm::vec3 position, float radius);
+		void BakeProbes(SceneNode* scene = nullptr);
+
+	private:
+		//Minimal logic to render a mesh.
+		void RenderMesh(Mesh* mesh, Shader* shader);
+		//Updates the global uniform buffer objects.
+		void UpdateGlobalUniformBufferObjects();
+		//Returns the currently active render target.
+		RenderTarget* GetCurrentRenderTarget();
+
+		//Deferred Logic.
+		void RenderDeferredAmbientLighting(); //Renders all ambient lighting including indirect IBL.
+		void RenderDeferredDirectionalLighting(DirectionalLight* directionalLight);
+		void RenderDeferredPointLighting(PointLight* pointLight);
+
+		//Render mesh for shadow buffer generation.
+		//void RenderShadowCastingCommand(RenderQeueue*)	
 
 	public:
 		bool m_ShadowsEnabled = true;
@@ -46,10 +97,47 @@ namespace Crescent
 		bool m_WireframesEnabled = false;
 
 	private:
-		RenderQueue* m_RenderQueue;
+		CommandBuffer* m_RenderCommandBuffer;
 		GLStateCache m_GLStateCache;
-		glm::vec2 m_ViewportSize;
+		glm::vec2 m_RenderViewportSize;
 
+		//Lighting
+		std::vector<DirectionalLight*> m_DirectionalLight;
+		std::vector<PointLight*> m_PointLights;
+		RenderTarget* m_GBuffer = nullptr;
+		Mesh* m_DeferredPointLightMesh;
+
+		//Materials
+		MaterialLibrary* m_MaterialLibrary;
+
+		//Camera
+		Camera* m_Camera;
+		glm::mat4 m_PreviousViewProjectionMatrix;
+
+		//Render-Targets/Post-Processing
+		std::vector<RenderTarget*> m_CustomRenderTargets;
+		RenderTarget* m_CurrentCustomRenderTarget = nullptr;
+		RenderTarget* m_CustomRenderTarget;
+		RenderTarget* m_PostProcessingRenderTarget1;
+		//PostProcessor* m_PostProcessor;
+		Quad* m_NDCPlane;
+		unsigned int m_CubemapFramebuffer;
+		unsigned int m_CubemapDepthRenderBufferObject;
+
+		//Shadow Buffers
+		std::vector<RenderTarget*> m_ShadowRenderTargets;
+		std::vector<glm::mat4> m_ShadowViewProjectionMatrixes;
+
+		//PBR
+		PBR* m_PBR;
+		unsigned int m_PBREnvironmentIndex;
+		std::vector<glm::vec4> m_ProbeSpatials;
+
+		//UBO
+		unsigned int m_GlobalUniformBufferID;
+
+		//Debug
+		Mesh* m_DebugLightMesh;
 
 	private:
 		GLFWwindow* m_ApplicationContext = nullptr;

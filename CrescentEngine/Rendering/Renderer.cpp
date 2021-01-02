@@ -5,7 +5,41 @@ namespace Crescent
 {
 	Renderer::~Renderer()
 	{
+
 	}
+
+	void Renderer::InitializeRenderer()
+	{
+
+		//Configure the default OpenGL State.
+	}
+
+	void Renderer::SetRenderViewportSize(unsigned int newWidth, unsigned int newHeight)
+	{
+
+	}
+
+	glm::vec2 Renderer::RetrieveRenderViewportSize() const
+	{
+		return glm::vec2();
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	void Renderer::InitializeOpenGL()
 	{
 		if (glewInit() != GLEW_OK)
@@ -34,11 +68,6 @@ namespace Crescent
 	void Renderer::ToggleFaceCulling(bool value)
 	{
 		value ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE);
-	}
-
-	Material* Renderer::CreateMaterial()
-	{
-		return nullptr;
 	}
 
 	Material* Renderer::CreateMaterial(const std::string& base)

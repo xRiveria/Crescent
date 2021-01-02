@@ -17,6 +17,9 @@ namespace Crescent
 		//3D texture Creation
 		void GenerateTexture(unsigned int textureWidth, unsigned int textureHeight, unsigned int textureDepth, GLenum textureInternalFormat, GLenum textureFormat, GLenum textureDataType, void* textureData);
 
+		void ResizeTexture(unsigned int newTextureWidth = 0, unsigned int newTextureHeight = 0, unsigned int textureDepth = 0);
+
+		//======================================
 		void LoadTexture(const std::string& filePath);
 		void BindTexture();
 		void UnbindTexture();
@@ -37,7 +40,6 @@ namespace Crescent
 		unsigned int m_TextureHeight = 0;
 		unsigned int m_TextureDepth = 0;
 
-	private:
 		unsigned int m_TextureID = 0;
 	};
 }

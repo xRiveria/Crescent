@@ -197,6 +197,7 @@
     <ClCompile Include="Rendering\MaterialLibrary.cpp" />
     <ClCompile Include="Memory\Resources.cpp" />
     <ClCompile Include="Rendering\PBRCapture.cpp" />
+    <ClCompile Include="Rendering\RenderTarget.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
     <ClCompile Include="MainLoop.cpp" />
     <ClCompile Include="Models\BoneMapper.cpp" />
