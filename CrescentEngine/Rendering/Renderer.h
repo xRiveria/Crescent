@@ -14,6 +14,7 @@
 #include "PostProcessor.h"
 #include "PBR.h"
 #include "Scene/SceneNode.h"
+#include "../Memory/Resources.h"
 
 namespace Crescent
 {
@@ -25,24 +26,15 @@ namespace Crescent
 	class Renderer
 	{
 	public:
-		Renderer() {}
+		Renderer();
 		~Renderer();
-
-		//Cleanup.
-		void InitializeOpenGL();
-		void SetApplicationContext(GLFWwindow* window) { m_ApplicationContext = window; }
-		void ClearBuffers();
-		void ToggleDepthTesting(bool value);
-		void ToggleWireframeRendering(bool value);
-		void ToggleBlending(bool value);
-		void ToggleFaceCulling(bool value);
 		
 		//===============================================================================================================
 		void InitializeRenderer();
 		void SetRenderViewportSize(unsigned int newWidth, unsigned int newHeight);
 		glm::vec2 RetrieveRenderViewportSize() const;
 
-		void SetRenderTarget(RenderTarget* renderTaget, GLenum target = GL_TEXTURE_2D);
+		void SetRenderTarget(RenderTarget* renderTarget, GLenum target = GL_TEXTURE_2D);
 		Camera* RetrieveCamera();
 		void SetCamera(Camera* camera);
 
@@ -64,7 +56,7 @@ namespace Crescent
 
 		void RenderCommandQueueObjects();
 
-		void Blit(Texture* source, RenderTarget* destination = nullptr, Material* material = nullptr, std::string textureUniformName = "TexSrc");
+		void Blit(Texture2D* source, RenderTarget* destination = nullptr, Material* material = nullptr, std::string textureUniformName = "TexSrc");
 
 		//PBR
 		void SetSkyCapture(PBRCapture* pbrEnvironment);
@@ -72,7 +64,19 @@ namespace Crescent
 		void AddIrradianceProbe(glm::vec3 position, float radius);
 		void BakeProbes(SceneNode* scene = nullptr);
 
+		//Cleanup.
+		void InitializeOpenGL();
+		void SetApplicationContext(GLFWwindow* window) { m_ApplicationContext = window; }
+		void ClearBuffers();
+		void ToggleDepthTesting(bool value);
+		void ToggleWireframeRendering(bool value);
+		void ToggleBlending(bool value);
+		void ToggleFaceCulling(bool value);
+
 	private:
+		//Renderer specific logic for rendering a custom (forward-pass) command.
+		void RenderCustomCommand(RenderCommand* renderCommand, Camera* customCamera, bool updateGLSettings = true);
+
 		//Minimal logic to render a mesh.
 		void RenderMesh(Mesh* mesh, Shader* shader);
 		//Updates the global uniform buffer objects.
@@ -86,7 +90,7 @@ namespace Crescent
 		void RenderDeferredPointLighting(PointLight* pointLight);
 
 		//Render mesh for shadow buffer generation.
-		//void RenderShadowCastingCommand(RenderQeueue*)	
+		void RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix);
 
 	public:
 		bool m_ShadowsEnabled = true;
@@ -102,7 +106,7 @@ namespace Crescent
 		glm::vec2 m_RenderViewportSize;
 
 		//Lighting
-		std::vector<DirectionalLight*> m_DirectionalLight;
+		std::vector<DirectionalLight*> m_DirectionalLights;
 		std::vector<PointLight*> m_PointLights;
 		RenderTarget* m_GBuffer = nullptr;
 		Mesh* m_DeferredPointLightMesh;
@@ -119,10 +123,10 @@ namespace Crescent
 		RenderTarget* m_CurrentCustomRenderTarget = nullptr;
 		RenderTarget* m_CustomRenderTarget;
 		RenderTarget* m_PostProcessingRenderTarget1;
-		//PostProcessor* m_PostProcessor;
+		PostProcessor* m_PostProcessor;
 		Quad* m_NDCPlane;
-		unsigned int m_CubemapFramebuffer;
-		unsigned int m_CubemapDepthRenderBufferObject;
+		unsigned int m_CubemapFramebufferID;
+		unsigned int m_CubemapDepthRenderbufferID;
 
 		//Shadow Buffers
 		std::vector<RenderTarget*> m_ShadowRenderTargets;

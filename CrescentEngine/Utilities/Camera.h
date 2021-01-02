@@ -1,6 +1,7 @@
 #pragma once
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "CameraFrustrum.h"
 
 namespace Crescent
 {
@@ -141,6 +142,11 @@ namespace Crescent
 			m_CameraUp = glm::normalize(glm::cross(m_CameraRight, m_CameraFront));
 		}
 
+		void SetPerspective(float fieldOfView, float aspectRatio, float nearClip, float farClip)
+		{
+
+		}
+
 
 	public:
 		//Camera Attributes
@@ -157,5 +163,13 @@ namespace Crescent
 		float m_CameraSpeed;
 		float m_MouseSensitivity;
 		float m_MouseZoom;
+
+		//New
+		float m_FieldOfView;
+		float m_AspectRation;
+		float m_NearClip;
+		float m_FarClip;
+
+		CameraFrustrum m_CameraFrustrum;
 	};
 }

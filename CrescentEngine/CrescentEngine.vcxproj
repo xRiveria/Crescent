@@ -193,10 +193,13 @@
     <ClCompile Include="Memory\ShaderLoader.cpp" />
     <ClCompile Include="Memory\TextureLoader.cpp" />
     <ClCompile Include="Models\DefaultShapes.cpp" />
+    <ClCompile Include="Rendering\CommandBuffer.cpp" />
     <ClCompile Include="Rendering\GLStateCache.cpp" />
     <ClCompile Include="Rendering\MaterialLibrary.cpp" />
     <ClCompile Include="Memory\Resources.cpp" />
+    <ClCompile Include="Rendering\PBR.cpp" />
     <ClCompile Include="Rendering\PBRCapture.cpp" />
+    <ClCompile Include="Rendering\PostProcessor.cpp" />
     <ClCompile Include="Rendering\RenderTarget.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
     <ClCompile Include="MainLoop.cpp" />
@@ -216,6 +219,7 @@
     <ClCompile Include="Rendering\RenderQueue.cpp" />
     <ClCompile Include="Rendering\Texture.cpp" />
     <ClCompile Include="Rendering\TextureCube.cpp" />
+    <ClCompile Include="Utilities\CameraFrustrum.cpp" />
     <ClCompile Include="Vendor\glm\detail\glm.cpp" />
     <ClCompile Include="Vendor\imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -276,9 +280,13 @@
     <ClInclude Include="Memory\ShaderLoader.h" />
     <ClInclude Include="Memory\TextureLoader.h" />
     <ClInclude Include="Models\DefaultShapes.h" />
+    <ClInclude Include="Rendering\CommandBuffer.h" />
     <ClInclude Include="Rendering\GLStateCache.h" />
     <ClInclude Include="Rendering\MaterialLibrary.h" />
+    <ClInclude Include="Rendering\PBR.h" />
     <ClInclude Include="Rendering\PBRCapture.h" />
+    <ClInclude Include="Rendering\PostProcessor.h" />
+    <ClInclude Include="Rendering\RenderCommand.h" />
     <ClInclude Include="Rendering\RenderTarget.h" />
     <ClInclude Include="Memory\Resources.h" />
     <ClInclude Include="Rendering\Shader.h" />
@@ -302,6 +310,7 @@
     <ClInclude Include="Resources\Shaders\ReflectiveVertex.shader" />
     <ClInclude Include="Utilities\Camera.h" />
     <ClInclude Include="Rendering\Cubemap.h" />
+    <ClInclude Include="Utilities\CameraFrustrum.h" />
     <ClInclude Include="Utilities\StringID.h" />
     <ClInclude Include="Utilities\Timestep.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\ai_assert.h" />

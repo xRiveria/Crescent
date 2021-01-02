@@ -27,7 +27,7 @@ namespace Crescent
 		delete m_DefaultBlitMaterial;
 	}
 
-	Material* MaterialLibrary::CreateMaterial(std::string& base) //Default material.
+	Material* MaterialLibrary::CreateMaterial(const std::string& base) //Default material.
 	{
 		auto foundMaterial = m_DefaultMaterials.find(StringID(base));
 		if (foundMaterial != m_DefaultMaterials.end())
