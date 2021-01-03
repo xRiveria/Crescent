@@ -1,5 +1,7 @@
 #include "CrescentPCH.h"
 #include "CommandBuffer.h"
+#include "Renderer.h"
+#include "../Utilities/Camera.h"
 
 namespace Crescent
 {

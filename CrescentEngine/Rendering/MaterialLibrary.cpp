@@ -126,12 +126,12 @@ namespace Crescent
 	void MaterialLibrary::GenerateInternalMaterials(RenderTarget* gBuffer)
 	{
 		//Post-Processing
-		Shader* defaultBlitShader = Resources::LoadShader("Blit", "Resources/Shaders/Screen_Quad.vs", "Resouces/Shaders/Default_Blit.fs");
+		Shader* defaultBlitShader = Resources::LoadShader("Blit", "Resources/Shaders/ScreenQuad.vs", "Resouces/Shaders/DefaultBlit.fs");
 		m_DefaultBlitMaterial = new Material(defaultBlitShader);
 
 		//Deferred
 		m_DeferredAmbientLightShader = Resources::LoadShader("Deferred Ambient Light", "Resources/Shaders/Deferred/ScreenAmbient.vs", "Resources/Shaders/Deferred/Ambient.fs");
-		m_DeferredIrradianceShader = Resources::LoadShader("Deferred Irradiance", "Resources/Shaders/Deferred/AmbientIrradiance.vs", "Resources/Shaders/Deferred/Ambient_Irradiance.fs");
+		m_DeferredIrradianceShader = Resources::LoadShader("Deferred Irradiance", "Resources/Shaders/Deferred/AmbientIrradiance.vs", "Resources/Shaders/Deferred/AmbientIrradiance.fs");
 		m_DeferredDirectionalLightShader = Resources::LoadShader("Deferred Directional Light", "Resources/Shaders/Deferred/ScreenDirectional.vs", "Resouces/Shaders/Deferred/Directional.fs");
 		m_DeferredPointLightShader = Resources::LoadShader("Deferred Point Light", "Resources/Shaders/Deferred/Point.vs", "Resources/Shaders/Deferred/Point.fs");
 

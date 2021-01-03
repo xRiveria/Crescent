@@ -171,5 +171,8 @@ namespace Crescent
 		float m_FarClip;
 
 		CameraFrustrum m_CameraFrustrum;
+
+		glm::mat4 m_ProjectionMatrix;
+		glm::mat4 m_ViewMatrix;
 	};
 }

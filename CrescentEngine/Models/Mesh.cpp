@@ -271,7 +271,7 @@ namespace Crescent
 				}
 
 				shader.UseShader();
-				glUniform1i(glGetUniformLocation(shader.GetShaderID(), (name + number).c_str()), i);
+				glUniform1i(glGetUniformLocation(shader.RetrieveShaderID(), (name + number).c_str()), i);
 				glBindTexture(GL_TEXTURE_2D, textures[i].id);
 			}
 		}

@@ -1,9 +1,10 @@
 #pragma once
 #include "RenderCommand.h"
-#include "Renderer.h"
 
 namespace Crescent
 {
+	class Renderer;
+	class RenderTarget;
 	/*
 	Render command buffer, managing all per-frame render/draw calls and converts them to a more efficient render-friendly format for the renderer to execute.
 	*/

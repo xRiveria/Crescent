@@ -2,6 +2,11 @@
 #include "Renderer.h";
 #include <stack>
 #include "Scene/Scene.h"
+#include "../Models/DefaultShapes.h"
+#include "MaterialLibrary.h"
+#include "PBR.h"
+#include "../Memory/Resources.h"
+#include "../Utilities/Camera.h"
 
 
 namespace Crescent
@@ -435,11 +440,56 @@ namespace Crescent
 
 		//11) Final post-processing steps, blitting to default framebuffer.
 		
+		//Store view projection as previous view projection for next frame's motion blur.
+		m_PreviousViewProjectionMatrix = m_Camera->m_ProjectionMatrix * m_Camera->m_ViewMatrix;
 
+		//Clear the command buffer so that the next frame/call can start from an empty slate again.
+		m_RenderCommandBuffer->ClearCommandBuffer();
+
+		//Clear Render State
+		m_CustomRenderTargets.clear();
+		m_CurrentCustomRenderTarget = nullptr;
 	}
 
 	void Renderer::Blit(Texture2D* source, RenderTarget* destination, Material* material, std::string textureUniformName)
 	{
+		//If a destination target was given, bind to its framebuffer.
+		if (destination)
+		{
+			glViewport(0, 0, destination->m_RenderTargetWidth, destination->m_RenderTargetHeight);
+			glBindFramebuffer(GL_FRAMEBUFFER, destination->m_RenderTargetID);
+			if (destination->m_RenderTargetHasDepthAndStencil)
+			{
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+			}
+			else
+			{
+				glClear(GL_COLOR_BUFFER_BIT);
+			}
+		}
+		else
+		{
+			//Else, we bind to the default framebuffer.
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glViewport(0, 0, m_RenderViewportSize.x, m_RenderViewportSize.y);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		}
+
+		//If no material was given, use default blit material.
+		if (!material)
+		{
+			material = m_MaterialLibrary->m_DefaultBlitMaterial;
+		}
+		//If a source render target is given, use its color buffer as input to the material shader.
+		if (source)
+		{
+			material->SetShaderTexture(textureUniformName, source, 0);
+		}
+		//Render screen-space material to quad which will be displayed in the destination's buffers.
+		RenderCommand renderCommand;
+		renderCommand.m_Material = material;
+		renderCommand.m_Mesh = m_NDCPlane;
+		RenderCustomCommand(&renderCommand, nullptr);
 	}
 
 	void Renderer::SetSkyCapture(PBRCapture* pbrEnvironment)
@@ -519,6 +569,14 @@ namespace Crescent
 	{
 	}
 
+	void Renderer::RenderToCubemap(SceneNode* sceneNode, TextureCube* target, glm::vec3 position, unsigned int mipmapLevel)
+	{
+	}
+
+	void Renderer::RenderToCubemap(std::vector<RenderCommand>& renderCommands, TextureCube* target, glm::vec3 position, unsigned int mipmapLevel)
+	{
+	}
+
 	void Renderer::RenderMesh(Mesh* mesh, Shader* shader)
 	{
 	}
@@ -546,6 +604,12 @@ namespace Crescent
 
 	void Renderer::RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix)
 	{
+		Shader* shadowShader = m_MaterialLibrary->m_DirectionalShadowShader;
+		shadowShader->SetUniformMat4("projection", projectionMatrix);
+		shadowShader->SetUniformMat4("view", viewMatrix);
+		shadowShader->SetUniformMat4("model", renderCommand->m_Transform);
+
+		RenderMesh(renderCommand->m_Mesh, shadowShader);
 	}
 
 	void Renderer::ClearBuffers()

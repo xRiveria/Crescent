@@ -1,23 +1,24 @@
 #pragma once
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include "../Rendering/Material.h"
 #include "../Lighting/Lights.h"
 #include "PBRCapture.h"
-#include "RenderQueue.h"
-#include "RenderTarget.h"
 #include "CommandBuffer.h"
 #include "GLStateCache.h"
-#include "MaterialLibrary.h"
-#include "../Utilities/Camera.h"
-#include "../Models/DefaultShapes.h"
-#include "PostProcessor.h"
-#include "PBR.h"
-#include "Scene/SceneNode.h"
-#include "../Memory/Resources.h"
 
 namespace Crescent
 {
+	class Mesh;
+	class Material;
+	class Scene;
+	class SceneNode;
+	class Camera;
+	class RenderTarget;
+	class MaterialLibrary;
+	class PBR;
+	class PostProcessor;
+	class Quad;
+
 	/*
 		Our main renderer. This is responsible for maintaining a render buffer queue, providing the front push commands for filling the buffer, sorting the buffer, manage multiple
 		render passes and render the buffer(s) accordingly.
@@ -25,6 +26,8 @@ namespace Crescent
 
 	class Renderer
 	{
+		friend PBR;
+
 	public:
 		Renderer();
 		~Renderer();
@@ -66,7 +69,7 @@ namespace Crescent
 
 		//Cleanup.
 		void InitializeOpenGL();
-		void SetApplicationContext(GLFWwindow* window) { m_ApplicationContext = window; }
+		//void SetApplicationContext(GLFWwindow* window) { m_ApplicationContext = window; }
 		void ClearBuffers();
 		void ToggleDepthTesting(bool value);
 		void ToggleWireframeRendering(bool value);
@@ -76,6 +79,9 @@ namespace Crescent
 	private:
 		//Renderer specific logic for rendering a custom (forward-pass) command.
 		void RenderCustomCommand(RenderCommand* renderCommand, Camera* customCamera, bool updateGLSettings = true);
+		//Renderer specific logic for rendering a list of commands to a target cubemap.
+		void RenderToCubemap(SceneNode* sceneNode, TextureCube* target, glm::vec3 position = glm::vec3(0.0f), unsigned int mipmapLevel = 0);
+		void RenderToCubemap(std::vector<RenderCommand>& renderCommands, TextureCube* target, glm::vec3 position = glm::vec3(0.0f), unsigned int mipmapLevel = 0);
 
 		//Minimal logic to render a mesh.
 		void RenderMesh(Mesh* mesh, Shader* shader);

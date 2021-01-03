@@ -1,5 +1,5 @@
 #pragma once
-#include "Camera.h"
+#include <glm/glm.hpp>
 
 namespace Crescent
 {
@@ -33,6 +33,8 @@ namespace Crescent
 
 	class CameraFrustrum
 	{
+		class Camera;
+
 	public:
 		CameraFrustrum();
 
