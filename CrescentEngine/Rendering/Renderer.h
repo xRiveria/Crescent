@@ -2,12 +2,12 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include "../Rendering/Material.h"
+#include "../Lighting/Lights.h"
 #include "PBRCapture.h"
 #include "RenderQueue.h"
 #include "RenderTarget.h"
 #include "CommandBuffer.h"
 #include "GLStateCache.h"
-#include "../Lighting/Lights.h"
 #include "MaterialLibrary.h"
 #include "../Utilities/Camera.h"
 #include "../Models/DefaultShapes.h"

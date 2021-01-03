@@ -127,7 +127,7 @@ void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset);
 
 glm::mat4 projectionMatrix = glm::mat4(1.0f);
 
-int main(int argc, int argv[])
+int mainDefuncts(int argc, int argv[])
 {
 	glfwWindowHint(GLFW_SAMPLES, 16);
 

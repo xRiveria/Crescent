@@ -68,7 +68,7 @@ namespace Crescent
 	//Custom per-element sort compare function used by the CommandBuffer::Sort() function.
 	bool RenderSortDeferred(const RenderCommand& a, const RenderCommand& b)
 	{
-		return a.m_Material->RetrieveMaterialShader()->GetShaderID() < b.m_Material->RetrieveMaterialShader()->GetShaderID();
+		return a.m_Material->RetrieveMaterialShader()->RetrieveShaderID() < b.m_Material->RetrieveMaterialShader()->RetrieveShaderID();
 	}
 	
 	//Sort render state.
@@ -79,8 +79,8 @@ namespace Crescent
 			the comparison should always be false. We also want to do multiple sort comparisons in a single pass, so we encapsulate all relevant properties inside a N-Tuple with N being equal
 			to the number of sort queries we want to do. The tuple < comparison operator compares its left-most element and then works along the next elements of the tuple until an outcome is clear.
 		*/
-		return std::make_tuple(a.m_Material->m_BlendingEnabled, a.m_Material->RetrieveMaterialShader()->GetShaderID()) < 
-			   std::make_tuple(b.m_Material->m_BlendingEnabled, b.m_Material->RetrieveMaterialShader()->GetShaderID());	
+		return std::make_tuple(a.m_Material->m_BlendingEnabled, a.m_Material->RetrieveMaterialShader()->RetrieveShaderID()) <
+			   std::make_tuple(b.m_Material->m_BlendingEnabled, b.m_Material->RetrieveMaterialShader()->RetrieveShaderID());
 	}
 
 	void CommandBuffer::SortCommandBuffer()

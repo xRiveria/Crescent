@@ -2,17 +2,11 @@
 #include "Core.h"
 #include "Window.h"
 #include "Editor.h"
-#include "Models/DefaultShapes.h"
-#include "Rendering/Material.h"
-#include "Rendering/Shader.h"
 #include "Rendering/Renderer.h"
-#include "Memory/Resources.h"
-#include "Utilities/Camera.h"
 #include "Editor.h"
 #include "Utilities/Timestep.h"
 #include "Scene/Scene.h"
 #include "Scene/Skybox.h"
-#include "Rendering/PBRCapture.h"
 
 Crescent::Window m_Window;
 Crescent::Renderer* m_Renderer;
@@ -28,7 +22,7 @@ void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mo
 void CameraMovementCallback(GLFWwindow* window, double xPos, double yPos);
 void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset);
 
-int mainYetToCome(int argc, int argv[])
+int main(int argc, int argv[])
 {
 	// Windowing ================================================================================
 

@@ -3,6 +3,7 @@
 #include <stack>
 #include "Scene/Scene.h"
 
+
 namespace Crescent
 {
 	Renderer::Renderer()

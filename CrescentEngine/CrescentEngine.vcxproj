@@ -304,6 +304,7 @@
     <ClInclude Include="Rendering\Renderer.h" />
     <ClInclude Include="Rendering\Framebuffer.h" />
     <ClInclude Include="Rendering\RenderQueue.h" />
+    <ClInclude Include="Rendering\ShaderUtilities.h" />
     <ClInclude Include="Rendering\Texture.h" />
     <ClInclude Include="Rendering\TextureCube.h" />
     <ClInclude Include="Resources\Shaders\OutlineVertex.shader" />
