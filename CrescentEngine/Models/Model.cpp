@@ -14,7 +14,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
-namespace Crescent
+namespace CrescentEngine
 {
 	static inline int temporaryUUID = 0;
 

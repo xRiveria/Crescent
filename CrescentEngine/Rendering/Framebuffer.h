@@ -2,7 +2,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-namespace Crescent
+namespace CrescentEngine
 {
 	class Framebuffer
 	{
@@ -67,19 +67,15 @@ namespace Crescent
 	class GBuffer
 	{
 	public:
-		void SetupGBuffer(const int& viewportWidth, const int& viewportHeight);
 		unsigned int ResetGBuffer();
-		void ResizeFramebuffer(const int& newWidth, const int& newHeight);
-		void BindGBuffer();
+		void ResizeFramebuffer(int newWidth, int newHeight);
 		void ClearGBuffer();
 
-	public:
+	private:
 		unsigned int m_GBufferID;
 		unsigned int m_GBufferPositionTextureID;
 		unsigned int m_GBufferNormalsTextureID;
 		unsigned int m_GBufferAlbedoSpecularTextureID;
-		//unsigned int m_GBufferAlbedoTextureID;
-		//unsigned int m_GBufferSpecularTextureID;
 		unsigned int m_GBufferRenderBufferObjectID;
 		unsigned int m_UtilizedGBufferColorAttachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
 

@@ -3,7 +3,7 @@
 #include <GL/glew.h>
 #include <stb_image/stb_image.h>
 
-namespace Crescent
+namespace CrescentEngine
 {
     void Cubemap::LoadCubemap(std::vector<std::string> fileLocations)
     {

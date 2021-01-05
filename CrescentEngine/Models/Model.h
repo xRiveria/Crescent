@@ -12,7 +12,7 @@
 #include <optional>
 #include "Window.h"
 
-namespace Crescent
+namespace CrescentEngine
 {
 	class Model
 	{

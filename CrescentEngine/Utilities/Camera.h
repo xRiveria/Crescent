@@ -1,9 +1,8 @@
 #pragma once
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
-#include "CameraFrustrum.h"
 
-namespace Crescent
+namespace CrescentEngine
 {
 	//Defines several possible options for camera movement. Used as abstractions to stay away from windows specific input methods.
 
@@ -16,16 +15,16 @@ namespace Crescent
 	};
 
 	//Default Camera Values
-	inline bool g_CameraMode = false;
-	inline bool g_IsCameraFirstMove = true;
-	inline float g_CameraLastXPosition = 0.0f;
-	inline float g_CameraLastYPosition = 0.0f;
+	bool g_CameraMode = false;
+	bool g_IsCameraFirstMove = true;
+	float g_CameraLastXPosition = 0.0f;
+	float g_CameraLastYPosition = 0.0f;
 
-	inline const float g_CameraYaw = -90.0f; //Horizontal rotation.
-	inline const float g_CameraPitch = 0.0f; //Vertical rotation.
-	inline const float g_CameraSensitivity = 0.1f;
-	inline const float g_CameraSpeed = 2.5f;
-	inline const float g_CameraZoom = 45.0f;
+	const float g_CameraYaw = -90.0f; //Horizontal rotation.
+	const float g_CameraPitch = 0.0f; //Vertical rotation.
+	const float g_CameraSensitivity = 0.1f;
+	const float g_CameraSpeed = 2.5f;
+	const float g_CameraZoom = 45.0f;
 
 	//An abstract camera class that processes input and calculates the corresponding Euler Angles, Vectors and Matrices for use in OpenGL.
 	class Camera
@@ -142,11 +141,6 @@ namespace Crescent
 			m_CameraUp = glm::normalize(glm::cross(m_CameraRight, m_CameraFront));
 		}
 
-		void SetPerspective(float fieldOfView, float aspectRatio, float nearClip, float farClip)
-		{
-
-		}
-
 
 	public:
 		//Camera Attributes
@@ -163,16 +157,5 @@ namespace Crescent
 		float m_CameraSpeed;
 		float m_MouseSensitivity;
 		float m_MouseZoom;
-
-		//New
-		float m_FieldOfView;
-		float m_AspectRation;
-		float m_NearClip;
-		float m_FarClip;
-
-		CameraFrustrum m_CameraFrustrum;
-
-		glm::mat4 m_ProjectionMatrix;
-		glm::mat4 m_ViewMatrix;
 	};
 }

@@ -4,9 +4,8 @@
 #include "../Rendering/Texture.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include "../Models/Mesh.h"
 
-namespace Crescent
+namespace CrescentEngine
 {
 	enum PrimitiveShape
 	{
@@ -14,7 +13,7 @@ namespace Crescent
 		CubePrimitive,
 		QuadPrimitive
 	};
-	
+
 	class Primitive
 	{
 	public:

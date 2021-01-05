@@ -2,7 +2,7 @@
 #include <deque>
 #include "Primitive.h"
 
-namespace Crescent
+namespace CrescentEngine
 {
 	class RenderQueue
 	{

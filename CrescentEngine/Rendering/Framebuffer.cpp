@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "Framebuffer.h"
 
-namespace Crescent
+namespace CrescentEngine
 {
 	Framebuffer::~Framebuffer()
 	{
@@ -186,15 +186,6 @@ namespace Crescent
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	//=========================================================================
-
-	void GBuffer::SetupGBuffer(const int& viewportWidth, const int& viewportHeight)
-	{
-		m_FramebufferWidth = viewportWidth;
-		m_FramebufferHeight = viewportHeight;
-		ResetGBuffer();
-	}
-
 	unsigned int GBuffer::ResetGBuffer()
 	{
 		if (m_GBufferID)
@@ -243,27 +234,18 @@ namespace Crescent
 		{
 			CrescentInfo("GBuffer creation failed.");
 		}
-		else
-		{
-			CrescentInfo("GBuffer creation succeeded.");
-		}
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		return m_GBufferID;
 	}
 
-	void GBuffer::ResizeFramebuffer(const int& newWidth, const int& newHeight)
+	void GBuffer::ResizeFramebuffer(int newWidth, int newHeight)
 	{
 		m_FramebufferWidth = newWidth;
 		m_FramebufferHeight = newHeight;
 
 		ResetGBuffer();
-	}
-
-	void GBuffer::BindGBuffer()
-	{
-		glBindFramebuffer(GL_FRAMEBUFFER, m_GBufferID);
 	}
 
 	void GBuffer::ClearGBuffer()

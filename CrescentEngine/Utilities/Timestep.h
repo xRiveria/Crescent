@@ -1,6 +1,6 @@
 #pragma once
 
-namespace Crescent
+namespace CrescentEngine
 {
 	class Timestep
 	{

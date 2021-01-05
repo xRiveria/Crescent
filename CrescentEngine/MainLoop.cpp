@@ -16,20 +16,20 @@
 
 struct CoreSystems
 {
-	Crescent::Window m_Window; //Setups our Window.
-	Crescent::Editor m_Editor; //Setups our ImGui context.
-	Crescent::Renderer m_Renderer; //Setups our OpenGL context.
-	Crescent::Timestep m_Timestep; //Setups our Timestep.
-	Crescent::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
+	CrescentEngine::Window m_Window; //Setups our Window.
+	CrescentEngine::Editor m_Editor; //Setups our ImGui context.
+	CrescentEngine::Renderer m_Renderer; //Setups our OpenGL context.
+	CrescentEngine::Timestep m_Timestep; //Setups our Timestep.
+	CrescentEngine::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
 
 	float m_LastFrameTime = 0.0f;
 };
 
 struct RenderingComponents
 {
-	Crescent::Framebuffer m_Framebuffer;
-	Crescent::DepthmapFramebuffer m_DepthMapFramebuffer;
-	Crescent::Cubemap m_Cubemap;
+	CrescentEngine::Framebuffer m_Framebuffer;
+	CrescentEngine::DepthmapFramebuffer m_DepthMapFramebuffer;
+	CrescentEngine::Cubemap m_Cubemap;
 
 	bool m_LightingModel[2] = { true, false };  //[0] for Blinn Phong, [1] for Phong.
 	float pcfSampleAmount = 15.0f;
@@ -43,32 +43,28 @@ struct RenderingComponents
 
 struct Renderables  //Currently our base scene objects.
 {
-	Crescent::Model m_BackpackModel;
-	Crescent::Model m_StormTrooperModel;
-	Crescent::Model m_HeadModel;
-	Crescent::Model m_RoyaleDogModel;
-	Crescent::Model m_SponzaModel;
+	CrescentEngine::Model m_BackpackModel;
+	CrescentEngine::Model m_StormTrooperModel;
+	CrescentEngine::Model m_HeadModel;
+	CrescentEngine::Model m_RoyaleDogModel;
 
 	glm::vec3 m_BackpackModelPosition = { 0.0f, 1.3f, 0.0f };
 	glm::vec3 m_StormTrooperPosition = { -5.0f, -0.5f, -1.9f };
 	glm::vec3 m_RoyalDogPosition = { -27.5f, -5.9f, 66.5f };
 	glm::vec3 m_HeadPosition = { 3.7f, 1.5f, -4.1f };
-	glm::vec3 m_SponzaPosition = { 0.0f, 0.0f, 0.0f };
-
 	glm::vec3 m_HeadScale = { 1.0f, 1.0f, 1.0f };
 	glm::vec3 m_BackpackScale = { 1.0f, 1.0f, 1.0f };
 	glm::vec3 m_StormtrooperScale = { 1.0f, 1.0f, 1.0f };
 	glm::vec3 m_RedstoneLampScale = { 0.01f, 0.01f, 0.01f };
-	glm::vec3 m_SponzaScale = { 1.0f, 1.0f, 1.0f };
 
-	Crescent::Model m_RedstoneLampModel;
-	Crescent::Primitive m_Plane; //Our base plane.
-	Crescent::TransparentQuad m_TransparentQuad;
+	CrescentEngine::Model m_RedstoneLampModel;
+	CrescentEngine::Primitive m_Plane; //Our base plane.
+	CrescentEngine::TransparentQuad m_TransparentQuad;
 
-	Crescent::DirectionalLightD m_LightDirection;
-	Crescent::PointLightD m_PointLight;
+	CrescentEngine::DirectionalLight m_LightDirection;
+	CrescentEngine::PointLight m_PointLight;
 
-	Crescent::RenderQueue m_RenderQueue;
+	CrescentEngine::RenderQueue m_RenderQueue;
 
 	//Cubemap
 	std::vector<std::string> m_OceanCubemap = {
@@ -92,21 +88,21 @@ struct Renderables  //Currently our base scene objects.
 
 struct Shaders
 {
-	Crescent::Shader m_StaticModelShader;
-	Crescent::Shader m_PointLightObjectShader;
-	Crescent::Shader m_OutlineObjectShader;
-	Crescent::Shader m_TransparentQuadShader;
-	Crescent::Shader m_DepthShader;
-	Crescent::Shader m_AnimationShader;
-	Crescent::Shader m_GaussianBlurShader;
+	CrescentEngine::Shader m_StaticModelShader;
+	CrescentEngine::Shader m_PointLightObjectShader;
+	CrescentEngine::Shader m_OutlineObjectShader;
+	CrescentEngine::Shader m_TransparentQuadShader;
+	CrescentEngine::Shader m_DepthShader;
+	CrescentEngine::Shader m_AnimationShader;
+	CrescentEngine::Shader m_GaussianBlurShader;
 };
 
 struct Textures
 {
-	Crescent::Texture2D m_GrassTexture;
-	Crescent::Texture2D m_WindowTexture;
-	Crescent::Texture2D m_MarbleTexture;
-	Crescent::Texture2D m_WoodTexture;
+	CrescentEngine::Texture2D m_GrassTexture;
+	CrescentEngine::Texture2D m_WindowTexture;
+	CrescentEngine::Texture2D m_MarbleTexture;
+	CrescentEngine::Texture2D m_WoodTexture;
 };
 
 //Our Systems	
@@ -117,7 +113,7 @@ Shaders g_Shaders; //Creates our shaders.
 Textures g_Textures; //Creates our textures.
 
 //Input Callbacks
-void RenderScene(Crescent::Shader& shader, bool renderShadowMap);
+void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap);
 void DrawEditorContent();
 void ProcessKeyboardEvents(GLFWwindow* window);
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight);
@@ -127,7 +123,7 @@ void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset);
 
 glm::mat4 projectionMatrix = glm::mat4(1.0f);
 
-int mainDefuncts(int argc, int argv[])
+int main(int argc, int argv[])
 {
 	glfwWindowHint(GLFW_SAMPLES, 16);
 
@@ -167,7 +163,7 @@ int mainDefuncts(int argc, int argv[])
 	g_Shaders.m_GaussianBlurShader.CreateShaders("Resources/Shaders/BlurVertex.shader", "Resources/Shaders/BlurFragment.shader");
 
 	//Objects
-	g_Renderables.m_Plane.SetupPrimitiveBuffers(Crescent::PrimitiveShape::PlanePrimitive);
+	g_Renderables.m_Plane.SetupPrimitiveBuffers(CrescentEngine::PrimitiveShape::PlanePrimitive);
 
 	g_Renderables.m_TransparentQuad.SetupTransparentQuadBuffers();
 	g_Textures.m_GrassTexture.LoadTexture("Resources/Textures/Grass.png");
@@ -182,7 +178,6 @@ int mainDefuncts(int argc, int argv[])
 	g_Renderables.m_HeadModel.LoadModel("Head", "Resources/Models/Head/source/craneo.obj", g_CoreSystems.m_Window);
 	g_Renderables.m_StormTrooperModel.LoadModel("Stormtrooper", "Resources/Models/Stormtrooper/source/silly_dancing.fbx", g_CoreSystems.m_Window);
 	g_Renderables.m_RoyaleDogModel.LoadModel("Royale Dog", "Resources/Models/Pokeball/source/RufflesDuchessVisual.fbx", g_CoreSystems.m_Window);
-	//g_Renderables.m_SponzaModel.LoadModel("Sponza", "Resources/Models/Sponza/Sponza/sponza.obj", g_CoreSystems.m_Window);
 
 	while (!g_CoreSystems.m_Window.RetrieveWindowCloseStatus())
 	{
@@ -268,7 +263,7 @@ int mainDefuncts(int argc, int argv[])
 		////////////////////////////////////////////////////////////////////////////////////
 
 		//Draw scene as normal using our multisampled buffers.
-
+		
 		if (g_RenderingComponents.m_MultisamplingEnabled)
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, g_RenderingComponents.m_Framebuffer.m_MSAAFramebufferID);
@@ -292,7 +287,7 @@ int mainDefuncts(int argc, int argv[])
 			g_CoreSystems.m_Renderer.ClearBuffers();
 			RenderScene(g_Shaders.m_StaticModelShader, false);
 		}
-
+		
 		g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
 		g_CoreSystems.m_Renderer.ClearBuffers();
 
@@ -306,7 +301,7 @@ int mainDefuncts(int argc, int argv[])
 	return 0;
 }
 
-void RenderScene(Crescent::Shader& shader, bool renderShadowMap)
+void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap)
 {
 	//View/Projection Matrix
 	glm::mat4 viewMatrix = g_CoreSystems.m_Camera.GetViewMatrix();
@@ -339,8 +334,8 @@ void RenderScene(Crescent::Shader& shader, bool renderShadowMap)
 	{
 		//Static
 		g_Renderables.m_BackpackModel.DrawStaticModel(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), g_Renderables.m_BackpackScale, g_Renderables.m_BackpackModelPosition);
-		g_Renderables.m_HeadModel.DrawStaticModel(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), g_Renderables.m_HeadScale, g_Renderables.m_HeadPosition);
-		//g_Renderables.m_SponzaModel.DrawStaticModel(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), g_Renderables.m_SponzaScale, g_Renderables.m_SponzaPosition);
+		g_Renderables.m_HeadModel.DrawStaticModel(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), g_Renderables.m_HeadScale, g_Renderables.m_HeadPosition);	
+	
 		g_Renderables.m_StormTrooperModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), true, shader, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), g_Renderables.m_StormtrooperScale, g_Renderables.m_StormTrooperPosition);
 		//g_Renderables.m_RoyaleDogModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), true, shader, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_RoyalDogPosition);
 	}
@@ -348,7 +343,6 @@ void RenderScene(Crescent::Shader& shader, bool renderShadowMap)
 	{
 		g_Renderables.m_BackpackModel.DrawStaticModel(shader, renderShadowMap, 0, g_Renderables.m_BackpackScale, g_Renderables.m_BackpackModelPosition);
 		g_Renderables.m_HeadModel.DrawStaticModel(shader, renderShadowMap, 0, g_Renderables.m_HeadScale, g_Renderables.m_HeadPosition);
-		//g_Renderables.m_SponzaModel.DrawStaticModel(shader, renderShadowMap, 0, g_Renderables.m_SponzaScale, g_Renderables.m_SponzaPosition);
 
 		g_Shaders.m_AnimationShader.UseShader();
 		g_Shaders.m_AnimationShader.SetUniformVector3("pointLight.lightPosition", g_Renderables.m_PointLight.pointLightPosition);
@@ -504,12 +498,12 @@ void DrawEditorContent()
 	ImGui::Begin("Primitive Creation");
 	if (ImGui::Button("Create Plane"))
 	{
-		g_Renderables.m_RenderQueue.SubmitToRenderQueue(Crescent::PrimitiveShape::PlanePrimitive);
+		g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::PlanePrimitive);
 	}
 
 	if (ImGui::Button("Create Cube"))
 	{
-		g_Renderables.m_RenderQueue.SubmitToRenderQueue(Crescent::PrimitiveShape::CubePrimitive);
+		g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::CubePrimitive);
 	}
 	ImGui::End();
 
@@ -520,7 +514,6 @@ void DrawEditorContent()
 	g_Renderables.m_HeadModel.RenderSettingsInEditor(g_Renderables.m_HeadPosition, g_Renderables.m_HeadScale);
 	g_Renderables.m_BackpackModel.RenderSettingsInEditor(g_Renderables.m_BackpackModelPosition, g_Renderables.m_BackpackScale);
 	g_Renderables.m_StormTrooperModel.RenderSettingsInEditor(g_Renderables.m_StormTrooperPosition, g_Renderables.m_StormtrooperScale);
-	//g_Renderables.m_SponzaModel.RenderSettingsInEditor(g_Renderables.m_SponzaPosition, g_Renderables.m_SponzaScale);
 	//g_Renderables.m_RoyaleDogModel.RenderSettingsInEditor(g_Renderables.m_RoyalDogPosition);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
@@ -537,6 +530,10 @@ void DrawEditorContent()
 	g_CoreSystems.m_Editor.EndEditorRenderLoop();
 }
 
+
+
+
+
 //Event Callbacks - To Be Further Abstracted.
 void ProcessKeyboardEvents(GLFWwindow* window)
 {
@@ -548,19 +545,19 @@ void ProcessKeyboardEvents(GLFWwindow* window)
 	const float cameraSpeed = g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds() * 2.5f;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Forward, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Forward, cameraSpeed);
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Backward, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Backward, cameraSpeed);
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Left, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Left, cameraSpeed);
 	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Right, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Right, cameraSpeed);
 	}
 }
 
@@ -568,30 +565,30 @@ void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mo
 {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
 	{
-		Crescent::g_CameraMode = true;
+		CrescentEngine::g_CameraMode = true;
 	}
 	else
 	{
-		Crescent::g_CameraMode = false;
+		CrescentEngine::g_CameraMode = false;
 	}
 }
 
 void CameraMovementCallback(GLFWwindow* window, double xPos, double yPos)
 {
-	if (Crescent::g_IsCameraFirstMove)
+	if (CrescentEngine::g_IsCameraFirstMove)
 	{
-		Crescent::g_CameraLastXPosition = xPos;
-		Crescent::g_CameraLastYPosition = yPos;
-		Crescent::g_IsCameraFirstMove = false;
+		CrescentEngine::g_CameraLastXPosition = xPos;
+		CrescentEngine::g_CameraLastYPosition = yPos;
+		CrescentEngine::g_IsCameraFirstMove = false;
 	}
 
-	float xOffset = xPos - Crescent::g_CameraLastXPosition;
-	float yOffset = Crescent::g_CameraLastYPosition - yPos; //Reversed since Y Coordinates go from bottom to top.
-	Crescent::g_CameraLastXPosition = xPos;
+	float xOffset = xPos - CrescentEngine::g_CameraLastXPosition;
+	float yOffset = CrescentEngine::g_CameraLastYPosition - yPos; //Reversed since Y Coordinates go from bottom to top.
+	CrescentEngine::g_CameraLastXPosition = xPos;
 
-	Crescent::g_CameraLastYPosition = yPos;
+	CrescentEngine::g_CameraLastYPosition = yPos;
 
-	if (Crescent::g_CameraMode)
+	if (CrescentEngine::g_CameraMode)
 	{
 		g_CoreSystems.m_Camera.ProcessMouseMovement(xOffset, yOffset);
 	}
@@ -608,3 +605,4 @@ void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHe
 	//g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(windowWidth, windowHeight);
 	g_CoreSystems.m_Window.ResizeWindow((float)windowWidth, (float)windowHeight);
 }
+

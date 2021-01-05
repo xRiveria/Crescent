@@ -2,226 +2,8 @@
 #include "Mesh.h"
 #include "GL/glew.h"
 
-namespace Crescent
+namespace CrescentEngine
 {
-	Mesh::Mesh()
-	{
-
-	}
-
-	Mesh::Mesh(std::vector<glm::vec3> positions, std::vector<unsigned int> indices)
-	{
-		m_Positions = positions;
-		m_Indices = indices;
-	}
-
-	Mesh::Mesh(std::vector<glm::vec3> positions, std::vector<glm::vec2> uv, std::vector<unsigned int> indices)
-	{
-		m_Positions = positions;
-		m_UV = uv;
-		m_Indices = indices;
-	}
-
-	Mesh::Mesh(std::vector<glm::vec3> positions, std::vector<glm::vec2> uv, std::vector<glm::vec3> normals, std::vector<unsigned int> indices)
-	{
-		m_Positions = positions;
-		m_UV = uv;
-		m_Normals = normals;
-		m_Indices = indices;
-	}
-
-	Mesh::Mesh(std::vector<glm::vec3> positions, std::vector<glm::vec2> uv, std::vector<glm::vec3> normals, std::vector<glm::vec3> tangents, std::vector<glm::vec3> bitangents, std::vector<unsigned int> indices)
-	{
-		m_Positions = positions;
-		m_UV = uv;
-		m_Normals = normals;
-		m_Tangents = tangents;
-		m_Bitangents = bitangents;
-		m_Indices = indices;
-	}
-
-	void Mesh::FinalizeMesh(bool interleaved)
-	{
-		//Initialize object IDs if not configured before.
-		if (!m_VertexArrayID)
-		{
-			glGenVertexArrays(1, &m_VertexArrayID);
-			glGenBuffers(1, &m_VertexBufferID);
-			glGenBuffers(1, &m_IndexBufferID);
-		}
-
-		//Preprocess buffer data as interleaved or seperate when specified.
-		std::vector<float> meshDataBuffer;
-		if (interleaved)
-		{
-			for (int i = 0; i < m_Positions.size(); ++i) //For each position, there is a corresponding type of information.
-			{
-				meshDataBuffer.push_back(m_Positions[i].x);
-				meshDataBuffer.push_back(m_Positions[i].y);
-				meshDataBuffer.push_back(m_Positions[i].z);
-
-				if (m_UV.size() > 0)
-				{
-					meshDataBuffer.push_back(m_UV[i].x);
-					meshDataBuffer.push_back(m_UV[i].y);
-				}
-
-				if (m_Normals.size() > 0)
-				{
-					meshDataBuffer.push_back(m_Normals[i].x);
-					meshDataBuffer.push_back(m_Normals[i].y);
-					meshDataBuffer.push_back(m_Normals[i].z);
-				}
-
-				if (m_Tangents.size() > 0)
-				{
-					meshDataBuffer.push_back(m_Tangents[i].x);
-					meshDataBuffer.push_back(m_Tangents[i].y);
-					meshDataBuffer.push_back(m_Tangents[i].z);
-				}
-
-				if (m_Bitangents.size() > 0)
-				{
-					meshDataBuffer.push_back(m_Bitangents[i].x);
-					meshDataBuffer.push_back(m_Bitangents[i].y);
-					meshDataBuffer.push_back(m_Bitangents[i].z);
-				}
-			}
-		}
-		else  //If any of the float arrays are empty, data won't be filled by them.
-		{
-			for (int i = 0; i < m_Positions.size(); ++i)
-			{
-				meshDataBuffer.push_back(m_Positions[i].x);
-				meshDataBuffer.push_back(m_Positions[i].y);
-				meshDataBuffer.push_back(m_Positions[i].z);
-			}
-
-			for (int i = 0; i < m_UV.size(); ++i)
-			{
-				meshDataBuffer.push_back(m_UV[i].x);
-				meshDataBuffer.push_back(m_UV[i].y);
-			}
-
-			for (int i = 0; i < m_Normals.size(); ++i)
-			{
-				meshDataBuffer.push_back(m_Normals[i].x);
-				meshDataBuffer.push_back(m_Normals[i].y);
-				meshDataBuffer.push_back(m_Normals[i].z);
-			}
-
-			for (int i = 0; i < m_Tangents.size(); ++i)
-			{
-				meshDataBuffer.push_back(m_Tangents[i].x);
-				meshDataBuffer.push_back(m_Tangents[i].y);
-				meshDataBuffer.push_back(m_Tangents[i].z);
-			}
-
-			for (int i = 0; i < m_Bitangents.size(); ++i)
-			{
-				meshDataBuffer.push_back(m_Bitangents[i].x);
-				meshDataBuffer.push_back(m_Bitangents[i].y);
-				meshDataBuffer.push_back(m_Bitangents[i].z);
-			}
-		}
-
-		//Configure our vertex attributes.
-		glBindVertexArray(m_VertexArrayID);
-		glBindBuffer(GL_ARRAY_BUFFER, m_VertexBufferID);
-		glBufferData(GL_ARRAY_BUFFER, meshDataBuffer.size() * sizeof(float), &meshDataBuffer[0], GL_STATIC_DRAW);
-
-		//Only fill the index buffer if the index isn't empty.
-		if (m_Indices.size() > 0)
-		{
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexBufferID);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_Indices.size() * sizeof(unsigned int), &m_Indices[0], GL_STATIC_DRAW);
-		}
-
-		if (interleaved)
-		{
-			//Calculate stride from the number of non-empty vertex attribute arrays.
-			size_t strideData = 3 * sizeof(float); //Positions.
-			if (m_UV.size() > 0) { strideData += 2 * sizeof(float); }
-			if (m_Normals.size() > 0) { strideData += 3 * sizeof(float); }
-			if (m_Tangents.size() > 0) { strideData += 3 * sizeof(float); }
-			if (m_Bitangents.size() > 0) { strideData += 3 * sizeof(float); }
-
-			size_t offsetData = 0;
-			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, strideData, (GLvoid*)offsetData);
-			offsetData += 3 * sizeof(float);
-
-			if (m_UV.size() > 0)
-			{
-				glEnableVertexAttribArray(1);
-				glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, strideData, (GLvoid*)offsetData);
-				offsetData += 2 * sizeof(float);
-			}
-
-			if (m_Normals.size() > 0)
-			{
-				glEnableVertexAttribArray(2);
-				glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, strideData, (GLvoid*)offsetData);
-				offsetData += 3 * sizeof(float);
-			}
-
-			if (m_Tangents.size() > 0)
-			{
-				glEnableVertexAttribArray(3);
-				glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, strideData, (GLvoid*)offsetData);
-				offsetData += 3 * sizeof(float);
-			}
-
-			if (m_Bitangents.size() > 0)
-			{
-				glEnableVertexAttribArray(4);
-				glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, strideData, (GLvoid*)offsetData);
-				offsetData += 3 * sizeof(float);
-			}
-		}
-		else
-		{
-			size_t offsetData = 0;
-			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offsetData);
-			offsetData += m_Positions.size() * sizeof(float);
-
-			if (m_UV.size() > 0)
-			{
-				glEnableVertexAttribArray(1);
-				glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offsetData);
-				offsetData += m_UV.size() * sizeof(float);
-			}
-
-			if (m_Normals.size() > 0)
-			{
-				glEnableVertexAttribArray(2);
-				glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offsetData);
-				offsetData += m_Normals.size() * sizeof(float);
-			}
-
-			if (m_Tangents.size() > 0)
-			{
-				glEnableVertexAttribArray(3);
-				glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offsetData);
-				offsetData += m_Tangents.size() * sizeof(float);
-			}
-
-			if (m_Bitangents.size() > 0)
-			{
-				glEnableVertexAttribArray(4);
-				glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offsetData);
-				offsetData += m_Bitangents.size() * sizeof(float);
-			}
-		}
-
-		glBindVertexArray(0);
-	}
-
-	
-
-	//=============================== Defunct 
-
 	Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures)
 	{
 		this->vertices = vertices;
@@ -240,7 +22,7 @@ namespace Crescent
 		unsigned int heightNr = 1;
 
 		//Draw Mesh
-		glBindVertexArray(m_VertexArrayID);
+		glBindVertexArray(vertexArrayObject);
 
 		shader.UseShader();
 
@@ -271,7 +53,7 @@ namespace Crescent
 				}
 
 				shader.UseShader();
-				glUniform1i(glGetUniformLocation(shader.RetrieveShaderID(), (name + number).c_str()), i);
+				glUniform1i(glGetUniformLocation(shader.GetShaderID(), (name + number).c_str()), i);
 				glBindTexture(GL_TEXTURE_2D, textures[i].id);
 			}
 		}
@@ -292,17 +74,17 @@ namespace Crescent
 
 	void Mesh::SetupMesh()
 	{
-		glGenVertexArrays(1, &m_VertexArrayID);
+		glGenVertexArrays(1, &vertexArrayObject);
 
-		glGenBuffers(1, &m_VertexBufferID);
-		glGenBuffers(1, &m_IndexBufferID);
+		glGenBuffers(1, &vertexBufferObject);
+		glGenBuffers(1, &indexBufferObject);
 
-		glBindVertexArray(m_VertexArrayID);
+		glBindVertexArray(vertexArrayObject);
 
-		glBindBuffer(GL_ARRAY_BUFFER, m_VertexBufferID);
+		glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
 		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexBufferID);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
 
 		//Vertex Positions

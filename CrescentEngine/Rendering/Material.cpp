@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "Material.h"
 
-namespace Crescent
+namespace CrescentEngine
 {
 	Material::Material()
 	{
@@ -11,32 +11,6 @@ namespace Crescent
 	Material::Material(Shader* shader)
 	{
 		m_Shader = shader;
-	}
-
-	Material Material::Copy()
-	{
-		Material copiedMaterial(m_Shader);
-
-		copiedMaterial.m_MaterialType = m_MaterialType;
-		copiedMaterial.m_Color = m_Color;
-
-		copiedMaterial.m_DepthTestEnabled = m_DepthTestEnabled;
-		copiedMaterial.m_DepthWritingEnabled = m_DepthWritingEnabled;
-		copiedMaterial.m_DepthTestComparisonFactor = m_DepthTestComparisonFactor;
-
-		copiedMaterial.m_FaceCullingEnabled = m_FaceCullingEnabled;
-		copiedMaterial.m_CulledFace = m_CulledFace;
-		copiedMaterial.m_CullWindingOrder = m_CullWindingOrder;
-
-		copiedMaterial.m_BlendingEnabled = m_BlendingEnabled;
-		copiedMaterial.m_BlendSource = m_BlendSource;
-		copiedMaterial.m_BlendDestination = m_BlendDestination;
-		copiedMaterial.m_BlendEquation = m_BlendEquation;
-
-		copiedMaterial.m_Uniforms = m_Uniforms;
-		copiedMaterial.m_SamplerUniforms = m_SamplerUniforms;
-
-		return copiedMaterial;
 	}
 
 	std::map<std::string, UniformValue>* Material::GetUniforms()
@@ -87,24 +61,11 @@ namespace Crescent
 				break;
 
 			case GL_TEXTURE_CUBE_MAP:
-				m_SamplerUniforms[uniformName].m_UniformType = Shader_Type_SamplerCube;
+				//m_SamplerUniforms[uniformName].m_UniformType = Shader_Type_SamplerCube;
 				break;
 		}
 
 		if (m_Shader) 
-		{
-			m_Shader->UseShader();
-			m_Shader->SetUniformInteger(uniformName, textureUnit);
-		}
-	}
-
-	void Material::SetShaderTextureCube(const std::string& uniformName, TextureCube* value, unsigned int textureUnit)
-	{
-		m_SamplerUniforms[uniformName].m_TextureUnit = textureUnit;
-		m_SamplerUniforms[uniformName].m_UniformType = Shader_Type_SamplerCube;
-		m_SamplerUniforms[uniformName].m_TextureCube = value;
-
-		if (m_Shader)
 		{
 			m_Shader->UseShader();
 			m_Shader->SetUniformInteger(uniformName, textureUnit);
