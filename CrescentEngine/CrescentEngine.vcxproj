@@ -184,7 +184,7 @@
     <ClCompile Include="Core\Primitive.cpp" />
     <ClCompile Include="Core\Editor.cpp" />
     <ClCompile Include="Core\Window.cpp" />
-    <ClCompile Include="EntryPoint.cpp" />
+    <ClCompile Include="Defunct\EntryPoint.cpp" />
     <ClCompile Include="Rendering\MaterialLibrary.cpp" />
     <ClCompile Include="Rendering\Resources.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
@@ -204,6 +204,9 @@
     <ClCompile Include="Rendering\Framebuffer.cpp" />
     <ClCompile Include="Rendering\RenderQueue.cpp" />
     <ClCompile Include="Rendering\Texture.cpp" />
+    <ClCompile Include="Scene\Scene.cpp" />
+    <ClCompile Include="Scene\SceneEntity.cpp" />
+    <ClCompile Include="Scene\SceneHierarchyPanel.cpp" />
     <ClCompile Include="Vendor\glm\detail\glm.cpp" />
     <ClCompile Include="Vendor\imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -257,6 +260,7 @@
     <ClInclude Include="Core\Object.h" />
     <ClInclude Include="Core\Window.h" />
     <ClInclude Include="Rendering\MaterialLibrary.h" />
+    <ClInclude Include="Rendering\RenderCommand.h" />
     <ClInclude Include="Rendering\RenderTarget.h" />
     <ClInclude Include="Rendering\Resources.h" />
     <ClInclude Include="Rendering\Shader.h" />
@@ -277,6 +281,9 @@
     <ClInclude Include="Rendering\Texture.h" />
     <ClInclude Include="Resources\Shaders\OutlineVertex.shader" />
     <ClInclude Include="Resources\Shaders\ReflectiveVertex.shader" />
+    <ClInclude Include="Scene\Scene.h" />
+    <ClInclude Include="Scene\SceneHierarchyPanel.h" />
+    <ClInclude Include="Scene\SceneEntity.h" />
     <ClInclude Include="Utilities\Camera.h" />
     <ClInclude Include="Rendering\Cubemap.h" />
     <ClInclude Include="Utilities\StringID.h" />

@@ -12,7 +12,7 @@
 #include <optional>
 #include "Window.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	class Model
 	{
@@ -31,7 +31,9 @@ namespace CrescentEngine
 		void DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, Shader& shader, unsigned int shadowMapTextureID, const glm::vec3& modelScale, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
 		
 		//Draw Static Model
-		void DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const glm::vec3& modelScale, const glm::vec3& modelTranslation = { 0.0f, 0.0f, 0.0f });
+		void DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID);
+		void DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, bool temporary, const glm::vec3& transformScale = glm::vec3(0.0f), const glm::vec3& transformPosition = glm::vec3(0.0f));
+
 				
 		float RetrieveAnimationTime() const { return m_AnimationTime; }
 

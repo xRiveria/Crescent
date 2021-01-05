@@ -3,7 +3,7 @@
 #include <string>
 #include <map>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	class BoneMapper
 	{

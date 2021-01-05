@@ -2,7 +2,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	class Framebuffer
 	{

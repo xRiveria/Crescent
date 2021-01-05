@@ -1,7 +1,7 @@
 #include "CrescentPCH.h"
 #include "BoneMapper.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
     BoneMapper::BoneMapper()
     {

@@ -5,7 +5,7 @@
 
 //Create Base Entity Class Please.
 
-namespace CrescentEngine
+namespace Crescent
 {
 	struct DirectionalLight
 	{

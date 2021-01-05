@@ -6,7 +6,7 @@
 #include "../Rendering/Shader.h"
 #include <algorithm>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	struct Vertex  //Defined for each vertice on a mesh.
 	{

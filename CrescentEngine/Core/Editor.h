@@ -4,7 +4,7 @@
 #include "GLFW/glfw3.h"
 #include "../Core/Window.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	class Editor
 	{

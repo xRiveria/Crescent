@@ -13,23 +13,27 @@
 #include "Rendering/Cubemap.h"
 #include <stb_image/stb_image.h>
 #include <imgui/imgui.h>
+#include "../Scene/Scene.h"
+#include "../Scene/SceneEntity.h"
+#include "../Scene/SceneHierarchyPanel.h"
+#include "Rendering/Material.h"
 
 struct CoreSystems
 {
-	CrescentEngine::Window m_Window; //Setups our Window.
-	CrescentEngine::Editor m_Editor; //Setups our ImGui context.
-	CrescentEngine::Renderer m_Renderer; //Setups our OpenGL context.
-	CrescentEngine::Timestep m_Timestep; //Setups our Timestep.
-	CrescentEngine::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
+	Crescent::Window m_Window; //Setups our Window.
+	Crescent::Editor m_Editor; //Setups our ImGui context.
+	Crescent::Renderer m_Renderer; //Setups our OpenGL context.
+	Crescent::Timestep m_Timestep; //Setups our Timestep.
+	Crescent::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
 
 	float m_LastFrameTime = 0.0f;
 };
 
 struct RenderingComponents
 {
-	CrescentEngine::Framebuffer m_Framebuffer;
-	CrescentEngine::DepthmapFramebuffer m_DepthMapFramebuffer;
-	CrescentEngine::Cubemap m_Cubemap;
+	Crescent::Framebuffer m_Framebuffer;
+	Crescent::DepthmapFramebuffer m_DepthMapFramebuffer;
+	Crescent::Cubemap m_Cubemap;
 
 	bool m_LightingModel[2] = { true, false };  //[0] for Blinn Phong, [1] for Phong.
 	float pcfSampleAmount = 15.0f;
@@ -43,10 +47,10 @@ struct RenderingComponents
 
 struct Renderables  //Currently our base scene objects.
 {
-	CrescentEngine::Model m_BackpackModel;
-	CrescentEngine::Model m_StormTrooperModel;
-	CrescentEngine::Model m_HeadModel;
-	CrescentEngine::Model m_RoyaleDogModel;
+	Crescent::Model m_BackpackModel;
+	Crescent::Model m_StormTrooperModel;
+	Crescent::Model m_HeadModel;
+	Crescent::Model m_RoyaleDogModel;
 
 	glm::vec3 m_BackpackModelPosition = { 0.0f, 1.3f, 0.0f };
 	glm::vec3 m_StormTrooperPosition = { -5.0f, -0.5f, -1.9f };
@@ -57,14 +61,14 @@ struct Renderables  //Currently our base scene objects.
 	glm::vec3 m_StormtrooperScale = { 1.0f, 1.0f, 1.0f };
 	glm::vec3 m_RedstoneLampScale = { 0.01f, 0.01f, 0.01f };
 
-	CrescentEngine::Model m_RedstoneLampModel;
-	CrescentEngine::Primitive m_Plane; //Our base plane.
-	CrescentEngine::TransparentQuad m_TransparentQuad;
+	Crescent::Model m_RedstoneLampModel;
+	Crescent::Primitive m_Plane; //Our base plane.
+	Crescent::TransparentQuad m_TransparentQuad;
 
-	CrescentEngine::DirectionalLight m_LightDirection;
-	CrescentEngine::PointLight m_PointLight;
+	Crescent::DirectionalLight m_LightDirection;
+	Crescent::PointLight m_PointLight;
 
-	CrescentEngine::RenderQueue m_RenderQueue;
+	Crescent::RenderQueue m_RenderQueue;
 
 	//Cubemap
 	std::vector<std::string> m_OceanCubemap = {
@@ -88,21 +92,21 @@ struct Renderables  //Currently our base scene objects.
 
 struct Shaders
 {
-	CrescentEngine::Shader m_StaticModelShader;
-	CrescentEngine::Shader m_PointLightObjectShader;
-	CrescentEngine::Shader m_OutlineObjectShader;
-	CrescentEngine::Shader m_TransparentQuadShader;
-	CrescentEngine::Shader m_DepthShader;
-	CrescentEngine::Shader m_AnimationShader;
-	CrescentEngine::Shader m_GaussianBlurShader;
+	Crescent::Shader m_StaticModelShader;
+	Crescent::Shader m_PointLightObjectShader;
+	Crescent::Shader m_OutlineObjectShader;
+	Crescent::Shader m_TransparentQuadShader;
+	Crescent::Shader m_DepthShader;
+	Crescent::Shader m_AnimationShader;
+	Crescent::Shader m_GaussianBlurShader;
 };
 
 struct Textures
 {
-	CrescentEngine::Texture2D m_GrassTexture;
-	CrescentEngine::Texture2D m_WindowTexture;
-	CrescentEngine::Texture2D m_MarbleTexture;
-	CrescentEngine::Texture2D m_WoodTexture;
+	Crescent::Texture2D m_GrassTexture;
+	Crescent::Texture2D m_WindowTexture;
+	Crescent::Texture2D m_MarbleTexture;
+	Crescent::Texture2D m_WoodTexture;
 };
 
 //Our Systems	
@@ -113,7 +117,8 @@ Shaders g_Shaders; //Creates our shaders.
 Textures g_Textures; //Creates our textures.
 
 //Input Callbacks
-void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap);
+void NewEditorScene(Crescent::SceneHierarchyPanel* sceneHierarchyPanel);
+void RenderScene(Crescent::Shader& shader, bool renderShadowMap);
 void DrawEditorContent();
 void ProcessKeyboardEvents(GLFWwindow* window);
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight);
@@ -163,7 +168,7 @@ int main(int argc, int argv[])
 	g_Shaders.m_GaussianBlurShader.CreateShaders("Resources/Shaders/BlurVertex.shader", "Resources/Shaders/BlurFragment.shader");
 
 	//Objects
-	g_Renderables.m_Plane.SetupPrimitiveBuffers(CrescentEngine::PrimitiveShape::PlanePrimitive);
+	g_Renderables.m_Plane.SetupPrimitiveBuffers(Crescent::PrimitiveShape::PlanePrimitive);
 
 	g_Renderables.m_TransparentQuad.SetupTransparentQuadBuffers();
 	g_Textures.m_GrassTexture.LoadTexture("Resources/Textures/Grass.png");
@@ -178,6 +183,17 @@ int main(int argc, int argv[])
 	g_Renderables.m_HeadModel.LoadModel("Head", "Resources/Models/Head/source/craneo.obj", g_CoreSystems.m_Window);
 	g_Renderables.m_StormTrooperModel.LoadModel("Stormtrooper", "Resources/Models/Stormtrooper/source/silly_dancing.fbx", g_CoreSystems.m_Window);
 	g_Renderables.m_RoyaleDogModel.LoadModel("Royale Dog", "Resources/Models/Pokeball/source/RufflesDuchessVisual.fbx", g_CoreSystems.m_Window);
+
+	// Abstracted ======================================================================================
+	g_CoreSystems.m_Renderer.InitializeRenderer();
+
+	Crescent::Scene* demoScene = new Crescent::Scene();
+	Crescent::SceneHierarchyPanel* sceneHierarchy = new Crescent::SceneHierarchyPanel(demoScene);
+	Crescent::Material* material = new Crescent::Material();
+	Crescent::SceneEntity* sceneEntity = demoScene->ConstructNewEntity(&g_Renderables.m_BackpackModel, material);
+	Crescent::SceneEntity* sceneEntity2 = demoScene->ConstructNewEntity(&g_Renderables.m_BackpackModel, material);
+	//======================================================================================
+
 
 	while (!g_CoreSystems.m_Window.RetrieveWindowCloseStatus())
 	{
@@ -199,6 +215,22 @@ int main(int argc, int argv[])
 
 		g_CoreSystems.m_Renderer.ClearBuffers();
 
+		g_Shaders.m_StaticModelShader.UseShader();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, g_RenderingComponents.m_Framebuffer.RetrieveColorAttachment());
+
+		g_RenderingComponents.m_Framebuffer.BindFramebuffer();
+
+		glViewport(0, 0, g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
+		g_CoreSystems.m_Renderer.ClearBuffers();
+
+		g_CoreSystems.m_Renderer.PushToRenderQueue(sceneEntity);
+		g_CoreSystems.m_Renderer.PushToRenderQueue(sceneEntity2);
+		RenderScene(g_Shaders.m_StaticModelShader, false);
+
+		g_CoreSystems.m_Renderer.RenderAllQueueItems(&g_Shaders.m_StaticModelShader);
+
+		/*
 		//Bind our Depth Framebuffer.
 		glm::mat4 lightProjectionMatrix = glm::mat4(1.0f), lightViewMatrix = glm::mat4(1.0f);
 		glm::mat4 lightSpaceMatrix = glm::mat4(1.0f);
@@ -216,22 +248,6 @@ int main(int argc, int argv[])
 
 		g_Shaders.m_DepthShader.UnbindShader();
 		g_RenderingComponents.m_DepthMapFramebuffer.UnbindDepthFramebuffer();
-
-		/* Blur Filter
-		bool horizontal = true, first_iteration = true;
-		int amount = 10;
-		g_Shaders.m_GaussianBlurShader.UseShader();
-		for (unsigned int i = 0; i < amount; i++)
-		{
-			glBindFramebuffer(GL_FRAMEBUFFER, g_RenderingComponents.m_Framebuffer.m_PingPongFramebuffers[horizontal]);
-			g_Shaders.m_GaussianBlurShader.SetUniformInteger("image", 0);
-			g_Shaders.m_GaussianBlurShader.SetUniformInteger("horizontal", horizontal);
-			glBindTexture(GL_TEXTURE_2D, first_iteration ? g_RenderingComponents.m_Framebuffer.RetrieveBloomColorAttachment() : g_RenderingComponents.m_Framebuffer.m_PingPongColorAttachmentIDs[!horizontal]);
-			RenderScene(g_Shaders.m_StaticModelShader, false);
-			horizontal = !horizontal;
-			if (first_iteration) { first_iteration = false; }
-		}
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
 
 		//Draws our Scene
 		g_Shaders.m_StaticModelShader.UseShader();
@@ -287,12 +303,13 @@ int main(int argc, int argv[])
 			g_CoreSystems.m_Renderer.ClearBuffers();
 			RenderScene(g_Shaders.m_StaticModelShader, false);
 		}
+		*/
 		
 		g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
 		g_CoreSystems.m_Renderer.ClearBuffers();
 
 		//We reset the framebuffer back to normal here for our Editor.
-		DrawEditorContent();
+		NewEditorScene(sceneHierarchy);
 
 		g_CoreSystems.m_Window.SwapBuffers();
 	}
@@ -301,7 +318,27 @@ int main(int argc, int argv[])
 	return 0;
 }
 
-void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap)
+void NewEditorScene(Crescent::SceneHierarchyPanel* sceneHierarchyPanel)
+{
+	g_CoreSystems.m_Editor.BeginEditorRenderLoop();
+	g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
+
+	sceneHierarchyPanel->RenderSceneEditorUI();
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
+	ImGui::Begin("Viewport");
+	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+	g_CoreSystems.m_Editor.SetViewportSize(viewportPanelSize.x, viewportPanelSize.y); //The current size of our viewport.
+	unsigned int colorAttachment = g_RenderingComponents.m_Framebuffer.RetrieveColorAttachment();
+	ImGui::Image((void*)colorAttachment, { (float)g_CoreSystems.m_Editor.RetrieveViewportWidth(), (float)g_CoreSystems.m_Editor.RetrieveViewportHeight() }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+	ImGui::End();
+	ImGui::PopStyleVar(); //Pops the pushed style so other windows beyond this won't have the style's properties.
+
+	ImGui::End(); //Closes the docking context.
+	g_CoreSystems.m_Editor.EndEditorRenderLoop();
+}
+
+void RenderScene(Crescent::Shader& shader, bool renderShadowMap)
 {
 	//View/Projection Matrix
 	glm::mat4 viewMatrix = g_CoreSystems.m_Camera.GetViewMatrix();
@@ -333,16 +370,16 @@ void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap)
 	if (renderShadowMap)
 	{
 		//Static
-		g_Renderables.m_BackpackModel.DrawStaticModel(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), g_Renderables.m_BackpackScale, g_Renderables.m_BackpackModelPosition);
-		g_Renderables.m_HeadModel.DrawStaticModel(shader, renderShadowMap, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), g_Renderables.m_HeadScale, g_Renderables.m_HeadPosition);	
+		g_Renderables.m_BackpackModel.DrawStaticModel(shader, renderShadowMap, false, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), g_Renderables.m_BackpackScale, g_Renderables.m_BackpackModelPosition);
+		g_Renderables.m_HeadModel.DrawStaticModel(shader, renderShadowMap, false, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), g_Renderables.m_HeadScale, g_Renderables.m_HeadPosition);
 	
 		g_Renderables.m_StormTrooperModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), true, shader, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), g_Renderables.m_StormtrooperScale, g_Renderables.m_StormTrooperPosition);
 		//g_Renderables.m_RoyaleDogModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), true, shader, g_RenderingComponents.m_DepthMapFramebuffer.RetrieveDepthmapTextureID(), 1.0f, g_Renderables.m_RoyalDogPosition);
 	}
 	else
 	{
-		g_Renderables.m_BackpackModel.DrawStaticModel(shader, renderShadowMap, 0, g_Renderables.m_BackpackScale, g_Renderables.m_BackpackModelPosition);
-		g_Renderables.m_HeadModel.DrawStaticModel(shader, renderShadowMap, 0, g_Renderables.m_HeadScale, g_Renderables.m_HeadPosition);
+		g_Renderables.m_BackpackModel.DrawStaticModel(shader, renderShadowMap, false, 0, g_Renderables.m_BackpackScale, g_Renderables.m_BackpackModelPosition);
+		g_Renderables.m_HeadModel.DrawStaticModel(shader, renderShadowMap, 0, false, g_Renderables.m_HeadScale, g_Renderables.m_HeadPosition);
 
 		g_Shaders.m_AnimationShader.UseShader();
 		g_Shaders.m_AnimationShader.SetUniformVector3("pointLight.lightPosition", g_Renderables.m_PointLight.pointLightPosition);
@@ -386,7 +423,7 @@ void RenderScene(CrescentEngine::Shader& shader, bool renderShadowMap)
 	g_Shaders.m_PointLightObjectShader.SetUniformMat4("view", viewMatrix);
 
 	//Rerouting through the object's editor settings.
-	g_Renderables.m_RedstoneLampModel.DrawStaticModel(g_Shaders.m_PointLightObjectShader, false, 0, g_Renderables.m_RedstoneLampScale, g_Renderables.m_PointLight.pointLightPosition);
+	g_Renderables.m_RedstoneLampModel.DrawStaticModel(g_Shaders.m_PointLightObjectShader, false, false, 0, g_Renderables.m_RedstoneLampScale, g_Renderables.m_PointLight.pointLightPosition);
 
 	//=======================================================================================================================
 
@@ -498,16 +535,16 @@ void DrawEditorContent()
 	ImGui::Begin("Primitive Creation");
 	if (ImGui::Button("Create Plane"))
 	{
-		g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::PlanePrimitive);
+		g_Renderables.m_RenderQueue.SubmitToRenderQueue(Crescent::PrimitiveShape::PlanePrimitive);
 	}
 
 	if (ImGui::Button("Create Cube"))
 	{
-		g_Renderables.m_RenderQueue.SubmitToRenderQueue(CrescentEngine::PrimitiveShape::CubePrimitive);
+		g_Renderables.m_RenderQueue.SubmitToRenderQueue(Crescent::PrimitiveShape::CubePrimitive);
 	}
 	ImGui::End();
 
-	g_Renderables.m_RenderQueue.RenderAllQueueEditorSettings();
+	//g_Renderables.m_RenderQueue.RenderAllQueueEditorSettings();
 	g_Renderables.m_LightDirection.RenderSettingsInEditor();
 
 	g_Renderables.m_PointLight.RenderSettingsInEditor();
@@ -530,10 +567,6 @@ void DrawEditorContent()
 	g_CoreSystems.m_Editor.EndEditorRenderLoop();
 }
 
-
-
-
-
 //Event Callbacks - To Be Further Abstracted.
 void ProcessKeyboardEvents(GLFWwindow* window)
 {
@@ -545,19 +578,19 @@ void ProcessKeyboardEvents(GLFWwindow* window)
 	const float cameraSpeed = g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds() * 2.5f;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Forward, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Forward, cameraSpeed);
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Backward, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Backward, cameraSpeed);
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Left, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Left, cameraSpeed);
 	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(CrescentEngine::CameraMovement::Right, cameraSpeed);
+		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Right, cameraSpeed);
 	}
 }
 
@@ -565,30 +598,30 @@ void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mo
 {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
 	{
-		CrescentEngine::g_CameraMode = true;
+		Crescent::g_CameraMode = true;
 	}
 	else
 	{
-		CrescentEngine::g_CameraMode = false;
+		Crescent::g_CameraMode = false;
 	}
 }
 
 void CameraMovementCallback(GLFWwindow* window, double xPos, double yPos)
 {
-	if (CrescentEngine::g_IsCameraFirstMove)
+	if (Crescent::g_IsCameraFirstMove)
 	{
-		CrescentEngine::g_CameraLastXPosition = xPos;
-		CrescentEngine::g_CameraLastYPosition = yPos;
-		CrescentEngine::g_IsCameraFirstMove = false;
+		Crescent::g_CameraLastXPosition = xPos;
+		Crescent::g_CameraLastYPosition = yPos;
+		Crescent::g_IsCameraFirstMove = false;
 	}
 
-	float xOffset = xPos - CrescentEngine::g_CameraLastXPosition;
-	float yOffset = CrescentEngine::g_CameraLastYPosition - yPos; //Reversed since Y Coordinates go from bottom to top.
-	CrescentEngine::g_CameraLastXPosition = xPos;
+	float xOffset = xPos - Crescent::g_CameraLastXPosition;
+	float yOffset = Crescent::g_CameraLastYPosition - yPos; //Reversed since Y Coordinates go from bottom to top.
+	Crescent::g_CameraLastXPosition = xPos;
 
-	CrescentEngine::g_CameraLastYPosition = yPos;
+	Crescent::g_CameraLastYPosition = yPos;
 
-	if (CrescentEngine::g_CameraMode)
+	if (Crescent::g_CameraMode)
 	{
 		g_CoreSystems.m_Camera.ProcessMouseMovement(xOffset, yOffset);
 	}

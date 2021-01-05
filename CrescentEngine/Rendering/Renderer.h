@@ -2,12 +2,24 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-namespace CrescentEngine
+namespace Crescent
 {
+	class SceneEntity;
+	class RenderQueue;
+	class Shader;
+
 	class Renderer
 	{
 	public:
-		Renderer() {}
+		Renderer();
+		~Renderer();
+
+		void InitializeRenderer();
+
+		//Rendering Items
+		void PushToRenderQueue(SceneEntity* sceneEntity);
+
+		void RenderAllQueueItems(Shader* temporaryShader);
 
 		void InitializeOpenGL();
 		void SetApplicationContext(GLFWwindow* window) { m_ApplicationContext = window; }
@@ -19,6 +31,7 @@ namespace CrescentEngine
 		void ClearBuffers();
 
 	private:
+		RenderQueue* m_RenderQueue = nullptr;
 		GLFWwindow* m_ApplicationContext = nullptr;
 	};
 }

@@ -64,7 +64,7 @@ float cubeVertices[] = {
     -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f
 };
 
-namespace CrescentEngine
+namespace Crescent
 {
     Primitive::Primitive(const PrimitiveShape& primitiveShape)
     {

@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include "Shader.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	class Cubemap
 	{

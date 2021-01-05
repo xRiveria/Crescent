@@ -2,7 +2,7 @@
 #include "Texture.h"
 #include <stb_image/stb_image.h>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	void Texture2D::LoadTexture(const std::string& filePath)
 	{

@@ -3,7 +3,7 @@
 #include "Resources.h"
 #include "../Utilities/StringID.h"
 
-namespace CrescentEngine
+namespace Crescent
 {
 	MaterialLibrary::MaterialLibrary(RenderTarget* gBuffer)
 	{

@@ -1,7 +1,7 @@
 #pragma once
 #include <GL/glew.h>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	class Texture2D
 	{

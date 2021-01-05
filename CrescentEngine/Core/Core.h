@@ -4,7 +4,7 @@
 
 //To Do: Colors for log messages, Conditions.
 
-namespace CrescentEngine
+namespace Crescent
 {
 	static inline HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	static inline int currentColorID = 0;

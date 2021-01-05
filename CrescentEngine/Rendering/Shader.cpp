@@ -3,7 +3,7 @@
 #include "GL/glew.h"
 #include <glm/gtc/type_ptr.hpp>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	Shader::Shader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath)
 	{

@@ -14,7 +14,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
-namespace CrescentEngine
+namespace Crescent
 {
 	static inline int temporaryUUID = 0;
 
@@ -70,14 +70,16 @@ namespace CrescentEngine
 		}
 	}
 
-	void Model::DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, const glm::vec3& modelScale, const glm::vec3& modelTranslation) 
+	void Model::DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID) 
 	{
-		shader.UseShader();
-		glm::mat4 rotation = glm::toMat4(glm::quat(m_ModelRotation));
-		glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), modelTranslation) * rotation * glm::scale(glm::mat4(1.0f), modelScale);
+		for (unsigned int i = 0; i < m_Meshes.size(); i++)
+		{
+			m_Meshes[i].Draw(shader, renderShadowMap, shadowMapTextureID);
+		}
+	}
 
-		shader.SetUniformMat4("model", modelMatrix);
-
+	void Model::DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, bool temporary, const glm::vec3& transformScale, const glm::vec3& transformPosition)
+	{
 		for (unsigned int i = 0; i < m_Meshes.size(); i++)
 		{
 			m_Meshes[i].Draw(shader, renderShadowMap, shadowMapTextureID);
