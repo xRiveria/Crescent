@@ -1,4 +1,5 @@
 #include "CrescentPCH.h"
+/*
 #include "Primitive.h"
 #include <imgui/imgui.h>
 #include <sstream>
@@ -240,3 +241,4 @@ namespace Crescent
         glBindVertexArray(0);
     }
 }
+*/

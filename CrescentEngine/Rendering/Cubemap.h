@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <glm/glm.hpp>
-#include "Shader.h"
+#include "../Shading/Shader.h"
 
 namespace Crescent
 {

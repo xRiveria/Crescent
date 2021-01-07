@@ -5,7 +5,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
-
+#include "../Shading/Texture.h"
 #include <windows.h>
 #include <commdlg.h>
 #include <GLFW/glfw3.h>
@@ -126,7 +126,7 @@ namespace Crescent
 				}
 			}
 
-			for (Texture& texture : m_Meshes[0].textures)
+			for (MeshTexture& texture : m_Meshes[0].textures)
 			{
 				ImGui::Image((void*)texture.id, ImVec2(80, 80), ImVec2(0, 1), ImVec2(1, 0));
 				
@@ -190,7 +190,7 @@ namespace Crescent
 
 	void Model::LoadDiffuseTexture(const std::string& filePath)
 	{
-		Texture texture;
+		MeshTexture texture;
 		texture.id = TextureFromFile(filePath, this->m_FileDirectory);
 		texture.type = "texture_diffuse";
 		texture.path = filePath;
@@ -200,7 +200,7 @@ namespace Crescent
 
 	void Model::LoadNormalTexture(const std::string& filePath)
 	{
-		Texture texture;
+		MeshTexture texture;
 		texture.id = TextureFromFile(filePath, this->m_FileDirectory);
 		texture.type = "texture_normal";
 		texture.path = filePath;
@@ -273,7 +273,7 @@ namespace Crescent
 		//Data we must fill.
 		std::vector<Vertex> vertices;
 		std::vector<unsigned int> indices;
-		std::vector<Texture> textures;
+		std::vector<MeshTexture> textures;
 
 		//Walk through each of the mesh's vertices.
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
@@ -340,19 +340,19 @@ namespace Crescent
 		aiMaterial* material = m_ModelScene->mMaterials[mesh->mMaterialIndex];
 
 		//Diffuse Maps
-		std::vector<Texture> diffuseMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+		std::vector<MeshTexture> diffuseMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
 		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
 		//Specular Maps
-		std::vector<Texture> specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+		std::vector<MeshTexture> specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
 		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
 		//Normal Maps
-		std::vector<Texture> normalMaps = LoadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+		std::vector<MeshTexture> normalMaps = LoadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
 		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 
 		//Height Maps
-		std::vector<Texture> heightMaps = LoadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
+		std::vector<MeshTexture> heightMaps = LoadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
 		textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
 
 		
@@ -375,9 +375,9 @@ namespace Crescent
 	}
 
 	//Iterates over all the texture locations of the given texture type, retrieve the texture's file location and then loads and generates the texture.
-	std::vector<Texture> Model::LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName)
+	std::vector<MeshTexture> Model::LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName)
 	{
-		std::vector<Texture> textures;
+		std::vector<MeshTexture> textures;
 		for (unsigned int i = 0; i < material->GetTextureCount(type); i++)
 		{
 			aiString string;
@@ -396,7 +396,7 @@ namespace Crescent
 			
 			if (!skip)
 			{
-				Texture texture;
+				MeshTexture texture;
 				texture.id = TextureFromFile(string.C_Str(), this->m_FileDirectory);
 				texture.type = typeName;
 				texture.path = string.C_Str();

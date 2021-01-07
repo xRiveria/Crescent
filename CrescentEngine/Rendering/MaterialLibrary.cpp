@@ -1,14 +1,14 @@
 #include "CrescentPCH.h"
 #include "MaterialLibrary.h"
+#include "../Shading/Material.h"
 #include "Resources.h"
 #include "../Utilities/StringID.h"
 
 namespace Crescent
 {
-	MaterialLibrary::MaterialLibrary(RenderTarget* gBuffer)
+	MaterialLibrary::MaterialLibrary()
 	{
 		GenerateDefaultMaterials();
-		GenerateInternalMaterials(gBuffer);
 	}
 
 	MaterialLibrary::~MaterialLibrary()
@@ -23,8 +23,8 @@ namespace Crescent
 			delete m_Materials[i];
 		}
 
-		delete m_DebugLightMaterial;
-		delete m_DefaultBlitMaterial;
+		//delete m_DebugLightMaterial;
+		//delete m_DefaultBlitMaterial;
 	}
 
 	Material* MaterialLibrary::CreateMaterial(std::string& base) //Default material.
@@ -32,7 +32,10 @@ namespace Crescent
 		auto foundMaterial = m_DefaultMaterials.find(SID(base));
 		if (foundMaterial != m_DefaultMaterials.end())
 		{
-
+			Material copy = foundMaterial->second->CopyMaterial(); 
+			Material* material = new Material(copy);
+			m_Materials.push_back(material);
+			return material;
 		}
 		else
 		{
@@ -41,6 +44,21 @@ namespace Crescent
 		}
 	}
 
+	void MaterialLibrary::GenerateDefaultMaterials()
+	{
+		//Default render material (deferred path).
+		Shader* defaultShader = Resources::LoadShader("Default", "Resources/Shaders/DefaultVertex.shader", "Resources/Shaders/DefaultFragment.shader");
+		Material* defaultMaterial = new Material(defaultShader);
+
+		defaultMaterial->m_MaterialType = Material_Default;
+		defaultMaterial->SetShaderTexture("TexAlbedo", Resources::LoadTexture("Default Albedo", "Resources/Textures/Checkerboard.png", GL_TEXTURE_2D, GL_RGB), 3);
+		//defaultMaterial->SetShaderTexture("TexNormal", Resources::LoadTexture("Default Normal", "Resources/Textures/Normal.png"), 4);
+		//defaultMaterial->SetShaderTexture("TexMetallic", Resources::LoadTexture("Default Metallic", "Resouces/Textures/Black.png"), 5);
+		//defaultMaterial->SetShaderTexture("TexRoughness", Resources::LoadTexture("Default Roughness", "Resouces/Textures/Checkboard.png"), 6);
+
+		m_DefaultMaterials[SID("Default")] = defaultMaterial;
+	}
+/*
 	Material* MaterialLibrary::CreateCustomMaterial(Shader* shader) //Player created.
 	{
 		Material* material = new Material(shader);
@@ -50,7 +68,7 @@ namespace Crescent
 		return material;
 	}
 
-	Material* MaterialLibrary::CreatePostProcessingMaterial(Shader* shader) 
+	Material* MaterialLibrary::CreatePostProcessingMaterial(Shader* shader)
 	{
 		Material* material = new Material(shader);
 		material->m_MaterialType = Material_PostProcess;
@@ -59,31 +77,9 @@ namespace Crescent
 		return material;
 	}
 
-	void MaterialLibrary::GenerateDefaultMaterials()
-	{
-		//Default render material (deferred path).
-		Shader* defaultShader = Resources::LoadShader("Default", "Resources/Shaders/Deferred/GBuffer.vs", "Resources/Shaders/GBuffer.fs");
-		Material* defaultMaterial = new Material(defaultShader);
-
-		defaultMaterial->m_MaterialType = Material_Default;
-		defaultMaterial->SetShaderTexture("TexAlbedo", Resources::LoadTexture("Default Albedo", "Resources/Textures/Checkerboard.png", GL_TEXTURE_2D, GL_RGB), 3);
-		defaultMaterial->SetShaderTexture("TexNormal", Resources::LoadTexture("Default Normal", "Resources/Textures/Normal.png"), 4);
-		defaultMaterial->SetShaderTexture("TexMetallic", Resources::LoadTexture("Default Metallic", "Resouces/Textures/Black.png"), 5);
-		defaultMaterial->SetShaderTexture("TexRoughness", Resources::LoadTexture("Default Roughness", "Resouces/Textures/Checkboard.png"), 6);
-
-		m_DefaultMaterials[SID("Default")] = defaultMaterial;
-		//Glass Material.
-
-
-
-		//Alpha Blend Material.
-
-
-		//Alpha Cut Material.
-	}
-
 	void MaterialLibrary::GenerateInternalMaterials(RenderTarget* gBuffer)
 	{
 
 	}
+*/
 }

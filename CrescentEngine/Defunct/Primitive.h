@@ -1,6 +1,7 @@
 #pragma once
+/*
 #include <GL/glew.h>
-#include "../Rendering/Shader.h"
+#include "../Shading/Shader.h"
 #include "../Rendering/Texture.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -55,3 +56,4 @@ namespace Crescent
 		unsigned int m_VertexBufferID = 0;
 	};
 }
+*/

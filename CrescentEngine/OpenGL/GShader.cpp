@@ -1,6 +1,5 @@
 #include "CrescentPCH.h"
 #include "GShader.h"
-#include "OpenGLRenderer.h"
 #include "GL/glew.h"
 
 GShader::GShader(const std::string& filePath) : m_FilePath(filePath), m_RendererID(0)

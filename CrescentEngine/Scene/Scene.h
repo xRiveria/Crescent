@@ -9,6 +9,7 @@ namespace Crescent
 {
 	class SceneEntity;
 	class Model;
+	class Mesh;
 	class Material;
 
 	class Scene
@@ -22,7 +23,8 @@ namespace Crescent
 		//Constructs an empty scene entity. 
 		SceneEntity* ConstructNewEntity();
 		//Directly constructs a node with an attached Mesh and Material.
-		SceneEntity* ConstructNewEntity(Model* mesh, Material* material);
+		SceneEntity* ConstructNewEntity(Mesh* mesh, Material* material);
+
 		//Deletes a scene node from the global scene hierarchy together with its children.
 		void DeleteSceneEntity(SceneEntity* sceneEntity);
 

@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include "Mesh.h"
-#include "../Rendering/Shader.h"
+#include "../Shading/Shader.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -46,7 +46,7 @@ namespace Crescent
 	private:
 		void ProcessNode(aiNode* node);
 		Mesh ProcessMesh(const aiMesh* mesh);
-		std::vector<Texture> LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName);
+		std::vector<MeshTexture> LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName);
 
 		void RecursivelyUpdateBoneMatrices(int animation_id, aiNode* node, glm::mat4 transform, double ticks);
 
@@ -61,7 +61,7 @@ namespace Crescent
 		//Model Data
 		std::string m_ModelName = "Model";
 		std::vector<Mesh> m_Meshes;
-		std::vector<Texture> m_TexturesLoaded;
+		std::vector<MeshTexture> m_TexturesLoaded;
 		std::string m_FileDirectory;
 		int m_TemporaryUUID = 0;
 		glm::vec3 m_ModelRotation = { 0.0f, 0.0f, 0.0f };

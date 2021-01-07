@@ -3,13 +3,13 @@
 
 namespace Crescent
 {
-	class Model;
+	class Mesh;
 	class Material;
 
 	struct RenderCommand
 	{
 		glm::mat4 m_Transform;
-		Model* m_Mesh;
+		Mesh* m_Mesh;
 		Material* m_Material;
 	};
 }

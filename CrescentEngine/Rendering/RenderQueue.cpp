@@ -6,10 +6,10 @@ namespace Crescent
 {
 	RenderQueue::RenderQueue(Renderer* renderer)
 	{
-		m_Renderer = renderer; 
+		m_Renderer = renderer;
 	}
 
-	void RenderQueue::PushToRenderQueue(Model* mesh, Material* material, glm::mat4 transform)
+	void RenderQueue::PushToRenderQueue(Mesh* mesh, Material* material, glm::mat4 transform)
 	{
 		RenderCommand renderCommand = {};
 
@@ -30,25 +30,11 @@ namespace Crescent
 	{
 		m_ForwardRenderingCommands.clear();
 	}
-
-
-
-
-
-
-
-
-	void RenderQueue::SubmitToRenderQueue(const PrimitiveShape& primitiveShape)
-	{
-		PrimitiveShape selectedPrimitive(primitiveShape);
-		m_Primitives.push_back(selectedPrimitive);
-	}
-
-	void RenderQueue::RenderAllQueueItems(Shader& shader)
-	{
-		for(Primitive& primitive : m_Primitives)
-		{
-			primitive.DrawPrimitive(shader);
-		}
-	}
 }
+
+
+
+
+
+
+

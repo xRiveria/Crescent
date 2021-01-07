@@ -25,7 +25,7 @@ namespace Crescent
 		return newEntity;
 	}
 
-	SceneEntity* Scene::ConstructNewEntity(Model* mesh, Material* material)
+	SceneEntity* Scene::ConstructNewEntity(Mesh* mesh, Material* material)
 	{
 		SceneEntity* newEntity = new SceneEntity("Model", m_SceneEntityCounterID++);
 		

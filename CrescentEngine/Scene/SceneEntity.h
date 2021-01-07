@@ -8,7 +8,7 @@
 
 namespace Crescent
 {
-	class Model;
+	class Mesh;
 	class Material;
 
 	class SceneEntity
@@ -38,7 +38,7 @@ namespace Crescent
 		}
 
 	public:
-		Model* m_Mesh = nullptr;
+		Mesh* m_Mesh = nullptr;
 		Material* m_Material = nullptr;
 
 	private:

@@ -1,4 +1,5 @@
 #include "CrescentPCH.h"
+/*
 #include "OpenGLRenderer.h"
 #include "GL/glew.h"
 
@@ -40,6 +41,6 @@ void OpenGLRenderer::Draw(const VertexArray& vertexArray, const IndexBuffer& ind
     GLCall(glDrawElements(GL_TRIANGLES, indexBuffer.GetCount(), GL_UNSIGNED_INT, nullptr)); //We can put nullptr because the data is already bound to the buffer.
 }
 
-
+*/
 
 

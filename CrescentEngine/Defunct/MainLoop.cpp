@@ -1,4 +1,5 @@
 #include "CrescentPCH.h"
+/*
 #include "Window.h"
 #include "Editor.h"
 #include "Rendering/Texture.h"
@@ -17,12 +18,15 @@
 #include "../Scene/SceneEntity.h"
 #include "../Scene/SceneHierarchyPanel.h"
 #include "Rendering/Material.h"
+#include "Rendering/GLStateCache.h"
+#include "Rendering/RendererSettingsPanel.h"
+#include "Models/DefaultPrimitives.h"
 
 struct CoreSystems
 {
 	Crescent::Window m_Window; //Setups our Window.
 	Crescent::Editor m_Editor; //Setups our ImGui context.
-	Crescent::Renderer m_Renderer; //Setups our OpenGL context.
+	Crescent::Renderer* m_Renderer; //Setups our OpenGL context.
 	Crescent::Timestep m_Timestep; //Setups our Timestep.
 	Crescent::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
 
@@ -38,7 +42,6 @@ struct RenderingComponents
 	bool m_LightingModel[2] = { true, false };  //[0] for Blinn Phong, [1] for Phong.
 	float pcfSampleAmount = 15.0f;
 	bool m_SoftOrHardShadows[2] = { true, false }; //[0] for Soft, [1] for Hard.
-	bool m_WireframeRendering = false;
 	float exposure = 0.0f;
 	bool m_BloomEnabled = true;
 	bool m_MultisamplingEnabled = true;
@@ -50,11 +53,9 @@ struct Renderables  //Currently our base scene objects.
 	Crescent::Model m_BackpackModel;
 	Crescent::Model m_StormTrooperModel;
 	Crescent::Model m_HeadModel;
-	Crescent::Model m_RoyaleDogModel;
 
 	glm::vec3 m_BackpackModelPosition = { 0.0f, 1.3f, 0.0f };
 	glm::vec3 m_StormTrooperPosition = { -5.0f, -0.5f, -1.9f };
-	glm::vec3 m_RoyalDogPosition = { -27.5f, -5.9f, 66.5f };
 	glm::vec3 m_HeadPosition = { 3.7f, 1.5f, -4.1f };
 	glm::vec3 m_HeadScale = { 1.0f, 1.0f, 1.0f };
 	glm::vec3 m_BackpackScale = { 1.0f, 1.0f, 1.0f };
@@ -117,7 +118,7 @@ Shaders g_Shaders; //Creates our shaders.
 Textures g_Textures; //Creates our textures.
 
 //Input Callbacks
-void NewEditorScene(Crescent::SceneHierarchyPanel* sceneHierarchyPanel);
+void NewEditorScene(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::RendererSettingsPanel* rendererPanel);
 void RenderScene(Crescent::Shader& shader, bool renderShadowMap);
 void DrawEditorContent();
 void ProcessKeyboardEvents(GLFWwindow* window);
@@ -142,10 +143,8 @@ int main(int argc, int argv[])
 	g_CoreSystems.m_Window.SetMouseScrollCallback(CameraZoomCallback);
 
 	//Initializes OpenGL.
-	g_CoreSystems.m_Renderer.InitializeOpenGL();
-	g_CoreSystems.m_Renderer.ToggleDepthTesting(true);
-	g_CoreSystems.m_Renderer.ToggleBlending(true);
-	g_CoreSystems.m_Renderer.ToggleFaceCulling(false);
+	g_CoreSystems.m_Renderer = new Crescent::Renderer();
+	g_CoreSystems.m_Renderer->InitializeRenderer();
 
 	//Setups ImGui
 	g_CoreSystems.m_Editor.SetApplicationContext(&g_CoreSystems.m_Window);
@@ -182,16 +181,17 @@ int main(int argc, int argv[])
 	stbi_set_flip_vertically_on_load(false);
 	g_Renderables.m_HeadModel.LoadModel("Head", "Resources/Models/Head/source/craneo.obj", g_CoreSystems.m_Window);
 	g_Renderables.m_StormTrooperModel.LoadModel("Stormtrooper", "Resources/Models/Stormtrooper/source/silly_dancing.fbx", g_CoreSystems.m_Window);
-	g_Renderables.m_RoyaleDogModel.LoadModel("Royale Dog", "Resources/Models/Pokeball/source/RufflesDuchessVisual.fbx", g_CoreSystems.m_Window);
 
 	// Abstracted ======================================================================================
-	g_CoreSystems.m_Renderer.InitializeRenderer();
-
 	Crescent::Scene* demoScene = new Crescent::Scene();
 	Crescent::SceneHierarchyPanel* sceneHierarchy = new Crescent::SceneHierarchyPanel(demoScene);
+	Crescent::RendererSettingsPanel* rendererSettingsPanel = new Crescent::RendererSettingsPanel(g_CoreSystems.m_Renderer);
+
 	Crescent::Material* material = new Crescent::Material();
-	Crescent::SceneEntity* sceneEntity = demoScene->ConstructNewEntity(&g_Renderables.m_BackpackModel, material);
-	Crescent::SceneEntity* sceneEntity2 = demoScene->ConstructNewEntity(&g_Renderables.m_BackpackModel, material);
+	Crescent::Cube* cube = new Crescent::Cube();
+	Crescent::SceneEntity* sceneCube = demoScene->ConstructNewEntity(cube, material);
+	//Crescent::SceneEntity* sceneEntity = demoScene->ConstructNewEntity(&g_Renderables.m_BackpackModel, material);
+	//Crescent::SceneEntity* sceneEntity2 = demoScene->ConstructNewEntity(&g_Renderables.m_BackpackModel, material);
 	//======================================================================================
 
 
@@ -213,7 +213,6 @@ int main(int argc, int argv[])
 		g_CoreSystems.m_Window.PollEvents();
 		ProcessKeyboardEvents(g_CoreSystems.m_Window.RetrieveWindow());
 
-		g_CoreSystems.m_Renderer.ClearBuffers();
 
 		g_Shaders.m_StaticModelShader.UseShader();
 		glActiveTexture(GL_TEXTURE0);
@@ -222,13 +221,13 @@ int main(int argc, int argv[])
 		g_RenderingComponents.m_Framebuffer.BindFramebuffer();
 
 		glViewport(0, 0, g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
-		g_CoreSystems.m_Renderer.ClearBuffers();
 
-		g_CoreSystems.m_Renderer.PushToRenderQueue(sceneEntity);
-		g_CoreSystems.m_Renderer.PushToRenderQueue(sceneEntity2);
-		RenderScene(g_Shaders.m_StaticModelShader, false);
+		//g_CoreSystems.m_Renderer->PushToRenderQueue(sceneEntity);
+		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
+		g_CoreSystems.m_Renderer->RenderAllQueueItems();
 
-		g_CoreSystems.m_Renderer.RenderAllQueueItems(&g_Shaders.m_StaticModelShader);
+		//RenderScene(g_Shaders.m_StaticModelShader, false);
+
 
 		/*
 		//Bind our Depth Framebuffer.
@@ -303,13 +302,12 @@ int main(int argc, int argv[])
 			g_CoreSystems.m_Renderer.ClearBuffers();
 			RenderScene(g_Shaders.m_StaticModelShader, false);
 		}
-		*/
+		
 		
 		g_RenderingComponents.m_Framebuffer.UnbindFramebuffer();
-		g_CoreSystems.m_Renderer.ClearBuffers();
 
 		//We reset the framebuffer back to normal here for our Editor.
-		NewEditorScene(sceneHierarchy);
+		NewEditorScene(sceneHierarchy, rendererSettingsPanel);
 
 		g_CoreSystems.m_Window.SwapBuffers();
 	}
@@ -318,12 +316,13 @@ int main(int argc, int argv[])
 	return 0;
 }
 
-void NewEditorScene(Crescent::SceneHierarchyPanel* sceneHierarchyPanel)
+void NewEditorScene(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::RendererSettingsPanel* rendererPanel)
 {
 	g_CoreSystems.m_Editor.BeginEditorRenderLoop();
 	g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
 
 	sceneHierarchyPanel->RenderSceneEditorUI();
+	rendererPanel->RenderRendererEditorUI();
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 	ImGui::Begin("Viewport");
@@ -402,7 +401,6 @@ void RenderScene(Crescent::Shader& shader, bool renderShadowMap)
 		g_Shaders.m_AnimationShader.SetUniformVector3("viewPosition", g_CoreSystems.m_Camera.m_CameraPosition);
 		g_Renderables.m_StormTrooperModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), false, g_Shaders.m_AnimationShader, 0, g_Renderables.m_StormtrooperScale, g_Renderables.m_StormTrooperPosition);
 
-		g_Shaders.m_AnimationShader.SetUniformVectorMat4("uBoneMatrices", g_Renderables.m_RoyaleDogModel.m_BoneMatrices);
 		//g_Renderables.m_RoyaleDogModel.DrawAnimatedModel(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), false, g_Shaders.m_AnimationShader, 0, 5.0f, g_Renderables.m_RoyalDogPosition);
 		g_Shaders.m_AnimationShader.UnbindShader();
 	}
@@ -458,10 +456,6 @@ void DrawEditorContent()
 	ImGui::Begin("Global Settings");
 	ImGui::DragFloat("Exposure", &g_RenderingComponents.exposure, 0.05, 0.0f, 1.0f);
 	ImGui::Checkbox("Bloom", &g_RenderingComponents.m_BloomEnabled);
-	if (ImGui::Checkbox("Wireframe Rendering", &g_RenderingComponents.m_WireframeRendering))
-	{
-		g_CoreSystems.m_Renderer.ToggleWireframeRendering(g_RenderingComponents.m_WireframeRendering);
-	}
 
 	if (ImGui::Checkbox("Multisampling", &g_RenderingComponents.m_MultisamplingEnabled))
 	{
@@ -639,3 +633,6 @@ void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHe
 	g_CoreSystems.m_Window.ResizeWindow((float)windowWidth, (float)windowHeight);
 }
 
+
+
+*/

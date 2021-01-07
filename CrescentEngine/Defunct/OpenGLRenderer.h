@@ -1,4 +1,5 @@
 #pragma once
+/*
 #include "GL/glew.h"
 #include "IndexBuffer.h"
 #include "VertexArray.h"
@@ -29,6 +30,7 @@ public:
 private:
     static GraphicalInformation systemInformation;
 };
+*/
 
 
 
