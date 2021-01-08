@@ -54,6 +54,12 @@ namespace Crescent
 		std::string path;
 	};
 
+	enum Topology
+	{
+		Triangles,
+		TriangleStrips
+	};
+
 	/*
 		Basic Mesh class. A mesh in its simplest form is purely a list of vertices with some added functionality for easily setting up the hardware configuration
 		relevant for rendering.
@@ -75,6 +81,8 @@ namespace Crescent
 		unsigned int RetrieveVertexArrayID() const { return m_VertexArrayID; }
 
 	public:
+		Topology m_Topology = Triangles;
+
 		std::vector<glm::vec3> m_Positions;
 		std::vector<glm::vec2> m_UV;
 		std::vector<glm::vec3> m_Normals;

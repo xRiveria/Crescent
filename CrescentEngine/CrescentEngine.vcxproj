@@ -181,10 +181,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CrescentPCH.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="Defunct\Primitive.cpp" />
+    <ClCompile Include="Core\Defunct\Primitive.cpp" />
     <ClCompile Include="Core\Editor.cpp" />
     <ClCompile Include="Core\Window.cpp" />
-    <ClCompile Include="Defunct\EntryPoint.cpp" />
+    <ClCompile Include="Core\Defunct\EntryPoint.cpp" />
     <ClCompile Include="Memory\ShaderLoader.cpp" />
     <ClCompile Include="Memory\TextureLoader.cpp" />
     <ClCompile Include="Models\DefaultPrimitives.cpp" />
@@ -195,16 +195,16 @@
     <ClCompile Include="Rendering\RenderTarget.cpp" />
     <ClCompile Include="Rendering\Resources.cpp" />
     <ClCompile Include="Shading\Shader.cpp" />
-    <ClCompile Include="Defunct\MainLoop.cpp" />
+    <ClCompile Include="Core\Defunct\MainLoop.cpp" />
     <ClCompile Include="Models\BoneMapper.cpp" />
     <ClCompile Include="Models\Mesh.cpp" />
     <ClCompile Include="Models\Model.cpp" />
-    <ClCompile Include="Defunct\IndexBuffer.cpp" />
-    <ClCompile Include="Defunct\OpenGLRenderer.cpp" />
-    <ClCompile Include="Defunct\GShader.cpp" />
-    <ClCompile Include="Defunct\Textures.cpp" />
-    <ClCompile Include="Defunct\VertexArray.cpp" />
-    <ClCompile Include="Defunct\VertexBuffer.cpp" />
+    <ClCompile Include="Core\Defunct\IndexBuffer.cpp" />
+    <ClCompile Include="Core\Defunct\OpenGLRenderer.cpp" />
+    <ClCompile Include="Core\Defunct\GShader.cpp" />
+    <ClCompile Include="Core\Defunct\Textures.cpp" />
+    <ClCompile Include="Core\Defunct\VertexArray.cpp" />
+    <ClCompile Include="Core\Defunct\VertexBuffer.cpp" />
     <ClCompile Include="Shading\Material.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
     <ClCompile Include="Rendering\Cubemap.cpp" />
@@ -262,10 +262,11 @@
   <ItemGroup>
     <ClInclude Include="Core\Core.h" />
     <ClInclude Include="Core\CrescentPCH.h" />
-    <ClInclude Include="Defunct\Primitive.h" />
+    <ClInclude Include="Core\Defunct\Primitive.h" />
     <ClInclude Include="Core\Editor.h" />
     <ClInclude Include="Core\Object.h" />
     <ClInclude Include="Core\Window.h" />
+    <ClInclude Include="Lighting\DirectionalLight.h" />
     <ClInclude Include="Memory\ShaderLoader.h" />
     <ClInclude Include="Memory\TextureLoader.h" />
     <ClInclude Include="Models\DefaultPrimitives.h" />
@@ -279,20 +280,20 @@
     <ClInclude Include="Models\BoneMapper.h" />
     <ClInclude Include="Models\Mesh.h" />
     <ClInclude Include="Models\Model.h" />
-    <ClInclude Include="Defunct\IndexBuffer.h" />
-    <ClInclude Include="Defunct\OpenGLRenderer.h" />
-    <ClInclude Include="Defunct\GShader.h" />
-    <ClInclude Include="Defunct\Textures.h" />
-    <ClInclude Include="Defunct\VertexArray.h" />
-    <ClInclude Include="Defunct\VertexBuffer.h" />
-    <ClInclude Include="Defunct\VertexBufferLayout.h" />
+    <ClInclude Include="Core\Defunct\IndexBuffer.h" />
+    <ClInclude Include="Core\Defunct\OpenGLRenderer.h" />
+    <ClInclude Include="Core\Defunct\GShader.h" />
+    <ClInclude Include="Core\Defunct\Textures.h" />
+    <ClInclude Include="Core\Defunct\VertexArray.h" />
+    <ClInclude Include="Core\Defunct\VertexBuffer.h" />
+    <ClInclude Include="Core\Defunct\VertexBufferLayout.h" />
     <ClInclude Include="Shading\Material.h" />
     <ClInclude Include="Rendering\Renderer.h" />
     <ClInclude Include="Rendering\Framebuffer.h" />
     <ClInclude Include="Rendering\RenderQueue.h" />
     <ClInclude Include="Shading\Texture.h" />
-    <ClInclude Include="Resources\Shaders\OutlineVertex.shader" />
-    <ClInclude Include="Resources\Shaders\ReflectiveVertex.shader" />
+    <ClInclude Include="Resources\Shaders\Defunct\OutlineVertex.shader" />
+    <ClInclude Include="Resources\Shaders\Defunct\ReflectiveVertex.shader" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Scene\SceneHierarchyPanel.h" />
     <ClInclude Include="Scene\SceneEntity.h" />
@@ -665,26 +666,30 @@
     <ClInclude Include="Vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\Shaders\AnimationFragment.shader" />
-    <None Include="Resources\Shaders\AnimationVertex.shader" />
-    <None Include="Resources\Shaders\BlurFragment.shader" />
-    <None Include="Resources\Shaders\BlurVertex.shader" />
-    <None Include="Resources\Shaders\CubemapFragment.shader" />
-    <None Include="Resources\Shaders\CubemapVertex.shader" />
-    <None Include="Resources\Shaders\DefaultFragment.shader" />
-    <None Include="Resources\Shaders\DefaultVertex.shader" />
-    <None Include="Resources\Shaders\DepthFragment.shader" />
-    <None Include="Resources\Shaders\DepthVertex.shader" />
-    <None Include="Resources\Shaders\OutlineFragment.shader" />
-    <None Include="Resources\Shaders\ReflectiveFragment.shader" />
-    <None Include="Resources\Shaders\StaticModelVertex.shader" />
-    <None Include="Resources\Shaders\StaticModelFragment.shader" />
-    <None Include="Resources\Shaders\FragmentShader.shader" />
-    <None Include="Defunct\Shaders\Basic.shader" />
-    <None Include="Resources\Shaders\LightFragmentShader.shader" />
-    <None Include="Resources\Shaders\LightVertexShader.shader" />
-    <None Include="Resources\Shaders\TransparentFragment.shader" />
-    <None Include="Resources\Shaders\TransparentVertex.shader" />
+    <None Include="Resources\Shaders\Defunct\AnimationFragment.shader" />
+    <None Include="Resources\Shaders\Defunct\AnimationVertex.shader" />
+    <None Include="Resources\Shaders\Defunct\BlurFragment.shader" />
+    <None Include="Resources\Shaders\Defunct\BlurVertex.shader" />
+    <None Include="Resources\Shaders\Defunct\CubemapFragment.shader" />
+    <None Include="Resources\Shaders\Defunct\CubemapVertex.shader" />
+    <None Include="Resources\Shaders\Defunct\DefaultFragment.shader" />
+    <None Include="Resources\Shaders\Defunct\DefaultVertex.shader" />
+    <None Include="Resources\Shaders\Deferred\GBufferFragment.shader" />
+    <None Include="Resources\Shaders\Deferred\GBufferVertex.shader" />
+    <None Include="Resources\Shaders\Defunct\DepthFragment.shader" />
+    <None Include="Resources\Shaders\Defunct\DepthVertex.shader" />
+    <None Include="Resources\Shaders\Defunct\OutlineFragment.shader" />
+    <None Include="Resources\Shaders\Defunct\ReflectiveFragment.shader" />
+    <None Include="Resources\Shaders\Defunct\StaticModelVertex.shader" />
+    <None Include="Resources\Shaders\Defunct\StaticModelFragment.shader" />
+    <None Include="Resources\Shaders\Defunct\FragmentShader.shader" />
+    <None Include="Core\Defunct\Shaders\Basic.shader" />
+    <None Include="Resources\Shaders\Defunct\LightFragmentShader.shader" />
+    <None Include="Resources\Shaders\Defunct\LightVertexShader.shader" />
+    <None Include="Resources\Shaders\Defunct\TransparentFragment.shader" />
+    <None Include="Resources\Shaders\Defunct\TransparentVertex.shader" />
+    <None Include="Resources\Shaders\ShadowCastFragment.shader" />
+    <None Include="Resources\Shaders\ShadowCastVertex.shader" />
     <None Include="Vendor\assimp\include\assimp\.editorconfig" />
     <None Include="Vendor\assimp\include\assimp\color4.inl" />
     <None Include="Vendor\assimp\include\assimp\material.inl" />
@@ -830,7 +835,7 @@
     <None Include="Vendor\glm\gtx\vector_angle.inl" />
     <None Include="Vendor\glm\gtx\vector_query.inl" />
     <None Include="Vendor\glm\gtx\wrap.inl" />
-    <None Include="Resources\Shaders\VertexShader.shader" />
+    <None Include="Resources\Shaders\Defunct\VertexShader.shader" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Resources\Textures\AeternumGameLogo.png" />

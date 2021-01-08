@@ -158,7 +158,6 @@ namespace Crescent
 		}
 	}
 
-
 	int Shader::RetrieveUniformLocation(const std::string& uniformName)
 	{
 		for (unsigned int i = 0; i < m_Uniforms.size(); i++)

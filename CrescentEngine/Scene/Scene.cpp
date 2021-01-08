@@ -49,10 +49,6 @@ namespace Crescent
 
 	void Scene::ConstructDefaultScene()
 	{
-		SceneEntity* defaultCube = new SceneEntity("Cube", m_SceneEntityCounterID++);
-		SceneEntity* defaultDirectionalLight = new SceneEntity("Directional Light", m_SceneEntityCounterID++);
-
-		m_SceneEntities.push_back(defaultCube);
-		m_SceneEntities.push_back(defaultDirectionalLight);
+		//To implement if we want default scenes. For future scene swapping support?
 	}
 }

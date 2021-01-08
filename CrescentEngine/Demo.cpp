@@ -4,13 +4,8 @@
 #include "Shading/Texture.h"
 #include "Utilities/Timestep.h"
 #include "Utilities/Camera.h"
-#include "Rendering/Framebuffer.h";
-#include "Models/Model.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/RenderQueue.h"
-#include "Object.h"
-#include "Rendering/Cubemap.h"
-#include <stb_image/stb_image.h>
 #include <imgui/imgui.h>
 #include "../Scene/Scene.h"
 #include "../Scene/SceneEntity.h"
@@ -20,6 +15,7 @@
 #include "Rendering/RendererSettingsPanel.h"
 #include "Models/DefaultPrimitives.h"
 #include "Rendering/RenderTarget.h"
+#include "Lighting/DirectionalLight.h"
 
 struct CoreSystems
 {
@@ -74,18 +70,24 @@ int main(int argc, int argv[])
 	Crescent::Material* defaultMaterial = g_CoreSystems.m_Renderer->CreateMaterial();
 
 	Crescent::Cube* cube = new Crescent::Cube();
+
 	Crescent::SceneEntity* sceneCube = demoScene->ConstructNewEntity(cube, defaultMaterial);
+
+	Crescent::DirectionalLight directionalLight;
+	directionalLight.m_LightDirection = glm::vec3(0.0f, -1.0f, 0.0f);
+	directionalLight.m_LightColor = glm::vec3(1.0f, 0.89f, 0.7f);
+	directionalLight.m_LightIntensity = 50.0f;
+
+	g_CoreSystems.m_Renderer->AddLightSource(&directionalLight);
 	//===========================================
 
 	while (!g_CoreSystems.m_Window.RetrieveWindowCloseStatus())
 	{
-		glClearColor(0.6f, 0.6f, 0.6f, 1.0f);
-		//Check Projection Matrix
-
 		//Check Projection Matrix
 		if (g_CoreSystems.m_Editor.RetrieveViewportWidth() > 0.0f && g_CoreSystems.m_Editor.RetrieveViewportHeight() > 0.0f && (g_CoreSystems.m_Renderer->RetrieveRenderWindowSize().x != g_CoreSystems.m_Editor.RetrieveViewportWidth() || g_CoreSystems.m_Renderer->RetrieveRenderWindowSize().y != g_CoreSystems.m_Editor.RetrieveViewportHeight()))
 		{
 			g_CoreSystems.m_Renderer->SetRenderingWindowSize(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
+			CrescentInfo("Resized Render Target!");
 		}
 		g_CoreSystems.m_Camera.m_ProjectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
 
@@ -100,14 +102,13 @@ int main(int argc, int argv[])
 	
 		g_CoreSystems.m_Camera.UpdateCameraVectors();
 
-		glBindFramebuffer(GL_FRAMEBUFFER, g_CoreSystems.m_Renderer->RetrieveMainRenderTarget()->m_FramebufferID);
 		//Rendering
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
+
 		g_CoreSystems.m_Renderer->RenderAllQueueItems();
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 		//We reset the framebuffer back to normal here for our Editor.
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		RenderEditor(sceneHierarchy, rendererSettingsPanel);
 
 		g_CoreSystems.m_Window.SwapBuffers();
@@ -127,11 +128,22 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 
+	ImGui::Begin("Deferred Rendering");
+	for (int i = 0; i < 4; i++)
+	{
+		unsigned int colorAttachment = g_CoreSystems.m_Renderer->RetrieveGBuffer()->RetrieveColorAttachment(i)->RetrieveTextureID();
+		ImGui::Image((void*)colorAttachment, { 350.0f, 350.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+		if (i % 2 == 0)
+		{
+			ImGui::SameLine();
+		}
+	}
+
 	ImGui::Begin("Viewport");
 	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 	g_CoreSystems.m_Editor.SetViewportSize(viewportPanelSize.x, viewportPanelSize.y); //The current size of our viewport.
 
-	unsigned int colorAttachment = g_CoreSystems.m_Renderer->RetrieveMainRenderTarget()->RetrieveColorAttachment(0)->RetrieveTextureID();
+	unsigned int colorAttachment = g_CoreSystems.m_Renderer->RetrieveGBuffer()->RetrieveColorAttachment(0)->RetrieveTextureID();
 	ImGui::Image((void*)colorAttachment, { (float)g_CoreSystems.m_Editor.RetrieveViewportWidth(), (float)g_CoreSystems.m_Editor.RetrieveViewportHeight() }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 	
 	ImGui::End();

@@ -113,12 +113,59 @@ namespace Crescent
 		}
 		else if (m_TextureTarget == GL_TEXTURE_2D)
 		{
-			glTexImage2D(GL_TEXTURE_2D, 0, m_TextureInternalFormat, textureWidth, textureWidth, 0, m_TextureFormat, m_TextureDataType, 0);
+			glTexImage2D(GL_TEXTURE_2D, 0, m_TextureInternalFormat, textureWidth, textureHeight, 0, m_TextureFormat, m_TextureDataType, 0);
 		}
 		else if (m_TextureTarget == GL_TEXTURE_3D)
 		{
-			glTexImage3D(GL_TEXTURE_3D, 0, m_TextureInternalFormat, textureWidth, textureWidth, textureDepth, 0, m_TextureFormat, m_TextureDataType, 0);
+			glTexImage3D(GL_TEXTURE_3D, 0, m_TextureInternalFormat, textureWidth, textureHeight, textureDepth, 0, m_TextureFormat, m_TextureDataType, 0);
 		}
+	}
+
+	void Texture::SetWrappingMode(GLenum wrappingMode, bool binding)
+	{
+		if (binding)
+		{
+			BindTexture();
+		}
+		if (m_TextureTarget == GL_TEXTURE_1D)
+		{
+			m_TextureWrapS = wrappingMode;
+			glTexParameteri(m_TextureTarget, GL_TEXTURE_WRAP_S, wrappingMode);
+		}
+		else if (m_TextureTarget == GL_TEXTURE_2D)
+		{
+			m_TextureWrapS = wrappingMode;
+			m_TextureWrapT = wrappingMode;
+			glTexParameteri(m_TextureTarget, GL_TEXTURE_WRAP_S, wrappingMode);
+			glTexParameteri(m_TextureTarget, GL_TEXTURE_WRAP_T, wrappingMode);
+		}
+		else if (m_TextureTarget == GL_TEXTURE_3D)
+		{
+			m_TextureWrapS = wrappingMode;
+			m_TextureWrapT = wrappingMode;
+			m_TextureWrapR = wrappingMode;
+			glTexParameteri(m_TextureTarget, GL_TEXTURE_WRAP_S, wrappingMode);
+			glTexParameteri(m_TextureTarget, GL_TEXTURE_WRAP_T, wrappingMode);
+			glTexParameteri(m_TextureTarget, GL_TEXTURE_WRAP_R, wrappingMode);
+		}
+	}
+
+	void Texture::SetMinificationFilter(GLenum minificationFilter, bool binding)
+	{
+		if (binding)
+		{
+			BindTexture();
+		}
+		glTexParameteri(m_TextureTarget, GL_TEXTURE_MIN_FILTER, minificationFilter);
+	}
+
+	void Texture::SetMagnificationFilter(GLenum magnificationFilter, bool binding)
+	{
+		if (binding)
+		{
+			BindTexture();
+		}
+		glTexParameteri(m_TextureTarget, GL_TEXTURE_MAG_FILTER, magnificationFilter);
 	}
 
 	unsigned int Texture::RetrieveTextureID() const

@@ -14,6 +14,7 @@ namespace Crescent
 	class Material;
 	class MaterialLibrary;
 	class RenderTarget;
+	class DirectionalLight;
 
 	class Renderer
 	{
@@ -36,6 +37,7 @@ namespace Crescent
 
 		//Creation
 		Material* CreateMaterial(std::string shaderName = "Default"); //Default materials. These materials have default state and uses checkboard texture as its albedo/diffuse (and black metalliic, half roughness purple normals and white AO).
+		void AddLightSource(DirectionalLight* directionalLight);
 
 		//Render Target
 		void SetCurrentRenderTarget(RenderTarget* renderTarget, GLenum framebufferTarget);
@@ -45,16 +47,27 @@ namespace Crescent
 		const char* RetrieveDeviceVendorInformation() const { return m_DeviceVendorInformation; }
 		const char* RetrieveDeviceVersionInformation() const { return m_DeviceVersionInformation; }
 		glm::vec2 RetrieveRenderWindowSize() const { return m_RenderWindowSize; }
+
 		GLStateCache* RetrieveGLStateCache() { return m_GLStateCache; }
 		RenderTarget* RetrieveCurrentRenderTarget();
-		RenderTarget* RetrieveMainRenderTarget();
+		RenderTarget* RetrieveGBuffer();
 
 	private:
 		//Renderer-specific logic for rendering a custom forward-pass command.
-		void RenderForwardPassCommand(RenderCommand* renderCommand, Camera* customRenderCamera, bool updateGLStates = true);
+		void RenderCustomCommand(RenderCommand* renderCommand, Camera* customRenderCamera, bool updateGLStates = true);
 		void RenderMesh(Mesh* mesh);
+		void RenderDirectionalLight(DirectionalLight* directionalLight);
+		
+		//Render Mesh for Shadow Buffer Generation
+		void RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix);
+
+		//Update the global uniform buffer objects.
+		void UpdateGlobalUniformBufferObjects();
 
 	private:
+		//UBO
+		unsigned int m_GlobalUniformBufferID;
+
 		MaterialLibrary* m_MaterialLibrary = nullptr;
 		RenderQueue* m_RenderQueue = nullptr;
 		GLStateCache* m_GLStateCache = nullptr;
@@ -62,7 +75,14 @@ namespace Crescent
 
 		//Render Targets
 		RenderTarget* m_CurrentCustomRenderTarget = nullptr;
-		RenderTarget* m_MainRenderTarget = nullptr;
+		RenderTarget* m_GBuffer = nullptr;
+
+		//Shadow Target
+		std::vector<RenderTarget*> m_ShadowRenderTargets;
+		std::vector<glm::mat4> m_ShadowViewProjectionMatrixes;
+
+		//Lights
+		std::vector<DirectionalLight*> m_DirectionalLights;
 
 		//Driver Information
 		const char* m_DeviceRendererInformation = nullptr;

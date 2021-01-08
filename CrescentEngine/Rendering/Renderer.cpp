@@ -3,12 +3,13 @@
 #include "RenderQueue.h"
 #include "GLStateCache.h"
 #include "MaterialLibrary.h"
-#include "Framebuffer.h" //To be abstracted.
 #include "../Utilities/Camera.h"
 #include "../Scene/SceneEntity.h"
 #include "../Models/Model.h"
 #include "../Shading/Shader.h"
 #include "../Shading/Material.h"
+#include "../Lighting/DirectionalLight.h"
+#include <glm/gtc/type_ptr.hpp>
 
 //As of now, our renderer only supports Forward Pass Rendering.
 
@@ -33,17 +34,37 @@ namespace Crescent
 		m_DeviceRendererInformation = (char*)glGetString(GL_RENDERER);
 		m_DeviceVendorInformation = (char*)glGetString(GL_VENDOR);
 		m_DeviceVersionInformation = (char*)glGetString(GL_VERSION);
-			
+		
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClearDepth(1.0f);
 
 		m_RenderQueue = new RenderQueue(this);
 		m_GLStateCache = new GLStateCache();
-		m_MaterialLibrary = new MaterialLibrary();
-		m_MainRenderTarget = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, true);
+		m_GBuffer = new RenderTarget(1, 1, GL_HALF_FLOAT, 4, true);
+		m_MaterialLibrary = new MaterialLibrary(m_GBuffer);
+
+		//Shadows
+		for (int i = 0; i < 4; i++) //Allow for up to a total of 4 directional/spot shadow casters.
+		{
+			RenderTarget* renderTarget = new RenderTarget(2048, 2048, GL_UNSIGNED_BYTE, 1, true);
+			renderTarget->m_DepthAndStencilAttachment.BindTexture();
+			renderTarget->m_DepthAndStencilAttachment.SetMinificationFilter(GL_NEAREST);
+			renderTarget->m_DepthAndStencilAttachment.SetMagnificationFilter(GL_NEAREST);
+			renderTarget->m_DepthAndStencilAttachment.SetWrappingMode(GL_CLAMP_TO_BORDER);
+			float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+			glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+			m_ShadowRenderTargets.push_back(renderTarget);
+		}
 
 		// configure default OpenGL state
 		m_GLStateCache->ToggleDepthTesting(true);
 		m_GLStateCache->ToggleFaceCulling(true);
+
+		//Global Uniform Buffer Object
+		//glGenBuffers(1, &m_GlobalUniformBufferID);
+		//glBindBuffer(GL_UNIFORM_BUFFER, m_GlobalUniformBufferID);
+		//glBufferData(GL_UNIFORM_BUFFER, 720, nullptr, GL_STREAM_DRAW);
+		//glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_GlobalUniformBufferID);
 
 		m_RenderWindowSize = glm::vec2(renderWindowWidth, renderWindowHeight);
 	}
@@ -61,32 +82,115 @@ namespace Crescent
 	{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		m_GLStateCache->ToggleDepthTesting(true);
+		//Update Global Uniform Buffer Object
+		UpdateGlobalUniformBufferObjects();
+
+		//Set default OpenGL state.
 		m_GLStateCache->ToggleBlending(true);
-		m_GLStateCache->ToggleFaceCulling(false);
+		m_GLStateCache->ToggleFaceCulling(true);
+		m_GLStateCache->SetCulledFace(GL_BACK);
+		m_GLStateCache->ToggleDepthTesting(true);
+		m_GLStateCache->SetDepthFunction(GL_LESS);
 		
-		//Rendering Commands
-		std::vector<RenderCommand> forwardRenderCommands = m_RenderQueue->RetrieveForwardRenderingCommands();
-
+		//1) Geometry Buffer
+		std::vector<RenderCommand> deferredRenderCommands = m_RenderQueue->RetrieveDeferredRenderingCommands();
 		glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
-		//m_MainRenderTarget->ResizeRenderTarget(m_RenderWindowSize.x, m_RenderWindowSize.y);
-		//glBindFramebuffer(GL_FRAMEBUFFER, m_MainRenderTarget->m_FramebufferID);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_GBuffer->m_FramebufferID);
+		unsigned int attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
+		glDrawBuffers(4, attachments);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		for (int i = 0; i < forwardRenderCommands.size(); i++)
+		for (int i = 0; i < deferredRenderCommands.size(); i++)
 		{
-			RenderForwardPassCommand(&forwardRenderCommands[i], nullptr, false);
+			RenderCustomCommand(&deferredRenderCommands[i], nullptr, false);
 		}
+
+		//Disable for next pass (shadow map generation).
+		attachments[1] = GL_NONE;
+		attachments[2] = GL_NONE;
+		attachments[3] = GL_NONE;
+		glDrawBuffers(4, attachments);
+
+		//2) Render All Shadow Casters to Light Shadow Buffers
+		bool m_ShadowsEnbled = true; ///Make Global
+		if (m_ShadowsEnbled)
+		{
+			m_GLStateCache->SetCulledFace(GL_FRONT);
+			std::vector<RenderCommand> shadowRenderCommands = m_RenderQueue->RetrieveShadowCastingRenderCommands();
+			m_ShadowViewProjectionMatrixes.clear();
+
+			unsigned int shadowRenderTargetIndex = 0;
+			for (int i = 0; i < m_DirectionalLights.size(); i++)
+			{
+				DirectionalLight* directionalLight = m_DirectionalLights[i];
+				if (directionalLight->m_ShadowCastingEnabled)
+				{
+					m_MaterialLibrary->m_DirectionalShadowShader->UseShader();
+
+					glBindFramebuffer(GL_FRAMEBUFFER, m_ShadowRenderTargets[shadowRenderTargetIndex]->m_FramebufferID);
+					glViewport(0, 0, m_ShadowRenderTargets[shadowRenderTargetIndex]->m_FramebufferWidth, m_ShadowRenderTargets[shadowRenderTargetIndex]->m_FramebufferHeight);
+					glClear(GL_DEPTH_BUFFER_BIT);
+
+					glm::mat4 lightProjectionMatrix = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, -15.0f, 20.0f);
+					glm::mat4 lightViewMatrix = glm::lookAt(-directionalLight->m_LightDirection * 10.0f, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+					m_DirectionalLights[i]->m_LightSpaceViewProjectionMatrix = lightProjectionMatrix * lightViewMatrix;
+					m_DirectionalLights[i]->m_ShadowMapRenderTarget = m_ShadowRenderTargets[shadowRenderTargetIndex];
+
+					for (int j = 0; j < shadowRenderCommands.size(); j++)
+					{
+						std::cout << "Found render command for " << shadowRenderCommands.size() << "Objects!";
+						RenderShadowCastCommand(&shadowRenderCommands[j], lightProjectionMatrix, lightViewMatrix);
+					}
+
+					shadowRenderTargetIndex++;
+				}
+			}
+			m_GLStateCache->SetCulledFace(GL_BACK);
+		}
+		attachments[0] = GL_COLOR_ATTACHMENT0;
+		glDrawBuffers(4, attachments);
+
+		//3) Do post-processing steps before lighting stage.
+
+		//4) Render deferred shader for each light (full quad for directional, spheres for point lights).
+
+
 
 		m_RenderQueue->ClearQueuedCommands();
 
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	void Renderer::RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix)
+	{
+		Shader* shadowShader = m_MaterialLibrary->m_DirectionalShadowShader;
+
+		shadowShader->SetUniformMat4("projection", projectionMatrix);
+		shadowShader->SetUniformMat4("view", viewMatrix);
+		shadowShader->SetUniformMat4("model", renderCommand->m_Transform);
+
+		RenderMesh(renderCommand->m_Mesh);
+	}
+
+	void Renderer::RenderDirectionalLight(DirectionalLight* directionalLight)
+	{
+		//We also have to update the global uniform buffer for this.
+
+	}
+
+	void Renderer::UpdateGlobalUniformBufferObjects()
+	{
+		//glBindBuffer(GL_UNIFORM_BUFFER, m_GlobalUniformBufferID);
+		//For now, we will update the global uniforms here. 
+		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(m_Camera->m_ProjectionMatrix);
+		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(m_Camera->GetViewMatrix()));
 	}
 
 	void Renderer::SetRenderingWindowSize(const int& newWidth, const int& newHeight)
 	{
 		m_RenderWindowSize = glm::vec2((float)newWidth, (float)newHeight);
-
-		m_MainRenderTarget->ResizeRenderTarget(newWidth, newHeight);
+		m_GBuffer->ResizeRenderTarget(newWidth, newHeight);
 	}
 
 	RenderTarget* Renderer::RetrieveCurrentRenderTarget()
@@ -94,12 +198,12 @@ namespace Crescent
 		return m_CurrentCustomRenderTarget;
 	}
 
-	RenderTarget* Renderer::RetrieveMainRenderTarget()
+	RenderTarget* Renderer::RetrieveGBuffer()
 	{
-		return m_MainRenderTarget;
+		return m_GBuffer;
 	}
 
-	void Renderer::RenderForwardPassCommand(RenderCommand* renderCommand, Camera* customRenderCamera, bool updateGLStates)
+	void Renderer::RenderCustomCommand(RenderCommand* renderCommand, Camera* customRenderCamera, bool updateGLStates)
 	{
 		Mesh* mesh = renderCommand->m_Mesh;
 		Material* material = renderCommand->m_Material;
@@ -123,16 +227,15 @@ namespace Crescent
 		//This works together with our Uniform Buffer Object. 
 		material->RetrieveMaterialShader()->UseShader();
 
+		material->RetrieveMaterialShader()->SetUniformMat4("projection", m_Camera->m_ProjectionMatrix);
+		material->RetrieveMaterialShader()->SetUniformMat4("view", m_Camera->GetViewMatrix());
+		//material->RetrieveMaterialShader()->SetUniformVector3("cameraPosition", m_Camera->m_CameraPosition);
+
 		if (customRenderCamera) //If a custom camera is defined, we will update our shader uniforms with its information as needed.
 		{
 
 		}
-		//==============================================
-		///To replace with a UBO!
-		//For now, we will update the global uniforms here. 
-		material->RetrieveMaterialShader()->SetUniformMat4("projection", m_Camera->m_ProjectionMatrix);
-		material->RetrieveMaterialShader()->SetUniformMat4("view", m_Camera->GetViewMatrix());
-		//material->RetrieveMaterialShader()->SetUniformVector3("cameraPosition", m_Camera->m_CameraPosition);
+
 		//==============================================
 		material->RetrieveMaterialShader()->SetUniformMat4("model", renderCommand->m_Transform);
 
@@ -142,7 +245,6 @@ namespace Crescent
 		auto* samplers = material->GetSamplerUniforms(); //Returns a map of a string (uniform name) and its corresponding uniform information.
 		for (auto iterator = samplers->begin(); iterator != samplers->end(); iterator++)
 		{
-			std::cout << iterator->second.m_TextureUnit;
 			iterator->second.m_Texture->BindTexture(iterator->second.m_TextureUnit);
 		}
 
@@ -193,11 +295,11 @@ namespace Crescent
 		glBindVertexArray(mesh->RetrieveVertexArrayID()); //Binding will automatically fill the vertex array with the attributes allocated during its time. 
 		if (mesh->m_Indices.size() > 0)
 		{
-			glDrawElements(GL_TRIANGLES, mesh->m_Indices.size(), GL_UNSIGNED_INT, 0);
+			glDrawElements(mesh->m_Topology == TriangleStrips ? GL_TRIANGLE_STRIP : GL_TRIANGLES, mesh->m_Indices.size(), GL_UNSIGNED_INT, 0);
 		}
 		else
 		{
-			glDrawArrays(GL_TRIANGLES, 0, mesh->m_Positions.size());
+			glDrawArrays(mesh->m_Topology == TriangleStrips ? GL_TRIANGLE_STRIP : GL_TRIANGLES, 0, mesh->m_Positions.size());
 		}
 	}
 
@@ -214,6 +316,11 @@ namespace Crescent
 	Material* Renderer::CreateMaterial(std::string shaderName)
 	{
 		return m_MaterialLibrary->CreateMaterial(shaderName);
+	}
+
+	void Renderer::AddLightSource(DirectionalLight* directionalLight)
+	{
+		m_DirectionalLights.push_back(directionalLight);
 	}
 
 	void Renderer::SetCurrentRenderTarget(RenderTarget* renderTarget, GLenum framebufferTarget)

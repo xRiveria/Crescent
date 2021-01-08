@@ -6,9 +6,10 @@
 
 namespace Crescent
 {
-	MaterialLibrary::MaterialLibrary()
+	MaterialLibrary::MaterialLibrary(RenderTarget* gBuffer)
 	{
 		GenerateDefaultMaterials();
+		GenerateInternalMaterials(gBuffer);
 	}
 
 	MaterialLibrary::~MaterialLibrary()
@@ -47,7 +48,7 @@ namespace Crescent
 	void MaterialLibrary::GenerateDefaultMaterials()
 	{
 		//Default render material (deferred path).
-		Shader* defaultShader = Resources::LoadShader("Default", "Resources/Shaders/DefaultVertex.shader", "Resources/Shaders/DefaultFragment.shader");
+		Shader* defaultShader = Resources::LoadShader("Default", "Resources/Shaders/Deferred/GBufferVertex.shader", "Resources/Shaders/Deferred/GBufferFragment.shader");
 		Material* defaultMaterial = new Material(defaultShader);
 
 		defaultMaterial->m_MaterialType = Material_Default;
@@ -57,6 +58,14 @@ namespace Crescent
 		//defaultMaterial->SetShaderTexture("TexRoughness", Resources::LoadTexture("Default Roughness", "Resouces/Textures/Checkboard.png"), 6);
 
 		m_DefaultMaterials[SID("Default")] = defaultMaterial;
+	}
+
+	void MaterialLibrary::GenerateInternalMaterials(RenderTarget* gBuffer)
+	{
+		//Deferred
+		//m_DeferredDirectionalLightShader = Resources::LoadShader("Deferred Directional", "Resources/Shaders/Deferred/ScreenDirectionalVertex.shader", "Resources/Shaders/Deferred/DirectionalFragment.fs");
+		m_DirectionalShadowShader = Resources::LoadShader("Directional Shadow", "Resources/Shaders/ShadowCastVertex.shader", "Resources/Shaders/ShadowCastFragment.shader");
+	
 	}
 /*
 	Material* MaterialLibrary::CreateCustomMaterial(Shader* shader) //Player created.

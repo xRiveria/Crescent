@@ -18,6 +18,11 @@ namespace Crescent
 		//Resizes the textures, adding new (empty) texture memory in the process.
 		void ResizeTexture(unsigned int textureWidth, unsigned int textureHeight = 0, unsigned int textureDepth = 0);
 
+		//Update Relevant Texture State
+		void SetWrappingMode(GLenum wrappingMode, bool binding = false);
+		void SetMinificationFilter(GLenum minificationFilter, bool binding = false);
+		void SetMagnificationFilter(GLenum magnificationFilter, bool binding = false);
+
 		//Retrieves
 		unsigned int RetrieveTextureID() const;
 

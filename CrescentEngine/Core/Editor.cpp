@@ -113,7 +113,7 @@ namespace Crescent
 		ImGuiStyle& style = ImGui::GetStyle();
 
 		float minimumWindowsize = style.WindowMinSize.x;
-		style.WindowMinSize.x = 300.0f;
+		style.WindowMinSize.x = 250.0f;
 		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
 		{
 			ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");

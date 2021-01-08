@@ -9,4 +9,10 @@ namespace Crescent
 	public:
 		Cube();
 	};
+
+	class Circle : public Mesh
+	{
+	public:
+		Circle(unsigned int edgeSegments, unsigned int ringSegments);
+	};
 }
