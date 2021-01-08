@@ -8,7 +8,7 @@ namespace Crescent
 
 	struct RenderCommand
 	{
-		glm::mat4 m_Transform;
+		glm::mat4 m_Transform = glm::mat4(1.0f);
 		Mesh* m_Mesh;
 		Material* m_Material;
 	};

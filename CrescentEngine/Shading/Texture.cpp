@@ -113,12 +113,17 @@ namespace Crescent
 		}
 		else if (m_TextureTarget == GL_TEXTURE_2D)
 		{
-			glTexImage2D(GL_TEXTURE_1D, 0, m_TextureInternalFormat, textureWidth, textureWidth, 0, m_TextureFormat, m_TextureDataType, 0);
+			glTexImage2D(GL_TEXTURE_2D, 0, m_TextureInternalFormat, textureWidth, textureWidth, 0, m_TextureFormat, m_TextureDataType, 0);
 		}
 		else if (m_TextureTarget == GL_TEXTURE_3D)
 		{
 			glTexImage3D(GL_TEXTURE_3D, 0, m_TextureInternalFormat, textureWidth, textureWidth, textureDepth, 0, m_TextureFormat, m_TextureDataType, 0);
 		}
+	}
+
+	unsigned int Texture::RetrieveTextureID() const
+	{
+		return m_TextureID;
 	}
 
 	void Texture::BindTexture(int textureUnit)
@@ -133,39 +138,5 @@ namespace Crescent
 	void Texture::UnbindTexture()
 	{
 		glBindTexture(m_TextureTarget, 0);
-	}
-
-	void Texture::LoadTexture(const std::string& filePath)
-	{
-		glGenTextures(1, &m_TextureID);
-
-		int width, height, nrComponents;
-		unsigned char* data = stbi_load(filePath.c_str(), &width, &height, &nrComponents, 0);
-		if (data)
-		{
-			GLenum format;
-			if (nrComponents == 1)
-				format = GL_RED;
-			else if (nrComponents == 3)
-				format = GL_RGB;
-			else if (nrComponents == 4)
-				format = GL_RGBA;
-
-			glBindTexture(GL_TEXTURE_2D, m_TextureID);
-			glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-			glGenerateMipmap(GL_TEXTURE_2D);
-
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-			stbi_image_free(data);
-		}
-		else
-		{
-			CrescentInfo("Failed to load Texture Image.");
-			stbi_image_free(data);
-		}
 	}
 }

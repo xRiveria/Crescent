@@ -19,7 +19,7 @@ namespace Crescent
 
 		//Retrieve directory (for relative paths in shader includes).
 		std::string vertexFileDirectory = vertexShaderPath.substr(0, vertexShaderPath.find_last_of("/\\"));
-		std::string fragmentFileDirectory = fragmentShaderPath.substr(0, fragmentShaderPath.find("/\\"));
+		std::string fragmentFileDirectory = fragmentShaderPath.substr(0, fragmentShaderPath.find_last_of("/\\"));
 
 		std::string vertexSource = ReadShader(vertexShaderFile, shaderName, vertexShaderPath);
 		std::string fragmentSource = ReadShader(fragmentShaderFile, shaderName, fragmentShaderPath);

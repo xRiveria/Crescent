@@ -33,11 +33,34 @@ namespace Crescent
 		glCompileShader(vertexShader);
 		glCompileShader(fragmentShader);
 
-		///Shader error checks.
+		int status;
+		char log[1024];
+		glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status);
+		if (!status)
+		{
+			glGetShaderInfoLog(vertexShader, 1024, NULL, log);
+			CrescentInfo("Vertex shader compilation error at: " + shaderName + "!\n" + std::string(log));
+		}
+
+		glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status);
+		if (!status)
+		{
+			glGetShaderInfoLog(fragmentShader, 1024, NULL, log);
+			CrescentInfo("Fragment shader compilation error at: " + shaderName + "!\n" + std::string(log));
+		}
+
 		glAttachShader(m_ShaderID, vertexShader);
 		glAttachShader(m_ShaderID, fragmentShader);
 		glLinkProgram(m_ShaderID);
-		///Program error checks.
+
+		glGetProgramiv(m_ShaderID, GL_LINK_STATUS, &status);
+		if (!status)
+		{
+			glGetProgramInfoLog(m_ShaderID, 1024, NULL, log);
+			CrescentInfo("Shader program linking error: \n" + std::string(log));
+
+			throw std::runtime_error("Shader linker error.");
+		}
 		
 		glDeleteShader(vertexShader);
 		glDeleteShader(fragmentShader);
@@ -46,8 +69,8 @@ namespace Crescent
 		int numberOfAttributes, numberOfUniforms;
 		glGetProgramiv(m_ShaderID, GL_ACTIVE_ATTRIBUTES, &numberOfAttributes);
 		glGetProgramiv(m_ShaderID, GL_ACTIVE_UNIFORMS, &numberOfUniforms);
-		m_Uniforms.resize(numberOfAttributes);
-		m_Attributes.resize(numberOfUniforms);
+		m_Uniforms.resize(numberOfUniforms);
+		m_Attributes.resize(numberOfAttributes);
 
 		//Iterate over all active attributes.
 		char buffer[128];
@@ -93,7 +116,7 @@ namespace Crescent
 	void Shader::SetUniformFloat(std::string name, float value) 
 	{
 		int location = RetrieveUniformLocation(name);
-		if (location > 0)
+		if (location >= 0)
 		{
 			glUniform1f(location, value);
 		}
@@ -102,7 +125,7 @@ namespace Crescent
 	void Shader::SetUniformInteger(std::string name, int value) 
 	{
 		int location = RetrieveUniformLocation(name);
-		if (location > 0)
+		if (location >= 0)
 		{
 			glUniform1i(location, value);
 		}
@@ -111,7 +134,7 @@ namespace Crescent
 	void Shader::SetUniformBool(std::string name, bool value) 
 	{
 		int location = RetrieveUniformLocation(name);
-		if (location > 0)
+		if (location >= 0)
 		{
 			glUniform1i(location, (int)value);
 		}
@@ -120,7 +143,7 @@ namespace Crescent
 	void Shader::SetUniformVector3(std::string name, glm::vec3 value)
 	{
 		int location = RetrieveUniformLocation(name);
-		if (location > 0)
+		if (location >= 0)
 		{
 			glUniform3fv(location, 1, &value[0]);
 		}
@@ -129,7 +152,7 @@ namespace Crescent
 	void Shader::SetUniformMat4(std::string name, glm::mat4 value)
 	{
 		int location = RetrieveUniformLocation(name);
-		if (location > 0)
+		if (location >= 0)
 		{
 			glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]);
 		}

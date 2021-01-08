@@ -13,7 +13,7 @@ namespace Crescent
 	class Camera;
 	class Material;
 	class MaterialLibrary;
-	class Framebuffer;
+	class RenderTarget;
 
 	class Renderer
 	{
@@ -37,16 +37,17 @@ namespace Crescent
 		//Creation
 		Material* CreateMaterial(std::string shaderName = "Default"); //Default materials. These materials have default state and uses checkboard texture as its albedo/diffuse (and black metalliic, half roughness purple normals and white AO).
 
+		//Render Target
+		void SetCurrentRenderTarget(RenderTarget* renderTarget, GLenum framebufferTarget);
+
 		//Retrieve
 		const char* RetrieveDeviceRendererInformation() const { return m_DeviceRendererInformation; }
 		const char* RetrieveDeviceVendorInformation() const { return m_DeviceVendorInformation; }
 		const char* RetrieveDeviceVersionInformation() const { return m_DeviceVersionInformation; }
 		glm::vec2 RetrieveRenderWindowSize() const { return m_RenderWindowSize; }
 		GLStateCache* RetrieveGLStateCache() { return m_GLStateCache; }
-
-	public:
-		//Render Targets
-		Framebuffer* m_Framebuffer = nullptr;
+		RenderTarget* RetrieveCurrentRenderTarget();
+		RenderTarget* RetrieveMainRenderTarget();
 
 	private:
 		//Renderer-specific logic for rendering a custom forward-pass command.
@@ -58,6 +59,10 @@ namespace Crescent
 		RenderQueue* m_RenderQueue = nullptr;
 		GLStateCache* m_GLStateCache = nullptr;
 		Camera* m_Camera = nullptr;
+
+		//Render Targets
+		RenderTarget* m_CurrentCustomRenderTarget = nullptr;
+		RenderTarget* m_MainRenderTarget = nullptr;
 
 		//Driver Information
 		const char* m_DeviceRendererInformation = nullptr;

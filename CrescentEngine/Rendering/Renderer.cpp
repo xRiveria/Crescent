@@ -34,15 +34,18 @@ namespace Crescent
 		m_DeviceVendorInformation = (char*)glGetString(GL_VENDOR);
 		m_DeviceVersionInformation = (char*)glGetString(GL_VERSION);
 			
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClearDepth(1.0f);
 
 		m_RenderQueue = new RenderQueue(this);
 		m_GLStateCache = new GLStateCache();
 		m_MaterialLibrary = new MaterialLibrary();
-		m_Framebuffer = new Framebuffer();
+		m_MainRenderTarget = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, true);
+
+		// configure default OpenGL state
+		m_GLStateCache->ToggleDepthTesting(true);
+		m_GLStateCache->ToggleFaceCulling(true);
 
 		m_RenderWindowSize = glm::vec2(renderWindowWidth, renderWindowHeight);
-		m_Framebuffer->InitializeFramebuffer(renderWindowWidth, renderWindowHeight);
 	}
 
 	void Renderer::PushToRenderQueue(SceneEntity* sceneEntity)
@@ -61,14 +64,13 @@ namespace Crescent
 		m_GLStateCache->ToggleDepthTesting(true);
 		m_GLStateCache->ToggleBlending(true);
 		m_GLStateCache->ToggleFaceCulling(false);
-
+		
 		//Rendering Commands
 		std::vector<RenderCommand> forwardRenderCommands = m_RenderQueue->RetrieveForwardRenderingCommands();
 
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, m_Framebuffer->RetrieveColorAttachment());
-		m_Framebuffer->BindFramebuffer();
 		glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
+		//m_MainRenderTarget->ResizeRenderTarget(m_RenderWindowSize.x, m_RenderWindowSize.y);
+		//glBindFramebuffer(GL_FRAMEBUFFER, m_MainRenderTarget->m_FramebufferID);
 
 		for (int i = 0; i < forwardRenderCommands.size(); i++)
 		{
@@ -77,13 +79,24 @@ namespace Crescent
 
 		m_RenderQueue->ClearQueuedCommands();
 
-		m_Framebuffer->UnbindFramebuffer();
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
 	void Renderer::SetRenderingWindowSize(const int& newWidth, const int& newHeight)
 	{
-		m_RenderWindowSize = glm::vec2(newWidth, newHeight);
-		m_Framebuffer->ResizeFramebuffer(newWidth, newHeight);
+		m_RenderWindowSize = glm::vec2((float)newWidth, (float)newHeight);
+
+		m_MainRenderTarget->ResizeRenderTarget(newWidth, newHeight);
+	}
+
+	RenderTarget* Renderer::RetrieveCurrentRenderTarget()
+	{
+		return m_CurrentCustomRenderTarget;
+	}
+
+	RenderTarget* Renderer::RetrieveMainRenderTarget()
+	{
+		return m_MainRenderTarget;
 	}
 
 	void Renderer::RenderForwardPassCommand(RenderCommand* renderCommand, Camera* customRenderCamera, bool updateGLStates)
@@ -114,7 +127,6 @@ namespace Crescent
 		{
 
 		}
-
 		//==============================================
 		///To replace with a UBO!
 		//For now, we will update the global uniforms here. 
@@ -130,6 +142,7 @@ namespace Crescent
 		auto* samplers = material->GetSamplerUniforms(); //Returns a map of a string (uniform name) and its corresponding uniform information.
 		for (auto iterator = samplers->begin(); iterator != samplers->end(); iterator++)
 		{
+			std::cout << iterator->second.m_TextureUnit;
 			iterator->second.m_Texture->BindTexture(iterator->second.m_TextureUnit);
 		}
 
@@ -201,5 +214,14 @@ namespace Crescent
 	Material* Renderer::CreateMaterial(std::string shaderName)
 	{
 		return m_MaterialLibrary->CreateMaterial(shaderName);
+	}
+
+	void Renderer::SetCurrentRenderTarget(RenderTarget* renderTarget, GLenum framebufferTarget)
+	{
+		m_CurrentCustomRenderTarget = renderTarget;
+		if (renderTarget != nullptr)
+		{
+			//Add to our cached target list. 
+		}
 	}
 }

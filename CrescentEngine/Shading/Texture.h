@@ -6,10 +6,6 @@ namespace Crescent
 	class Texture
 	{
 	public:
-		void LoadTexture(const std::string& filePath);
-
-
-	public:
 		Texture();
 		~Texture();
 
@@ -21,6 +17,9 @@ namespace Crescent
 		void GenerateTexture(unsigned int textureWidth, unsigned int textureHeight, unsigned int textureDepth, GLenum textureInternalFormat, GLenum textureFormat, GLenum textureDataType, void* textureData);
 		//Resizes the textures, adding new (empty) texture memory in the process.
 		void ResizeTexture(unsigned int textureWidth, unsigned int textureHeight = 0, unsigned int textureDepth = 0);
+
+		//Retrieves
+		unsigned int RetrieveTextureID() const;
 
 		void BindTexture(int textureUnit = -1);
 		void UnbindTexture();

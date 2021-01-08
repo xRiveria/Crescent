@@ -19,6 +19,7 @@
 #include "Rendering/GLStateCache.h"
 #include "Rendering/RendererSettingsPanel.h"
 #include "Models/DefaultPrimitives.h"
+#include "Rendering/RenderTarget.h"
 
 struct CoreSystems
 {
@@ -26,7 +27,7 @@ struct CoreSystems
 	Crescent::Editor m_Editor; //Setups our ImGui context.
 	Crescent::Renderer* m_Renderer; //Setups our OpenGL context.
 	Crescent::Timestep m_Timestep; //Setups our Timestep.
-	Crescent::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 3.0f) }; //Setups our Camera.
+	Crescent::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 5.0) }; //Setups our Camera.
 
 	float m_LastFrameTime = 0.0f;
 };
@@ -78,6 +79,9 @@ int main(int argc, int argv[])
 
 	while (!g_CoreSystems.m_Window.RetrieveWindowCloseStatus())
 	{
+		glClearColor(0.6f, 0.6f, 0.6f, 1.0f);
+		//Check Projection Matrix
+
 		//Check Projection Matrix
 		if (g_CoreSystems.m_Editor.RetrieveViewportWidth() > 0.0f && g_CoreSystems.m_Editor.RetrieveViewportHeight() > 0.0f && (g_CoreSystems.m_Renderer->RetrieveRenderWindowSize().x != g_CoreSystems.m_Editor.RetrieveViewportWidth() || g_CoreSystems.m_Renderer->RetrieveRenderWindowSize().y != g_CoreSystems.m_Editor.RetrieveViewportHeight()))
 		{
@@ -93,13 +97,15 @@ int main(int argc, int argv[])
 		//Poll Events
 		g_CoreSystems.m_Window.PollEvents();
 		ProcessKeyboardEvents(g_CoreSystems.m_Window.RetrieveWindow());
-		glViewport(0, 0, g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
-
+	
 		g_CoreSystems.m_Camera.UpdateCameraVectors();
 
+		glBindFramebuffer(GL_FRAMEBUFFER, g_CoreSystems.m_Renderer->RetrieveMainRenderTarget()->m_FramebufferID);
 		//Rendering
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
 		g_CoreSystems.m_Renderer->RenderAllQueueItems();
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		//We reset the framebuffer back to normal here for our Editor.
 		RenderEditor(sceneHierarchy, rendererSettingsPanel);
@@ -120,11 +126,14 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 	rendererPanel->RenderRendererEditorUI();
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
+
 	ImGui::Begin("Viewport");
 	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 	g_CoreSystems.m_Editor.SetViewportSize(viewportPanelSize.x, viewportPanelSize.y); //The current size of our viewport.
-	unsigned int colorAttachment = g_CoreSystems.m_Renderer->m_Framebuffer->RetrieveColorAttachment();
+
+	unsigned int colorAttachment = g_CoreSystems.m_Renderer->RetrieveMainRenderTarget()->RetrieveColorAttachment(0)->RetrieveTextureID();
 	ImGui::Image((void*)colorAttachment, { (float)g_CoreSystems.m_Editor.RetrieveViewportWidth(), (float)g_CoreSystems.m_Editor.RetrieveViewportHeight() }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+	
 	ImGui::End();
 	ImGui::PopStyleVar(); //Pops the pushed style so other windows beyond this won't have the style's properties.
 
@@ -200,7 +209,7 @@ void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset)
 //This is a callback function that is called whenever a window is resized.
 void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHeight)
 {
-	//g_RenderingComponents.m_Framebuffer.ResizeFramebuffer(windowWidth, windowHeight);
+	//g_CoreSystems.m_Renderer->SetRenderingWindowSize(windowWidth, windowHeight);
 	g_CoreSystems.m_Window.ResizeWindow((float)windowWidth, (float)windowHeight);
 }
 
