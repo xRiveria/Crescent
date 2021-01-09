@@ -183,5 +183,49 @@ namespace Crescent
         m_Topology = TriangleStrips;
         FinalizeMesh();
     }
+
+    Quad::Quad()
+    {
+        m_Positions =
+        {
+            { -1.0f,  1.0f, 0.0f, },
+            { -1.0f, -1.0f, 0.0f, },
+            {  1.0f,  1.0f, 0.0f, },
+            {  1.0f, -1.0f, 0.0f, },
+        };
+
+        m_UV = {
+            { 0.0f, 1.0f, },
+            { 0.0f, 0.0f, },
+            { 1.0f, 1.0f, },
+            { 1.0f, 0.0f, },
+        };
+
+        m_Topology = TriangleStrips;
+
+        FinalizeMesh();
+    }
+
+    Quad::Quad(float quadwidth, float quadheight)
+    {
+        m_Positions =
+        {
+            { -quadwidth,  quadheight, 0.0f, },
+            { -quadwidth, -quadheight, 0.0f, },
+            {  quadwidth,  quadheight, 0.0f, },
+            {  quadwidth, -quadheight, 0.0f, },
+        };
+
+        m_UV = {
+            { 0.0f, 1.0f, },
+            { 0.0f, 0.0f, },
+            { 1.0f, 1.0f, },
+            { 1.0f, 0.0f, },
+        };
+
+        m_Topology = TriangleStrips;
+
+        FinalizeMesh();
+    }
 }
 

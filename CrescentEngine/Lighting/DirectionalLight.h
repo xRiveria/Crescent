@@ -19,6 +19,6 @@ namespace Crescent
 
 		bool m_ShadowCastingEnabled = true;
 		RenderTarget* m_ShadowMapRenderTarget = nullptr;
-		glm::mat4 m_LightSpaceViewProjectionMatrix;
+		glm::mat4 m_LightSpaceViewProjectionMatrix = glm::mat4(1.0f);
 	};
 }

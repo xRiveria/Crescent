@@ -3,6 +3,7 @@
 #include "RenderQueue.h"
 #include "GLStateCache.h"
 #include "MaterialLibrary.h"
+#include "../Models/DefaultPrimitives.h"
 #include "../Utilities/Camera.h"
 #include "../Scene/SceneEntity.h"
 #include "../Models/Model.h"
@@ -38,9 +39,14 @@ namespace Crescent
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClearDepth(1.0f);
 
+		m_NDCQuad = new Quad();
 		m_RenderQueue = new RenderQueue(this);
 		m_GLStateCache = new GLStateCache();
+
+		m_MainRenderTarget = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, true);
 		m_GBuffer = new RenderTarget(1, 1, GL_HALF_FLOAT, 4, true);
+		m_CustomTarget = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, true);
+
 		m_MaterialLibrary = new MaterialLibrary(m_GBuffer);
 
 		//Shadows
@@ -112,15 +118,14 @@ namespace Crescent
 		glDrawBuffers(4, attachments);
 
 		//2) Render All Shadow Casters to Light Shadow Buffers
-		bool m_ShadowsEnbled = true; ///Make Global
-		if (m_ShadowsEnbled)
+		if (m_ShadowsEnabled)
 		{
 			m_GLStateCache->SetCulledFace(GL_FRONT);
 			std::vector<RenderCommand> shadowRenderCommands = m_RenderQueue->RetrieveShadowCastingRenderCommands();
 			m_ShadowViewProjectionMatrixes.clear();
 
 			unsigned int shadowRenderTargetIndex = 0;
-			for (int i = 0; i < m_DirectionalLights.size(); i++)
+			for (int i = 0; i < m_DirectionalLights.size(); i++) //We usually have 1 directional light source.
 			{
 				DirectionalLight* directionalLight = m_DirectionalLights[i];
 				if (directionalLight->m_ShadowCastingEnabled)
@@ -137,9 +142,10 @@ namespace Crescent
 					m_DirectionalLights[i]->m_LightSpaceViewProjectionMatrix = lightProjectionMatrix * lightViewMatrix;
 					m_DirectionalLights[i]->m_ShadowMapRenderTarget = m_ShadowRenderTargets[shadowRenderTargetIndex];
 
-					for (int j = 0; j < shadowRenderCommands.size(); j++)
+					//This varies based on the amount of objects in our scene that can cast shadows on objects. This filtered whenever we submit commands into the render queue.
+					//By default, all physical objects in the scene can cast and receive shadows.
+					for (int j = 0; j < shadowRenderCommands.size(); j++) 
 					{
-						std::cout << "Found render command for " << shadowRenderCommands.size() << "Objects!";
 						RenderShadowCastCommand(&shadowRenderCommands[j], lightProjectionMatrix, lightViewMatrix);
 					}
 
@@ -148,14 +154,53 @@ namespace Crescent
 			}
 			m_GLStateCache->SetCulledFace(GL_BACK);
 		}
+
 		attachments[0] = GL_COLOR_ATTACHMENT0;
 		glDrawBuffers(4, attachments);
 
 		//3) Do post-processing steps before lighting stage.
 
 		//4) Render deferred shader for each light (full quad for directional, spheres for point lights).
+		m_GLStateCache->ToggleDepthTesting(false);
+		m_GLStateCache->ToggleBlending(true);
+		m_GLStateCache->SetBlendingFunction(GL_ONE, GL_ONE);
 
+		//Bind GBuffer
+		m_GBuffer->RetrieveColorAttachment(0)->BindTexture(0);
+		m_GBuffer->RetrieveColorAttachment(1)->BindTexture(1);
+		m_GBuffer->RetrieveColorAttachment(2)->BindTexture(2);
 
+		///Ambient Lighting
+
+		if (m_LightsEnabled)
+		{
+			//Directional Lights
+			for (auto iterator = m_DirectionalLights.begin(); iterator != m_DirectionalLights.end(); iterator++)
+			{
+				RenderDeferredDirectionalLight(*iterator);
+			}
+			///Point Lights
+		}
+
+		m_GLStateCache->ToggleDepthTesting(true);
+		m_GLStateCache->SetBlendingFunction(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		m_GLStateCache->ToggleBlending(false);
+
+		//5) Blit Depth Framebuffer to Default for Rendering
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_GBuffer->m_FramebufferID);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_CustomTarget->m_FramebufferID); //Write to our default framebuffer.
+		glBlitFramebuffer(0, 0, m_GBuffer->m_FramebufferWidth, m_GBuffer->m_FramebufferHeight, 0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+		//6) Custom Forward Render Pass
+
+		//7) Alpha Material Pass
+		///Render Light Mesh (as visual cue), if requested.
+
+		//11) Finally, Blit everything to our framebuffer for rendering.
+		glBindFramebuffer(GL_FRAMEBUFFER, m_MainRenderTarget->m_FramebufferID);
+		glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		RenderMesh(m_NDCQuad);
 
 		m_RenderQueue->ClearQueuedCommands();
 
@@ -165,6 +210,7 @@ namespace Crescent
 	void Renderer::RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix)
 	{
 		Shader* shadowShader = m_MaterialLibrary->m_DirectionalShadowShader;
+		shadowShader->UseShader();
 
 		shadowShader->SetUniformMat4("projection", projectionMatrix);
 		shadowShader->SetUniformMat4("view", viewMatrix);
@@ -173,7 +219,7 @@ namespace Crescent
 		RenderMesh(renderCommand->m_Mesh);
 	}
 
-	void Renderer::RenderDirectionalLight(DirectionalLight* directionalLight)
+	void Renderer::RenderDeferredDirectionalLight(DirectionalLight* directionalLight)
 	{
 		//We also have to update the global uniform buffer for this.
 
@@ -185,22 +231,6 @@ namespace Crescent
 		//For now, we will update the global uniforms here. 
 		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(m_Camera->m_ProjectionMatrix);
 		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(m_Camera->GetViewMatrix()));
-	}
-
-	void Renderer::SetRenderingWindowSize(const int& newWidth, const int& newHeight)
-	{
-		m_RenderWindowSize = glm::vec2((float)newWidth, (float)newHeight);
-		m_GBuffer->ResizeRenderTarget(newWidth, newHeight);
-	}
-
-	RenderTarget* Renderer::RetrieveCurrentRenderTarget()
-	{
-		return m_CurrentCustomRenderTarget;
-	}
-
-	RenderTarget* Renderer::RetrieveGBuffer()
-	{
-		return m_GBuffer;
 	}
 
 	void Renderer::RenderCustomCommand(RenderCommand* renderCommand, Camera* customRenderCamera, bool updateGLStates)
@@ -239,7 +269,19 @@ namespace Crescent
 		//==============================================
 		material->RetrieveMaterialShader()->SetUniformMat4("model", renderCommand->m_Transform);
 
-		///Shadow Related Stuff.
+		///Shadow Related Stuff. Create Shaders for relevant stuff in Material Library.
+		material->RetrieveMaterialShader()->SetUniformBool("ShadowsEnabled", m_ShadowsEnabled); //If global shadows are enabled.
+		if (m_ShadowsEnabled && material->m_MaterialType == Material_Custom && material->m_ShadowReceiving) //If the mesh in question should receive shadows...
+		{
+			for (int i = 0; i < m_DirectionalLights.size(); i++)
+			{
+				if (m_DirectionalLights[i]->m_ShadowMapRenderTarget != nullptr)
+				{
+					material->RetrieveMaterialShader()->SetUniformMat4("lightShadowViewProjection" + std::to_string(i + 1), m_DirectionalLights[i]->m_LightSpaceViewProjectionMatrix);
+					m_DirectionalLights[i]->m_ShadowMapRenderTarget->RetrieveDepthAndStencilAttachment()->BindTexture(10 + i);
+				}
+			}
+		}
 
 		//Bind and set active uniform sampler/texture objects.
 		auto* samplers = material->GetSamplerUniforms(); //Returns a map of a string (uniform name) and its corresponding uniform information.
@@ -301,6 +343,32 @@ namespace Crescent
 		{
 			glDrawArrays(mesh->m_Topology == TriangleStrips ? GL_TRIANGLE_STRIP : GL_TRIANGLES, 0, mesh->m_Positions.size());
 		}
+	}
+
+	void Renderer::SetRenderingWindowSize(const int& newWidth, const int& newHeight)
+	{
+		m_RenderWindowSize = glm::vec2((float)newWidth, (float)newHeight);
+		m_GBuffer->ResizeRenderTarget(newWidth, newHeight);
+	}
+
+	RenderTarget* Renderer::RetrieveCurrentRenderTarget()
+	{
+		return m_CurrentCustomRenderTarget;
+	}
+
+	RenderTarget* Renderer::RetrieveMainRenderTarget()
+	{
+		return m_MainRenderTarget;
+	}
+
+	RenderTarget* Renderer::RetrieveGBuffer()
+	{
+		return m_GBuffer;
+	}
+
+	RenderTarget* Renderer::RetrieveShadowRenderTarget(int index)
+	{
+		return m_ShadowRenderTargets[index];
 	}
 
 	void Renderer::SetSceneCamera(Camera* sceneCamera)

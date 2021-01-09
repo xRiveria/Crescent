@@ -139,11 +139,17 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 		}
 	}
 
+	ImGui::Text("Shadow Map #1");
+	unsigned int shadowDepthAttachment = g_CoreSystems.m_Renderer->RetrieveShadowRenderTarget(0)->RetrieveDepthAndStencilAttachment()->RetrieveTextureID();
+	ImGui::Image((void*)shadowDepthAttachment, { 350.0f, 350.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
+	ImGui::End();
+
 	ImGui::Begin("Viewport");
 	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 	g_CoreSystems.m_Editor.SetViewportSize(viewportPanelSize.x, viewportPanelSize.y); //The current size of our viewport.
 
-	unsigned int colorAttachment = g_CoreSystems.m_Renderer->RetrieveGBuffer()->RetrieveColorAttachment(0)->RetrieveTextureID();
+	unsigned int colorAttachment = g_CoreSystems.m_Renderer->RetrieveMainRenderTarget()->RetrieveColorAttachment(0)->RetrieveTextureID();
 	ImGui::Image((void*)colorAttachment, { (float)g_CoreSystems.m_Editor.RetrieveViewportWidth(), (float)g_CoreSystems.m_Editor.RetrieveViewportHeight() }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 	
 	ImGui::End();

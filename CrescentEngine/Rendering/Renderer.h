@@ -15,6 +15,7 @@ namespace Crescent
 	class MaterialLibrary;
 	class RenderTarget;
 	class DirectionalLight;
+	class Quad;
 
 	class Renderer
 	{
@@ -50,13 +51,21 @@ namespace Crescent
 
 		GLStateCache* RetrieveGLStateCache() { return m_GLStateCache; }
 		RenderTarget* RetrieveCurrentRenderTarget();
+
+		RenderTarget* RetrieveMainRenderTarget();
 		RenderTarget* RetrieveGBuffer();
+		RenderTarget* RetrieveShadowRenderTarget(int index = 0);
+
+	public:
+		bool m_ShadowsEnabled = true; ///Make Global
+		bool m_LightsEnabled = true;
+
 
 	private:
 		//Renderer-specific logic for rendering a custom forward-pass command.
 		void RenderCustomCommand(RenderCommand* renderCommand, Camera* customRenderCamera, bool updateGLStates = true);
 		void RenderMesh(Mesh* mesh);
-		void RenderDirectionalLight(DirectionalLight* directionalLight);
+		void RenderDeferredDirectionalLight(DirectionalLight* directionalLight);
 		
 		//Render Mesh for Shadow Buffer Generation
 		void RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix);
@@ -76,6 +85,9 @@ namespace Crescent
 		//Render Targets
 		RenderTarget* m_CurrentCustomRenderTarget = nullptr;
 		RenderTarget* m_GBuffer = nullptr;
+		RenderTarget* m_CustomTarget = nullptr;
+		RenderTarget* m_MainRenderTarget = nullptr;
+		Quad* m_NDCQuad = nullptr;
 
 		//Shadow Target
 		std::vector<RenderTarget*> m_ShadowRenderTargets;
