@@ -22,9 +22,11 @@ namespace Crescent
 		//If shader exists, return that handle.
 		if (Resources::m_Shaders.find(stringID) != Resources::m_Shaders.end())
 		{
+			CrescentInfo("Found Shader: " + name + "\n");
 			return &Resources::m_Shaders[stringID];
 		}
 
+		CrescentInfo("Shader not found! Loading: " + name + "\n");
 		Shader shader = ShaderLoader::LoadShader(name, vertexShaderPath, fragmentShaderPath);
 		Resources::m_Shaders[stringID] = shader;
 		return &Resources::m_Shaders[stringID];

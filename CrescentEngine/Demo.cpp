@@ -16,6 +16,7 @@
 #include "Models/DefaultPrimitives.h"
 #include "Rendering/RenderTarget.h"
 #include "Lighting/DirectionalLight.h"
+#include <glm/gtc/type_ptr.hpp>
 
 struct CoreSystems
 {
@@ -30,6 +31,9 @@ struct CoreSystems
 
 //Our Systems	
 CoreSystems g_CoreSystems; //Creates our core engine systems.
+
+//Temporary
+glm::vec3 lightDirection = glm::vec3(0.0f, -1.0f, 0.0f);
 
 //Input Callbacks
 void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::RendererSettingsPanel* rendererPanel);
@@ -72,9 +76,12 @@ int main(int argc, int argv[])
 	Crescent::Cube* cube = new Crescent::Cube();
 
 	Crescent::SceneEntity* sceneCube = demoScene->ConstructNewEntity(cube, defaultMaterial);
+	Crescent::SceneEntity* sceneCube2 = demoScene->ConstructNewEntity(cube, defaultMaterial);
+	sceneCube2->SetEntityPosition(glm::vec3(-0.40, -1.20, 0.50));
 
+	/// To Do: Convert directional light into a screen entity so it may be used in the scene hierarchy.
 	Crescent::DirectionalLight directionalLight;
-	directionalLight.m_LightDirection = glm::vec3(0.0f, -1.0f, 0.0f);
+	directionalLight.m_LightDirection = lightDirection;
 	directionalLight.m_LightColor = glm::vec3(1.0f, 0.89f, 0.7f);
 	directionalLight.m_LightIntensity = 50.0f;
 
@@ -104,6 +111,7 @@ int main(int argc, int argv[])
 
 		//Rendering
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
+		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube2);
 
 		g_CoreSystems.m_Renderer->RenderAllQueueItems();
 
@@ -122,6 +130,10 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 {
 	g_CoreSystems.m_Editor.BeginEditorRenderLoop();
 	g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
+
+	ImGui::Begin("Lighting - Temporary");
+	ImGui::DragFloat3("Light Direction", glm::value_ptr(lightDirection), 0.10f);
+	ImGui::End();
 
 	sceneHierarchyPanel->RenderSceneEditorUI();
 	rendererPanel->RenderRendererEditorUI();

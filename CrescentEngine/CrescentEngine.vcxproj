@@ -666,6 +666,8 @@
     <ClInclude Include="Vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\Shaders\Deferred\DirectionalFragment.shader" />
+    <None Include="Resources\Shaders\Deferred\ScreenDirectionalVertex.shader" />
     <None Include="Resources\Shaders\Defunct\AnimationFragment.shader" />
     <None Include="Resources\Shaders\Defunct\AnimationVertex.shader" />
     <None Include="Resources\Shaders\Defunct\BlurFragment.shader" />

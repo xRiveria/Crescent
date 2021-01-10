@@ -63,9 +63,15 @@ namespace Crescent
 	void MaterialLibrary::GenerateInternalMaterials(RenderTarget* gBuffer)
 	{
 		//Deferred
-		//m_DeferredDirectionalLightShader = Resources::LoadShader("Deferred Directional", "Resources/Shaders/Deferred/ScreenDirectionalVertex.shader", "Resources/Shaders/Deferred/DirectionalFragment.fs");
+		m_DeferredDirectionalLightShader = Resources::LoadShader("Deferred Directional", "Resources/Shaders/Deferred/ScreenDirectionalVertex.shader", "Resources/Shaders/Deferred/DirectionalFragment.shader");
 		m_DirectionalShadowShader = Resources::LoadShader("Directional Shadow", "Resources/Shaders/ShadowCastVertex.shader", "Resources/Shaders/ShadowCastFragment.shader");
-	
+		
+		//Take in from GBuffer color buffers.
+		m_DeferredDirectionalLightShader->UseShader();
+		m_DeferredDirectionalLightShader->SetUniformInteger("gPosition", 0);
+		m_DeferredDirectionalLightShader->SetUniformInteger("gNormal", 1);
+		m_DeferredDirectionalLightShader->SetUniformInteger("gAlbedo", 2);
+		m_DeferredDirectionalLightShader->SetUniformInteger("lightShadowMap", 3);
 	}
 /*
 	Material* MaterialLibrary::CreateCustomMaterial(Shader* shader) //Player created.

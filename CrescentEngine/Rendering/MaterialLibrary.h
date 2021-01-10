@@ -38,7 +38,7 @@ namespace Crescent
 
 		//Shader* m_DeferredIrradianceShader;
 		//Shader* m_DeferredAmbientLightShader;
-		//Shader* m_DeferredDirectionalLightShader;
+		Shader* m_DeferredDirectionalLightShader;
 		//Shader* m_DeferredPointLightShader;
 
 		Shader* m_DirectionalShadowShader;

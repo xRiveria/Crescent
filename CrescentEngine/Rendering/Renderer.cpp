@@ -131,7 +131,7 @@ namespace Crescent
 				if (directionalLight->m_ShadowCastingEnabled)
 				{
 					m_MaterialLibrary->m_DirectionalShadowShader->UseShader();
-
+					/// Make sure depth map generates shadows.
 					glBindFramebuffer(GL_FRAMEBUFFER, m_ShadowRenderTargets[shadowRenderTargetIndex]->m_FramebufferID);
 					glViewport(0, 0, m_ShadowRenderTargets[shadowRenderTargetIndex]->m_FramebufferWidth, m_ShadowRenderTargets[shadowRenderTargetIndex]->m_FramebufferHeight);
 					glClear(GL_DEPTH_BUFFER_BIT);
@@ -148,24 +148,26 @@ namespace Crescent
 					{
 						RenderShadowCastCommand(&shadowRenderCommands[j], lightProjectionMatrix, lightViewMatrix);
 					}
-
 					shadowRenderTargetIndex++;
 				}
 			}
 			m_GLStateCache->SetCulledFace(GL_BACK);
 		}
-
 		attachments[0] = GL_COLOR_ATTACHMENT0;
 		glDrawBuffers(4, attachments);
 
 		//3) Do post-processing steps before lighting stage.
 
 		//4) Render deferred shader for each light (full quad for directional, spheres for point lights).
+		glBindFramebuffer(GL_FRAMEBUFFER, m_CustomTarget->m_FramebufferID);
+		glViewport(0, 0, m_CustomTarget->m_FramebufferWidth, m_CustomTarget->m_FramebufferHeight);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
 		m_GLStateCache->ToggleDepthTesting(false);
 		m_GLStateCache->ToggleBlending(true);
 		m_GLStateCache->SetBlendingFunction(GL_ONE, GL_ONE);
 
-		//Bind GBuffer
+		//Binds our color buffers to the respective texture slots. Remember that Texture Slot 0 (Position), 1 (Normals) and 2 (Albedo) are always used for our GBuffer outputs. 
 		m_GBuffer->RetrieveColorAttachment(0)->BindTexture(0);
 		m_GBuffer->RetrieveColorAttachment(1)->BindTexture(1);
 		m_GBuffer->RetrieveColorAttachment(2)->BindTexture(2);
@@ -196,24 +198,39 @@ namespace Crescent
 		//7) Alpha Material Pass
 		///Render Light Mesh (as visual cue), if requested.
 
+		//10) Custom Post Processing Pass
+
+
 		//11) Finally, Blit everything to our framebuffer for rendering.
-		glBindFramebuffer(GL_FRAMEBUFFER, m_MainRenderTarget->m_FramebufferID);
-		glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		RenderMesh(m_NDCQuad);
+		BlitToMainFramebuffer(m_CustomTarget->RetrieveColorAttachment(0));
 
 		m_RenderQueue->ClearQueuedCommands();
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	void Renderer::RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix)
+	void Renderer::BlitToMainFramebuffer(Texture* sourceRenderTarget)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, m_MainRenderTarget->m_FramebufferID);
+		glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+		//Bind Input Texture Data
+		sourceRenderTarget->BindTexture(0);
+		//Bloom
+		m_GBuffer->RetrieveColorAttachment(3)->BindTexture(5);
+
+		RenderMesh(m_NDCQuad);
+	}
+
+	//Renders from the light's point of view. 
+	void Renderer::RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& lightSpaceProjectionMatrix, const glm::mat4& lightSpaceViewMatrix)
 	{
 		Shader* shadowShader = m_MaterialLibrary->m_DirectionalShadowShader;
 		shadowShader->UseShader();
 
-		shadowShader->SetUniformMat4("projection", projectionMatrix);
-		shadowShader->SetUniformMat4("view", viewMatrix);
+		shadowShader->SetUniformMat4("lightSpaceProjection", lightSpaceProjectionMatrix);
+		shadowShader->SetUniformMat4("lightSpaceView", lightSpaceViewMatrix);
 		shadowShader->SetUniformMat4("model", renderCommand->m_Transform);
 
 		RenderMesh(renderCommand->m_Mesh);
@@ -222,7 +239,20 @@ namespace Crescent
 	void Renderer::RenderDeferredDirectionalLight(DirectionalLight* directionalLight)
 	{
 		//We also have to update the global uniform buffer for this.
+		Shader* directionalShader = m_MaterialLibrary->m_DeferredDirectionalLightShader;
 
+		directionalShader->UseShader();
+		directionalShader->SetUniformVector3("cameraPosition", m_Camera->m_CameraPosition);
+		directionalShader->SetUniformVector3("lightDirection", directionalLight->m_LightDirection);
+		directionalShader->SetUniformVector3("lightColor", glm::normalize(directionalLight->m_LightColor) * directionalLight->m_LightIntensity);
+
+		if (directionalLight->m_ShadowMapRenderTarget)
+		{
+			directionalShader->SetUniformMat4("lightShadowViewProjection", directionalLight->m_LightSpaceViewProjectionMatrix);
+			directionalLight->m_ShadowMapRenderTarget->RetrieveDepthAndStencilAttachment()->BindTexture(3); //In our material library, we set the shadow map sampler to be in texture slot 3.
+		}
+
+		RenderMesh(m_NDCQuad);
 	}
 
 	void Renderer::UpdateGlobalUniformBufferObjects()

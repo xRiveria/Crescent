@@ -16,6 +16,7 @@ namespace Crescent
 	class RenderTarget;
 	class DirectionalLight;
 	class Quad;
+	class Texture;
 
 	class Renderer
 	{
@@ -68,10 +69,13 @@ namespace Crescent
 		void RenderDeferredDirectionalLight(DirectionalLight* directionalLight);
 		
 		//Render Mesh for Shadow Buffer Generation
-		void RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix);
+		void RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& lightSpaceProjectionMatrix, const glm::mat4& lightSpaceViewMatrix);
 
 		//Update the global uniform buffer objects.
 		void UpdateGlobalUniformBufferObjects();
+
+		//Final
+		void BlitToMainFramebuffer(Texture* sourceRenderTarget);
 
 	private:
 		//UBO
