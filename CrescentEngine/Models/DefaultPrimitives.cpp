@@ -3,6 +3,9 @@
 
 namespace Crescent
 {
+    const float PI = 3.14159265359f;
+    const float TAU = 6.28318530717f;
+
     Cube::Cube()
     {
         m_Positions = std::vector<glm::vec3>
@@ -149,7 +152,6 @@ namespace Crescent
             {
                 float xSegment = (float)x / (float)edgeSegments;
                 float ringDepth = (float)y / (float)ringSegments;
-                const float TAU = 6.28318530717f;
                 float xPos = std::cos(xSegment * TAU); // TAU is 2PI
                 float yPos = std::sin(xSegment * TAU);
 
@@ -225,6 +227,43 @@ namespace Crescent
 
         m_Topology = TriangleStrips;
 
+        FinalizeMesh();
+    }
+
+    Sphere::Sphere(unsigned int xSegments, unsigned int ySegments)
+    {
+        for (unsigned int y = 0; y <= ySegments; ++y)
+        {
+            for (unsigned int x = 0; x <= xSegments; ++x)
+            {
+                float xSegment = (float)x / (float)ySegments;
+                float ySegment = (float)y / (float)ySegments;
+                float xPos = std::cos(xSegment * TAU) * std::sin(ySegment * PI); // TAU is 2PI
+                float yPos = std::cos(ySegment * PI);
+                float zPos = std::sin(xSegment * TAU) * std::sin(ySegment * PI);
+
+                m_Positions.push_back(glm::vec3(xPos, yPos, zPos));
+                m_UV.push_back(glm::vec2(xSegment, ySegment));
+                m_Normals.push_back(glm::vec3(xPos, yPos, zPos));
+            }
+        }
+
+        bool oddRow = false;
+        for (int y = 0; y < ySegments; ++y)
+        {
+            for (int x = 0; x < xSegments; ++x)
+            {
+                m_Indices.push_back((y + 1) * (xSegments + 1) + x);
+                m_Indices.push_back(y * (xSegments + 1) + x);
+                m_Indices.push_back(y * (xSegments + 1) + x + 1);
+
+                m_Indices.push_back((y + 1) * (xSegments + 1) + x);
+                m_Indices.push_back(y * (xSegments + 1) + x + 1);
+                m_Indices.push_back((y + 1) * (xSegments + 1) + x + 1);
+            }
+        }
+
+        m_Topology = Triangles;
         FinalizeMesh();
     }
 }

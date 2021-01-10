@@ -15,6 +15,7 @@ namespace Crescent
 	class MaterialLibrary;
 	class RenderTarget;
 	class DirectionalLight;
+	class PointLight;
 	class Quad;
 	class Texture;
 
@@ -40,9 +41,7 @@ namespace Crescent
 		//Creation
 		Material* CreateMaterial(std::string shaderName = "Default"); //Default materials. These materials have default state and uses checkboard texture as its albedo/diffuse (and black metalliic, half roughness purple normals and white AO).
 		void AddLightSource(DirectionalLight* directionalLight);
-
-		//Render Target
-		void SetCurrentRenderTarget(RenderTarget* renderTarget, GLenum framebufferTarget);
+		void AddLightSource(PointLight* pointLight);
 
 		//Retrieve
 		const char* RetrieveDeviceRendererInformation() const { return m_DeviceRendererInformation; }
@@ -56,17 +55,23 @@ namespace Crescent
 		RenderTarget* RetrieveMainRenderTarget();
 		RenderTarget* RetrieveGBuffer();
 		RenderTarget* RetrieveShadowRenderTarget(int index = 0);
+		RenderTarget* RetrieveCustomRenderTarget();
 
 	public:
-		bool m_ShadowsEnabled = true; ///Make Global
+		///Make all states toggable through UI.
+		bool m_ShadowsEnabled = true;
 		bool m_LightsEnabled = true;
-
+		bool m_ShowDebugLightVolumes = true;
 
 	private:
 		//Renderer-specific logic for rendering a custom forward-pass command.
 		void RenderCustomCommand(RenderCommand* renderCommand, Camera* customRenderCamera, bool updateGLStates = true);
 		void RenderMesh(Mesh* mesh);
+
+		//Render Directional Light
 		void RenderDeferredDirectionalLight(DirectionalLight* directionalLight);
+		//Render Point Light
+		void RenderDeferredPointLight(PointLight* pointLight);
 		
 		//Render Mesh for Shadow Buffer Generation
 		void RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& lightSpaceProjectionMatrix, const glm::mat4& lightSpaceViewMatrix);
@@ -89,7 +94,7 @@ namespace Crescent
 		//Render Targets
 		RenderTarget* m_CurrentCustomRenderTarget = nullptr;
 		RenderTarget* m_GBuffer = nullptr;
-		RenderTarget* m_CustomTarget = nullptr;
+		RenderTarget* m_CustomRenderTarget = nullptr;
 		RenderTarget* m_MainRenderTarget = nullptr;
 		Quad* m_NDCQuad = nullptr;
 
@@ -99,12 +104,18 @@ namespace Crescent
 
 		//Lights
 		std::vector<DirectionalLight*> m_DirectionalLights;
+		std::vector<PointLight*> m_PointLights;
+		Mesh* m_DeferredPointLightMesh = nullptr;
+
+		glm::vec2 m_RenderWindowSize = glm::vec2(0.0f);
 
 		//Driver Information
 		const char* m_DeviceRendererInformation = nullptr;
 		const char* m_DeviceVendorInformation = nullptr;
 		const char* m_DeviceVersionInformation = nullptr;
 
-		glm::vec2 m_RenderWindowSize = glm::vec2(0.0f);
+		//Debug
+		Mesh* m_DebugLightMesh = nullptr;
+
 	};
 }

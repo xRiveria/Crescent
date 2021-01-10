@@ -39,11 +39,11 @@ namespace Crescent
 		//Shader* m_DeferredIrradianceShader;
 		//Shader* m_DeferredAmbientLightShader;
 		Shader* m_DeferredDirectionalLightShader;
-		//Shader* m_DeferredPointLightShader;
+		Shader* m_DeferredPointLightShader;
 
 		Shader* m_DirectionalShadowShader;
 
-		//Material* m_DebugLightMaterial;
+		Material* m_DebugLightMaterial;
 
 		//Holds a list of default material templates that other materials can derive from.
 		std::map<unsigned int, Material*> m_DefaultMaterials;

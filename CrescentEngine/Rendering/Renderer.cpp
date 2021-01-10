@@ -10,6 +10,7 @@
 #include "../Shading/Shader.h"
 #include "../Shading/Material.h"
 #include "../Lighting/DirectionalLight.h"
+#include "../Lighting/PointLight.h"
 #include <glm/gtc/type_ptr.hpp>
 
 //As of now, our renderer only supports Forward Pass Rendering.
@@ -36,18 +37,29 @@ namespace Crescent
 		m_DeviceVendorInformation = (char*)glGetString(GL_VENDOR);
 		m_DeviceVersionInformation = (char*)glGetString(GL_VERSION);
 		
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		m_RenderWindowSize = glm::vec2(renderWindowWidth, renderWindowHeight);
+		glViewport(0.0f, 0.0f, renderWindowWidth, renderWindowHeight);
 		glClearDepth(1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
+		//Core Primitives
 		m_NDCQuad = new Quad();
+		m_DebugLightMesh = new Sphere(16, 16);
+		m_DeferredPointLightMesh = new Sphere(16, 16);
+
+		//Core Systems
 		m_RenderQueue = new RenderQueue(this);
 		m_GLStateCache = new GLStateCache();
+		m_MaterialLibrary = new MaterialLibrary(m_GBuffer);
 
+		//Configure Default OpenGL State
+		m_GLStateCache->ToggleDepthTesting(true);
+		m_GLStateCache->ToggleFaceCulling(true);
+
+		//Render Targets
 		m_MainRenderTarget = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, true);
 		m_GBuffer = new RenderTarget(1, 1, GL_HALF_FLOAT, 4, true);
-		m_CustomTarget = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, true);
-
-		m_MaterialLibrary = new MaterialLibrary(m_GBuffer);
+		m_CustomRenderTarget = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, true);
 
 		//Shadows
 		for (int i = 0; i < 4; i++) //Allow for up to a total of 4 directional/spot shadow casters.
@@ -62,17 +74,11 @@ namespace Crescent
 			m_ShadowRenderTargets.push_back(renderTarget);
 		}
 
-		// configure default OpenGL state
-		m_GLStateCache->ToggleDepthTesting(true);
-		m_GLStateCache->ToggleFaceCulling(true);
-
 		//Global Uniform Buffer Object
 		//glGenBuffers(1, &m_GlobalUniformBufferID);
 		//glBindBuffer(GL_UNIFORM_BUFFER, m_GlobalUniformBufferID);
 		//glBufferData(GL_UNIFORM_BUFFER, 720, nullptr, GL_STREAM_DRAW);
 		//glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_GlobalUniformBufferID);
-
-		m_RenderWindowSize = glm::vec2(renderWindowWidth, renderWindowHeight);
 	}
 
 	void Renderer::PushToRenderQueue(SceneEntity* sceneEntity)
@@ -159,8 +165,8 @@ namespace Crescent
 		//3) Do post-processing steps before lighting stage.
 
 		//4) Render deferred shader for each light (full quad for directional, spheres for point lights).
-		glBindFramebuffer(GL_FRAMEBUFFER, m_CustomTarget->m_FramebufferID);
-		glViewport(0, 0, m_CustomTarget->m_FramebufferWidth, m_CustomTarget->m_FramebufferHeight);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID);
+		glViewport(0, 0, m_CustomRenderTarget->m_FramebufferWidth, m_CustomRenderTarget->m_FramebufferHeight);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 		m_GLStateCache->ToggleDepthTesting(false);
@@ -181,7 +187,15 @@ namespace Crescent
 			{
 				RenderDeferredDirectionalLight(*iterator);
 			}
-			///Point Lights
+			
+			//Point Lights
+			m_GLStateCache->SetCulledFace(GL_FRONT);
+			for (auto iterator = m_PointLights.begin(); iterator != m_PointLights.end(); iterator++) //Remember that our objects are stored as pointers, thus the dereference.
+			{
+				///Frustrum Check.
+				RenderDeferredPointLight(*iterator);
+			}
+			m_GLStateCache->SetCulledFace(GL_BACK);
 		}
 
 		m_GLStateCache->ToggleDepthTesting(true);
@@ -190,19 +204,71 @@ namespace Crescent
 
 		//5) Blit Depth Framebuffer to Default for Rendering
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_GBuffer->m_FramebufferID);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_CustomTarget->m_FramebufferID); //Write to our default framebuffer.
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID); //Write to our default framebuffer.
 		glBlitFramebuffer(0, 0, m_GBuffer->m_FramebufferWidth, m_GBuffer->m_FramebufferHeight, 0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
 		//6) Custom Forward Render Pass
 
+		///Implement
+
 		//7) Alpha Material Pass
-		///Render Light Mesh (as visual cue), if requested.
+		glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID);
+		///Alpha Render Commands Here.
+
+		//Render Light Mesh (as visual cue), if requested.
+		for (auto iterator = m_PointLights.begin(); iterator != m_PointLights.end(); iterator++)
+		{
+			if ((*iterator)->m_RenderMesh)
+			{
+				m_MaterialLibrary->m_DebugLightMaterial->SetShaderVector3("lightColor", (*iterator)->m_LightColor* (*iterator)->m_LightIntensity * 0.25f);
+			
+				RenderCommand renderCommand;
+				renderCommand.m_Material = m_MaterialLibrary->m_DebugLightMaterial;
+				renderCommand.m_Mesh = m_DebugLightMesh;
+
+				glm::mat4 lightModelMatrix = glm::mat4(1.0f); //Not the light space matrix. Just our model matrix for the light itself.
+				lightModelMatrix = glm::translate(lightModelMatrix, (*iterator)->m_LightPosition);
+				lightModelMatrix = glm::scale(lightModelMatrix, glm::vec3(0.25f));
+				renderCommand.m_Transform = lightModelMatrix;
+
+				RenderCustomCommand(&renderCommand, nullptr);
+			}
+		}
+
+		//8) Pody-Processing Stage after all lighting calculations.
+
+		//9) Render Debug Visuals
+		glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID);
+		if (m_ShowDebugLightVolumes)
+		{
+			m_GLStateCache->SetPolygonMode(GL_LINE);
+			m_GLStateCache->SetCulledFace(GL_FRONT);
+			for (auto iterator = m_PointLights.begin(); iterator != m_PointLights.end(); iterator++)
+			{
+				m_MaterialLibrary->m_DebugLightMaterial->SetShaderVector3("lightColor", (*iterator)->m_LightColor);
+
+				RenderCommand renderCommand;
+				renderCommand.m_Material = m_MaterialLibrary->m_DebugLightMaterial;
+				renderCommand.m_Mesh = m_DebugLightMesh;
+
+				glm::mat4 lightDebugModelMatrix = glm::mat4(1.0f); //Not the light space matrix. Just our model matrix for the light debug mesh itself.
+				lightDebugModelMatrix = glm::translate(lightDebugModelMatrix, (*iterator)->m_LightPosition);
+				lightDebugModelMatrix = glm::scale(lightDebugModelMatrix, glm::vec3((*iterator)->m_LightRadius));
+				renderCommand.m_Transform = lightDebugModelMatrix;
+
+				RenderCustomCommand(&renderCommand, nullptr);
+			}
+			m_GLStateCache->SetPolygonMode(GL_FILL);
+			m_GLStateCache->SetCulledFace(GL_BACK);
+		}
 
 		//10) Custom Post Processing Pass
 
 
 		//11) Finally, Blit everything to our framebuffer for rendering.
-		BlitToMainFramebuffer(m_CustomTarget->RetrieveColorAttachment(0));
+		BlitToMainFramebuffer(m_CustomRenderTarget->RetrieveColorAttachment(0));
 
 		m_RenderQueue->ClearQueuedCommands();
 
@@ -255,12 +321,24 @@ namespace Crescent
 		RenderMesh(m_NDCQuad);
 	}
 
-	void Renderer::UpdateGlobalUniformBufferObjects()
+	void Renderer::RenderDeferredPointLight(PointLight* pointLight)
 	{
-		//glBindBuffer(GL_UNIFORM_BUFFER, m_GlobalUniformBufferID);
-		//For now, we will update the global uniforms here. 
-		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(m_Camera->m_ProjectionMatrix);
-		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(m_Camera->GetViewMatrix()));
+		Shader* pointLightShader = m_MaterialLibrary->m_DeferredPointLightShader;
+
+		pointLightShader->UseShader();
+		pointLightShader->SetUniformVector3("cameraPosition", m_Camera->m_CameraPosition);
+		pointLightShader->SetUniformVector3("lightPosition", pointLight->m_LightPosition);
+		pointLightShader->SetUniformFloat("lightRadius", pointLight->m_LightRadius);
+		pointLightShader->SetUniformVector3("lightColor", glm::normalize(pointLight->m_LightColor) * pointLight->m_LightIntensity);
+
+		glm::mat4 pointLightModelMatrix = glm::mat4(1.0f);
+		pointLightModelMatrix = glm::translate(pointLightModelMatrix, pointLight->m_LightPosition);
+		pointLightModelMatrix = glm::scale(pointLightModelMatrix, glm::vec3(pointLight->m_LightRadius));
+		pointLightShader->SetUniformMat4("projection", m_Camera->m_ProjectionMatrix);
+		pointLightShader->SetUniformMat4("view", m_Camera->GetViewMatrix());
+		pointLightShader->SetUniformMat4("model", pointLightModelMatrix);
+
+		RenderMesh(m_DeferredPointLightMesh);
 	}
 
 	void Renderer::RenderCustomCommand(RenderCommand* renderCommand, Camera* customRenderCamera, bool updateGLStates)
@@ -284,9 +362,8 @@ namespace Crescent
 		}
 
 		//Default uniforms that are always configured regardless of shader configuration. See these as a set of default shader variables that are always there.
-		//This works together with our Uniform Buffer Object. 
+		///To implement with Uniform Buffer Objects.
 		material->RetrieveMaterialShader()->UseShader();
-
 		material->RetrieveMaterialShader()->SetUniformMat4("projection", m_Camera->m_ProjectionMatrix);
 		material->RetrieveMaterialShader()->SetUniformMat4("view", m_Camera->GetViewMatrix());
 		//material->RetrieveMaterialShader()->SetUniformVector3("cameraPosition", m_Camera->m_CameraPosition);
@@ -401,6 +478,11 @@ namespace Crescent
 		return m_ShadowRenderTargets[index];
 	}
 
+	RenderTarget* Renderer::RetrieveCustomRenderTarget()
+	{
+		return m_CustomRenderTarget;
+	}
+
 	void Renderer::SetSceneCamera(Camera* sceneCamera)
 	{
 		m_Camera = sceneCamera;
@@ -421,12 +503,16 @@ namespace Crescent
 		m_DirectionalLights.push_back(directionalLight);
 	}
 
-	void Renderer::SetCurrentRenderTarget(RenderTarget* renderTarget, GLenum framebufferTarget)
+	void Renderer::AddLightSource(PointLight* pointLight)
 	{
-		m_CurrentCustomRenderTarget = renderTarget;
-		if (renderTarget != nullptr)
-		{
-			//Add to our cached target list. 
-		}
+		m_PointLights.push_back(pointLight);
+	}
+
+	void Renderer::UpdateGlobalUniformBufferObjects()
+	{
+		//glBindBuffer(GL_UNIFORM_BUFFER, m_GlobalUniformBufferID);
+		//For now, we will update the global uniforms here. 
+		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(m_Camera->m_ProjectionMatrix);
+		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(m_Camera->GetViewMatrix()));
 	}
 }

@@ -63,15 +63,27 @@ namespace Crescent
 	void MaterialLibrary::GenerateInternalMaterials(RenderTarget* gBuffer)
 	{
 		//Deferred
-		m_DeferredDirectionalLightShader = Resources::LoadShader("Deferred Directional", "Resources/Shaders/Deferred/ScreenDirectionalVertex.shader", "Resources/Shaders/Deferred/DirectionalFragment.shader");
-		m_DirectionalShadowShader = Resources::LoadShader("Directional Shadow", "Resources/Shaders/ShadowCastVertex.shader", "Resources/Shaders/ShadowCastFragment.shader");
-		
+		m_DeferredDirectionalLightShader = Resources::LoadShader("Deferred Directional Light", "Resources/Shaders/Deferred/ScreenDirectionalVertex.shader", "Resources/Shaders/Deferred/DirectionalFragment.shader");
+		m_DeferredPointLightShader = Resources::LoadShader("Deferred Point Light", "Resources/Shaders/Deferred/PointLightVertex.shader", "Resources/Shaders/Deferred/PointLightFragment.shader");
+			
 		//Take in from GBuffer color buffers.
 		m_DeferredDirectionalLightShader->UseShader();
 		m_DeferredDirectionalLightShader->SetUniformInteger("gPosition", 0);
 		m_DeferredDirectionalLightShader->SetUniformInteger("gNormal", 1);
 		m_DeferredDirectionalLightShader->SetUniformInteger("gAlbedo", 2);
 		m_DeferredDirectionalLightShader->SetUniformInteger("lightShadowMap", 3);
+
+		m_DeferredPointLightShader->UseShader();
+		m_DeferredPointLightShader->SetUniformInteger("gPosition", 0);
+		m_DeferredPointLightShader->SetUniformInteger("gNormal", 1);
+		m_DeferredPointLightShader->SetUniformInteger("gAlbedo", 2);
+
+		//Shadows
+		m_DirectionalShadowShader = Resources::LoadShader("Directional Shadow", "Resources/Shaders/ShadowCastVertex.shader", "Resources/Shaders/ShadowCastFragment.shader");
+
+		//Debug
+		Shader* debugLightShader = Resources::LoadShader("Debug Light", "Resources/Shaders/LightDebugVertex.shader", "Resources/Shaders/LightDebugFragment.shader");
+		m_DebugLightMaterial = new Material(debugLightShader);
 	}
 /*
 	Material* MaterialLibrary::CreateCustomMaterial(Shader* shader) //Player created.

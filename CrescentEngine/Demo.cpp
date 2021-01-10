@@ -16,6 +16,7 @@
 #include "Models/DefaultPrimitives.h"
 #include "Rendering/RenderTarget.h"
 #include "Lighting/DirectionalLight.h"
+#include "Lighting/PointLight.h"
 #include <glm/gtc/type_ptr.hpp>
 
 struct CoreSystems
@@ -34,6 +35,7 @@ CoreSystems g_CoreSystems; //Creates our core engine systems.
 
 //Temporary
 glm::vec3 lightDirection = glm::vec3(0.0f, -1.0f, 0.0f);
+glm::vec3 pointLightPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 
 //Input Callbacks
 void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::RendererSettingsPanel* rendererPanel);
@@ -85,6 +87,15 @@ int main(int argc, int argv[])
 	directionalLight.m_LightColor = glm::vec3(1.0f, 0.89f, 0.7f);
 	directionalLight.m_LightIntensity = 50.0f;
 
+	Crescent::PointLight pointLight;
+	pointLight.m_LightRadius = 2.5f;
+	pointLight.m_LightColor = glm::vec3(1.0f, 0.3f, 0.05f);
+	pointLight.m_LightIntensity = 50.0f;
+	pointLight.m_RenderMesh = true;
+
+	pointLight.m_LightPosition = pointLightPosition;
+
+	g_CoreSystems.m_Renderer->AddLightSource(&pointLight);
 	g_CoreSystems.m_Renderer->AddLightSource(&directionalLight);
 	//===========================================
 
@@ -109,6 +120,10 @@ int main(int argc, int argv[])
 	
 		g_CoreSystems.m_Camera.UpdateCameraVectors();
 
+		//Randomize
+		pointLight.m_LightRadius = 1.5f + 0.1 * std::cos(std::sin(glfwGetTime() * 1.37 + 0 * 7.31) * 3.1 + 0);
+		pointLight.m_LightIntensity = 25.0f + 5.0 * std::cos(std::sin(glfwGetTime() * 0.67 + 0 * 2.31) * 2.31 * 0);
+
 		//Rendering
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube2);
@@ -132,6 +147,7 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 	g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
 
 	ImGui::Begin("Lighting - Temporary");
+	ImGui::DragFloat3("Point Light Position 1", glm::value_ptr(pointLightPosition), 0.10f);
 	ImGui::DragFloat3("Light Direction", glm::value_ptr(lightDirection), 0.10f);
 	ImGui::End();
 
@@ -154,6 +170,11 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 	ImGui::Text("Shadow Map #1");
 	unsigned int shadowDepthAttachment = g_CoreSystems.m_Renderer->RetrieveShadowRenderTarget(0)->RetrieveDepthAndStencilAttachment()->RetrieveTextureID();
 	ImGui::Image((void*)shadowDepthAttachment, { 350.0f, 350.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
+	ImGui::Text("Custom Render Target Color Buffer");
+	ImGui::Image((void*)g_CoreSystems.m_Renderer->RetrieveCustomRenderTarget()->RetrieveColorAttachment(0)->RetrieveTextureID(), { 350.0f, 350.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+	ImGui::Text("Custom Render Target Depth/Stencil Buffer");
+	ImGui::Image((void*)g_CoreSystems.m_Renderer->RetrieveCustomRenderTarget()->RetrieveDepthAndStencilAttachment()->RetrieveTextureID(), { 350.0f, 350.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
 	ImGui::End();
 

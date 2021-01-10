@@ -61,8 +61,8 @@ void main()
     vec4 positionMetallic = texture(gPosition, TexCoords);  //Metallic, Roughness and AO are for future support.
 
     vec3 worldPosition = positionMetallic.xyz;
-    vec3 albedo = albedoAO.xyz;
-    vec3 normal = normalRoughness.xyz;
+    vec3 albedo = albedoAO.rgb;
+    vec3 normal = normalRoughness.rgb;
     //float roughness = normalRoughness.a;
     //float metallic = positionMetallic.a;
 

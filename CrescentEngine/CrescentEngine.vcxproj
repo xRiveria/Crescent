@@ -267,6 +267,7 @@
     <ClInclude Include="Core\Object.h" />
     <ClInclude Include="Core\Window.h" />
     <ClInclude Include="Lighting\DirectionalLight.h" />
+    <ClInclude Include="Lighting\PointLight.h" />
     <ClInclude Include="Memory\ShaderLoader.h" />
     <ClInclude Include="Memory\TextureLoader.h" />
     <ClInclude Include="Models\DefaultPrimitives.h" />
@@ -667,6 +668,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Shaders\Deferred\DirectionalFragment.shader" />
+    <None Include="Resources\Shaders\Deferred\PointLightFragment.shader" />
+    <None Include="Resources\Shaders\Deferred\PointLightVertex.shader" />
     <None Include="Resources\Shaders\Deferred\ScreenDirectionalVertex.shader" />
     <None Include="Resources\Shaders\Defunct\AnimationFragment.shader" />
     <None Include="Resources\Shaders\Defunct\AnimationVertex.shader" />
@@ -690,6 +693,8 @@
     <None Include="Resources\Shaders\Defunct\LightVertexShader.shader" />
     <None Include="Resources\Shaders\Defunct\TransparentFragment.shader" />
     <None Include="Resources\Shaders\Defunct\TransparentVertex.shader" />
+    <None Include="Resources\Shaders\LightDebugFragment.shader" />
+    <None Include="Resources\Shaders\LightDebugVertex.shader" />
     <None Include="Resources\Shaders\ShadowCastFragment.shader" />
     <None Include="Resources\Shaders\ShadowCastVertex.shader" />
     <None Include="Vendor\assimp\include\assimp\.editorconfig" />
