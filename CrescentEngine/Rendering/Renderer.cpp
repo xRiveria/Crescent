@@ -141,7 +141,6 @@ namespace Crescent
 		{
 			m_GLStateCache->SetCulledFace(GL_FRONT);
 			std::vector<RenderCommand> shadowRenderCommands = m_RenderQueue->RetrieveShadowCastingRenderCommands();
-			m_ShadowViewProjectionMatrixes.clear();
 
 			unsigned int shadowRenderTargetIndex = 0;
 			for (int i = 0; i < m_DirectionalLights.size(); i++) //We usually have 1 directional light source.
@@ -150,7 +149,7 @@ namespace Crescent
 				if (directionalLight->m_ShadowCastingEnabled)
 				{
 					m_MaterialLibrary->m_DirectionalShadowShader->UseShader();
-					/// Make sure depth map generates shadows.
+
 					glBindFramebuffer(GL_FRAMEBUFFER, m_ShadowRenderTargets[shadowRenderTargetIndex]->m_FramebufferID);
 					glViewport(0, 0, m_ShadowRenderTargets[shadowRenderTargetIndex]->m_FramebufferWidth, m_ShadowRenderTargets[shadowRenderTargetIndex]->m_FramebufferHeight);
 					glClear(GL_DEPTH_BUFFER_BIT);
@@ -335,7 +334,7 @@ namespace Crescent
 	void Renderer::RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& lightSpaceProjectionMatrix, const glm::mat4& lightSpaceViewMatrix)
 	{
 		Shader* shadowShader = m_MaterialLibrary->m_DirectionalShadowShader;
-		//shadowShader->UseShader();
+		shadowShader->UseShader();
 
 		shadowShader->SetUniformMat4("lightSpaceProjection", lightSpaceProjectionMatrix);
 		shadowShader->SetUniformMat4("lightSpaceView", lightSpaceViewMatrix);

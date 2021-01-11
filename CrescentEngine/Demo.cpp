@@ -34,8 +34,8 @@ struct CoreSystems
 CoreSystems g_CoreSystems; //Creates our core engine systems.
 
 //Temporary
-glm::vec3 lightDirection = glm::vec3(0.0f, -1.0f, 0.0f);
-glm::vec3 pointLightPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 lightDirection = glm::vec3(-0.3f, -1.7f, 0.6f);
+glm::vec3 pointLightPosition = glm::vec3(1.2f, 0.0f, 0.0f);
 
 //Input Callbacks
 void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::RendererSettingsPanel* rendererPanel);

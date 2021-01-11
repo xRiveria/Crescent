@@ -16,6 +16,6 @@ namespace Crescent
 		static Shader LoadShader(const std::string& shaderName, std::string vertexShaderPath, std::string fragmentShaderPath);
 
 	private:
-		static std::string ReadShader(std::ifstream& file, const std::string& fileName, std::string& filePath);
+		static std::string ReadShader(std::ifstream& file, const std::string& shaderName, std::string& filePath);
 	};
 }

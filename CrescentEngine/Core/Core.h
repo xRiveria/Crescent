@@ -20,6 +20,6 @@ namespace Crescent
 	}
 
 #define CrescentInfo(x)	   Crescent::ChangeConsoleTextColor(2); std::cout << "[INFO] " << x << "\n";  Crescent::ChangeConsoleTextColor(15);	
-#define CrescentWarn(x)    Crescent::ChangeConsoleTextColor(14); std::cout << "[WARN] " << x << "\n"; Crescent::ChangeConsoleTextColor(15);	
+#define CrescentLoad(x)    Crescent::ChangeConsoleTextColor(14); std::cout << "[LOAD] " << x << "\n"; Crescent::ChangeConsoleTextColor(15);	
 #define CrescentError(x)   Crescent::ChangeConsoleTextColor(4); std::cout << "[ERROR] " << x << "\n"; Crescent::ChangeConsoleTextColor(15); std::terminate();
 }

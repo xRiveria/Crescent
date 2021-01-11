@@ -444,7 +444,6 @@ namespace Crescent
 		else
 		{
 			std::string infoText = "Failed to load path at: " + filename;
-			CrescentWarn(infoText);
 			stbi_image_free(data);
 		}
 

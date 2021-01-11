@@ -667,6 +667,8 @@
     <ClInclude Include="Vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\Shaders\Constants\BRDF.shader" />
+    <None Include="Resources\Shaders\Constants\Constants.shader" />
     <None Include="Resources\Shaders\Deferred\DirectionalFragment.shader" />
     <None Include="Resources\Shaders\Deferred\PointLightFragment.shader" />
     <None Include="Resources\Shaders\Deferred\PointLightVertex.shader" />

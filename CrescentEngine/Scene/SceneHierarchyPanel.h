@@ -22,7 +22,7 @@ namespace Crescent
 	private:
 		void DrawEntityUI(SceneEntity* sceneEntity);
 		void DrawSelectedEntityComponents(SceneEntity* selectedEntity);
-		void DrawVector3Controls(const std::string& uiLabel, glm::vec3& values, float resetValue = 0.0f, float columnWidth = 100.0f);
+		void DrawVector3Controls(const std::string& uiLabel, glm::vec3& values, SceneEntity* selectedEntity, float resetValue = 0.0f, float columnWidth = 100.0f);
 
 	private:
 		SceneEntity* m_CurrentlySelectedEntity = nullptr;

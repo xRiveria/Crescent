@@ -104,8 +104,7 @@ namespace Crescent
 		Quad* m_NDCQuad = nullptr;
 
 		//Shadow Target
-		std::vector<RenderTarget*> m_ShadowRenderTargets;
-		std::vector<glm::mat4> m_ShadowViewProjectionMatrixes;
+		std::vector<RenderTarget*> m_ShadowRenderTargets;;
 
 		//Lights
 		std::vector<DirectionalLight*> m_DirectionalLights;

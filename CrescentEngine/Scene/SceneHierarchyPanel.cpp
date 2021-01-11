@@ -78,17 +78,17 @@ namespace Crescent
 			selectedEntity->SetEntityName(std::string(nameBuffer));
 		}
 
-		DrawVector3Controls("Translation", selectedEntity->RetrieveEntityPosition());
+		DrawVector3Controls("Translation", selectedEntity->RetrieveEntityPosition(), selectedEntity);
 
 		//Converts our radians to degrees for display in the hierarchy, and translates its new values back to radians.
 		glm::vec3 rotation = (glm::vec3)glm::degrees(selectedEntity->RetrieveEntityRotation());
-		DrawVector3Controls("Rotation", rotation);
+		DrawVector3Controls("Rotation", rotation, selectedEntity);
 		selectedEntity->SetEntityRotation(glm::radians(rotation));
 
-		DrawVector3Controls("Scale", selectedEntity->RetrieveEntityScale());
+		DrawVector3Controls("Scale", selectedEntity->RetrieveEntityScale(), selectedEntity);
 	}
 
-	void SceneHierarchyPanel::DrawVector3Controls(const std::string& uiLabel, glm::vec3& values, float resetValue, float columnWidth)
+	void SceneHierarchyPanel::DrawVector3Controls(const std::string& uiLabel, glm::vec3& values, SceneEntity* selectedEntity, float resetValue, float columnWidth)
 	{
 		ImGuiIO& io = ImGui::GetIO();
 		auto boldFont = io.Fonts->Fonts[0];
@@ -113,13 +113,17 @@ namespace Crescent
 		if (ImGui::Button("X", buttonSize))
 		{
 			values.x = resetValue;
+			selectedEntity->UpdateEntityTransform(true);
 		}
 
 		ImGui::PopFont();
 		ImGui::PopStyleColor(3);
 
 		ImGui::SameLine();
-		ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f");
+		if (ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f"))
+		{
+			selectedEntity->UpdateEntityTransform(true);
+		}
 		ImGui::PopItemWidth();
 		ImGui::SameLine();
 
@@ -131,13 +135,17 @@ namespace Crescent
 		if (ImGui::Button("Y", buttonSize))
 		{
 			values.y = resetValue;
+			selectedEntity->UpdateEntityTransform(true);
 		}
 
 		ImGui::PopFont();
 		ImGui::PopStyleColor(3);
 
 		ImGui::SameLine();
-		ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f");
+		if (ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f"))
+		{
+			selectedEntity->UpdateEntityTransform(true);
+		}
 		ImGui::PopItemWidth();
 		ImGui::SameLine();
 
@@ -149,13 +157,17 @@ namespace Crescent
 		if (ImGui::Button("Z", buttonSize))
 		{
 			values.z = resetValue;
+			selectedEntity->UpdateEntityTransform(true);
 		}
 
 		ImGui::PopFont();
 		ImGui::PopStyleColor(3);
 
 		ImGui::SameLine();
-		ImGui::DragFloat("##Z", &values.z, 0.1f, 0.0f, 0.0f, "%.2f");
+		if (ImGui::DragFloat("##Z", &values.z, 0.1f, 0.0f, 0.0f, "%.2f"))
+		{
+			selectedEntity->UpdateEntityTransform(true);
+		}
 		ImGui::PopItemWidth();
 
 		ImGui::PopStyleVar();

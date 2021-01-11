@@ -33,14 +33,36 @@ namespace Crescent
 		return shader;
 	}
 
-	std::string ShaderLoader::ReadShader(std::ifstream& file, const std::string& fileName, std::string& filePath)
+	std::string ShaderLoader::ReadShader(std::ifstream& file, const std::string& shaderName, std::string& filePath)
 	{
 		std::string directory = filePath.substr(0, filePath.find_last_of("/\\"));
 		std::string source, line;
 
 		while (std::getline(file, line))
 		{
-			source += line + "\n";
+			//If we encounter any #include lines, its means we have another shader source that we wish to add to the current file.
+			if (line.substr(0, 8) == "#include") //Because #include will always be 8 characters on a single line spanning from the start of the aforementioned line.
+			{
+				std::string includePath = directory + "/" + line.substr(9); //Grab the shader include's directory spanning from character position 9 to the end of the line.
+				std::ifstream includeFile(includePath);
+
+				CrescentLoad("Loading shader include for: " + shaderName);
+				if (includeFile.is_open())
+				{
+					//We recursively read the shader file to support any shader include depth.
+					source += ReadShader(includeFile, shaderName, includePath);
+				}
+				else
+				{
+					CrescentError("Shader include loading failed for: " + shaderName + " - " + includePath);
+				}
+				
+				includeFile.close();
+			}
+			else
+			{
+				source += line + "\n";
+			}
 		}
 
 		return source;
