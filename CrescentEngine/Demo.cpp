@@ -83,7 +83,6 @@ int main(int argc, int argv[])
 
 	/// To Do: Convert directional light into a screen entity so it may be used in the scene hierarchy.
 	Crescent::DirectionalLight directionalLight;
-	directionalLight.m_LightDirection = lightDirection;
 	directionalLight.m_LightColor = glm::vec3(1.0f, 0.89f, 0.7f);
 	directionalLight.m_LightIntensity = 50.0f;
 
@@ -92,8 +91,6 @@ int main(int argc, int argv[])
 	pointLight.m_LightColor = glm::vec3(1.0f, 0.3f, 0.05f);
 	pointLight.m_LightIntensity = 50.0f;
 	pointLight.m_RenderMesh = true;
-
-	pointLight.m_LightPosition = pointLightPosition;
 
 	g_CoreSystems.m_Renderer->AddLightSource(&pointLight);
 	g_CoreSystems.m_Renderer->AddLightSource(&directionalLight);
@@ -125,6 +122,9 @@ int main(int argc, int argv[])
 		pointLight.m_LightIntensity = 25.0f + 5.0 * std::cos(std::sin(glfwGetTime() * 0.67 + 0 * 2.31) * 2.31 * 0);
 
 		//Rendering
+		pointLight.m_LightPosition = pointLightPosition;
+		directionalLight.m_LightDirection = lightDirection;
+
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube2);
 

@@ -50,7 +50,6 @@ namespace Crescent
 		glm::vec2 RetrieveRenderWindowSize() const { return m_RenderWindowSize; }
 
 		GLStateCache* RetrieveGLStateCache() { return m_GLStateCache; }
-		RenderTarget* RetrieveCurrentRenderTarget();
 
 		RenderTarget* RetrieveMainRenderTarget();
 		RenderTarget* RetrieveGBuffer();
@@ -62,6 +61,7 @@ namespace Crescent
 		bool m_ShadowsEnabled = true;
 		bool m_LightsEnabled = true;
 		bool m_ShowDebugLightVolumes = true;
+		bool m_WireframesEnabled = false;
 
 	private:
 		//Renderer-specific logic for rendering a custom forward-pass command.
@@ -83,6 +83,9 @@ namespace Crescent
 		void BlitToMainFramebuffer(Texture* sourceRenderTarget);
 
 	private:
+		//Temporary
+		Shader* m_PostProcessShader = nullptr;
+
 		//UBO
 		unsigned int m_GlobalUniformBufferID;
 
@@ -92,10 +95,12 @@ namespace Crescent
 		Camera* m_Camera = nullptr;
 
 		//Render Targets
-		RenderTarget* m_CurrentCustomRenderTarget = nullptr;
 		RenderTarget* m_GBuffer = nullptr;
 		RenderTarget* m_CustomRenderTarget = nullptr;
 		RenderTarget* m_MainRenderTarget = nullptr;
+		RenderTarget* m_PostProcessRenderTarget = nullptr;
+
+		std::vector<RenderTarget*> m_RenderTargetsCustom;
 		Quad* m_NDCQuad = nullptr;
 
 		//Shadow Target

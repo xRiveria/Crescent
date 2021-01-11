@@ -50,9 +50,15 @@ namespace Crescent
 		return renderCommands;
 	}
 
+	std::vector<RenderCommand> RenderQueue::RetrievePostProcessingRenderCommands()
+	{
+		return m_PostProcessingRenderCommands;
+	}
+
 	void RenderQueue::ClearQueuedCommands()
 	{
 		m_DeferredRenderingCommands.clear();
+		m_CustomRenderCommands.clear();
 	}
 }
 

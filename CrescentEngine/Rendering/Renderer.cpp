@@ -11,6 +11,7 @@
 #include "../Shading/Material.h"
 #include "../Lighting/DirectionalLight.h"
 #include "../Lighting/PointLight.h"
+#include "../Rendering/Resources.h"
 #include <glm/gtc/type_ptr.hpp>
 
 //As of now, our renderer only supports Forward Pass Rendering.
@@ -57,9 +58,10 @@ namespace Crescent
 		m_GLStateCache->ToggleFaceCulling(true);
 
 		//Render Targets
-		m_MainRenderTarget = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, true);
+		m_MainRenderTarget = new RenderTarget(1, 1, GL_FLOAT, 1, true);
 		m_GBuffer = new RenderTarget(1, 1, GL_HALF_FLOAT, 4, true);
 		m_CustomRenderTarget = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, true);
+		m_PostProcessRenderTarget = new RenderTarget(1, 1, GL_UNSIGNED_BYTE, 1, false);
 
 		//Shadows
 		for (int i = 0; i < 4; i++) //Allow for up to a total of 4 directional/spot shadow casters.
@@ -74,6 +76,15 @@ namespace Crescent
 			m_ShadowRenderTargets.push_back(renderTarget);
 		}
 
+		//Temporary
+		m_PostProcessShader = Resources::LoadShader("Post Processing", "Resources/Shaders/ScreenQuadVertex.shader", "Resources/Shaders/PostProcessingFragment.shader");
+		m_PostProcessShader->UseShader();
+		m_PostProcessShader->SetUniformInteger("TexSource", 0);
+		m_PostProcessShader->SetUniformInteger("TexBloom1", 1);
+		m_PostProcessShader->SetUniformInteger("TexBloom2", 2);
+		m_PostProcessShader->SetUniformInteger("TexBloom3", 3);
+		m_PostProcessShader->SetUniformInteger("TexBloom4", 4);
+		m_PostProcessShader->SetUniformInteger("gMotion", 5);
 		//Global Uniform Buffer Object
 		//glGenBuffers(1, &m_GlobalUniformBufferID);
 		//glBindBuffer(GL_UNIFORM_BUFFER, m_GlobalUniformBufferID);
@@ -98,7 +109,7 @@ namespace Crescent
 		UpdateGlobalUniformBufferObjects();
 
 		//Set default OpenGL state.
-		m_GLStateCache->ToggleBlending(true);
+		m_GLStateCache->ToggleBlending(false);
 		m_GLStateCache->ToggleFaceCulling(true);
 		m_GLStateCache->SetCulledFace(GL_BACK);
 		m_GLStateCache->ToggleDepthTesting(true);
@@ -111,11 +122,13 @@ namespace Crescent
 		unsigned int attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
 		glDrawBuffers(4, attachments);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		m_GLStateCache->SetPolygonMode(m_WireframesEnabled ? GL_LINE : GL_FILL);
 
 		for (int i = 0; i < deferredRenderCommands.size(); i++)
 		{
 			RenderCustomCommand(&deferredRenderCommands[i], nullptr, false);
 		}
+		m_GLStateCache->SetPolygonMode(GL_FILL);
 
 		//Disable for next pass (shadow map generation).
 		attachments[1] = GL_NONE;
@@ -206,14 +219,41 @@ namespace Crescent
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_GBuffer->m_FramebufferID);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID); //Write to our default framebuffer.
 		glBlitFramebuffer(0, 0, m_GBuffer->m_FramebufferWidth, m_GBuffer->m_FramebufferHeight, 0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-
+		
 		//6) Custom Forward Render Pass
+		m_RenderTargetsCustom.push_back(nullptr);
+		for (unsigned int targetIndex = 0; targetIndex < m_RenderTargetsCustom.size(); targetIndex++)
+		{
+			RenderTarget* renderTarget = m_RenderTargetsCustom[targetIndex];
+			if (renderTarget)
+			{
+				glViewport(0, 0, renderTarget->m_FramebufferWidth, renderTarget->m_FramebufferHeight);
+				glBindFramebuffer(GL_FRAMEBUFFER, renderTarget->m_FramebufferID);
+				if (renderTarget->m_HasDepthAndStencilAttachments)
+				{
+					glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+				}
+				else
+				{
+					glClear(GL_COLOR_BUFFER_BIT);
+				}
+				m_Camera->m_ProjectionMatrix = glm::perspective(glm::radians(m_Camera->m_MouseZoom), (float)renderTarget->m_FramebufferWidth / (float)renderTarget->m_FramebufferHeight, 0.2f, 100.0f);
+			}
+			else
+			{
+				//Don't render to default framebuffer, but to custom target framebuffer which we will use for postprocessing.
+				glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
+				glBindFramebuffer(GL_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID);
+				m_Camera->m_ProjectionMatrix = glm::perspective(glm::radians(m_Camera->m_MouseZoom), (float)m_RenderWindowSize.x / (float)m_RenderWindowSize.y, 0.2f, 100.0f);
+			}
 
-		///Implement
+			///Render custom commands here. (Things with custom material).
+			//std::vector<RenderCommand> renderCommands = m_RenderQueue->
+		}
 
 		//7) Alpha Material Pass
-		glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
-		glBindFramebuffer(GL_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID);
+		//glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
+		//glBindFramebuffer(GL_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID);
 		///Alpha Render Commands Here.
 
 		//Render Light Mesh (as visual cue), if requested.
@@ -221,7 +261,7 @@ namespace Crescent
 		{
 			if ((*iterator)->m_RenderMesh)
 			{
-				m_MaterialLibrary->m_DebugLightMaterial->SetShaderVector3("lightColor", (*iterator)->m_LightColor* (*iterator)->m_LightIntensity * 0.25f);
+				m_MaterialLibrary->m_DebugLightMaterial->SetShaderVector3("lightColor", (*iterator)->m_LightColor * (*iterator)->m_LightIntensity * 0.25f);
 			
 				RenderCommand renderCommand;
 				renderCommand.m_Material = m_MaterialLibrary->m_DebugLightMaterial;
@@ -268,6 +308,7 @@ namespace Crescent
 
 
 		//11) Finally, Blit everything to our framebuffer for rendering.
+		std::vector<RenderCommand> postProcessingCommands = m_RenderQueue->RetrievePostProcessingRenderCommands();
 		BlitToMainFramebuffer(m_CustomRenderTarget->RetrieveColorAttachment(0));
 
 		m_RenderQueue->ClearQueuedCommands();
@@ -286,6 +327,7 @@ namespace Crescent
 		//Bloom
 		m_GBuffer->RetrieveColorAttachment(3)->BindTexture(5);
 
+		m_PostProcessShader->UseShader();
 		RenderMesh(m_NDCQuad);
 	}
 
@@ -293,7 +335,7 @@ namespace Crescent
 	void Renderer::RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& lightSpaceProjectionMatrix, const glm::mat4& lightSpaceViewMatrix)
 	{
 		Shader* shadowShader = m_MaterialLibrary->m_DirectionalShadowShader;
-		shadowShader->UseShader();
+		//shadowShader->UseShader();
 
 		shadowShader->SetUniformMat4("lightSpaceProjection", lightSpaceProjectionMatrix);
 		shadowShader->SetUniformMat4("lightSpaceView", lightSpaceViewMatrix);
@@ -311,6 +353,7 @@ namespace Crescent
 		directionalShader->SetUniformVector3("cameraPosition", m_Camera->m_CameraPosition);
 		directionalShader->SetUniformVector3("lightDirection", directionalLight->m_LightDirection);
 		directionalShader->SetUniformVector3("lightColor", glm::normalize(directionalLight->m_LightColor) * directionalLight->m_LightIntensity);
+		directionalShader->SetUniformBool("ShadowsEnabled", m_ShadowsEnabled);
 
 		if (directionalLight->m_ShadowMapRenderTarget)
 		{
@@ -334,6 +377,7 @@ namespace Crescent
 		glm::mat4 pointLightModelMatrix = glm::mat4(1.0f);
 		pointLightModelMatrix = glm::translate(pointLightModelMatrix, pointLight->m_LightPosition);
 		pointLightModelMatrix = glm::scale(pointLightModelMatrix, glm::vec3(pointLight->m_LightRadius));
+
 		pointLightShader->SetUniformMat4("projection", m_Camera->m_ProjectionMatrix);
 		pointLightShader->SetUniformMat4("view", m_Camera->GetViewMatrix());
 		pointLightShader->SetUniformMat4("model", pointLightModelMatrix);
@@ -366,7 +410,7 @@ namespace Crescent
 		material->RetrieveMaterialShader()->UseShader();
 		material->RetrieveMaterialShader()->SetUniformMat4("projection", m_Camera->m_ProjectionMatrix);
 		material->RetrieveMaterialShader()->SetUniformMat4("view", m_Camera->GetViewMatrix());
-		//material->RetrieveMaterialShader()->SetUniformVector3("cameraPosition", m_Camera->m_CameraPosition);
+		material->RetrieveMaterialShader()->SetUniformVector3("cameraPosition", m_Camera->m_CameraPosition);
 
 		if (customRenderCamera) //If a custom camera is defined, we will update our shader uniforms with its information as needed.
 		{
@@ -456,11 +500,9 @@ namespace Crescent
 	{
 		m_RenderWindowSize = glm::vec2((float)newWidth, (float)newHeight);
 		m_GBuffer->ResizeRenderTarget(newWidth, newHeight);
-	}
-
-	RenderTarget* Renderer::RetrieveCurrentRenderTarget()
-	{
-		return m_CurrentCustomRenderTarget;
+		m_CustomRenderTarget->ResizeRenderTarget(newWidth, newHeight);
+		m_PostProcessRenderTarget->ResizeRenderTarget(newWidth, newHeight);
+		m_MainRenderTarget->ResizeRenderTarget(newWidth, newHeight);
 	}
 
 	RenderTarget* Renderer::RetrieveMainRenderTarget()

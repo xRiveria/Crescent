@@ -695,6 +695,8 @@
     <None Include="Resources\Shaders\Defunct\TransparentVertex.shader" />
     <None Include="Resources\Shaders\LightDebugFragment.shader" />
     <None Include="Resources\Shaders\LightDebugVertex.shader" />
+    <None Include="Resources\Shaders\PostProcessingFragment.shader" />
+    <None Include="Resources\Shaders\ScreenQuadVertex.shader" />
     <None Include="Resources\Shaders\ShadowCastFragment.shader" />
     <None Include="Resources\Shaders\ShadowCastVertex.shader" />
     <None Include="Vendor\assimp\include\assimp\.editorconfig" />

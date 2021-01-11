@@ -80,8 +80,8 @@ namespace Crescent
 				if (m_Bitangents.size() > 0)
 				{
 					bufferData.push_back(m_Bitangents[i].x);
-					bufferData.push_back(m_Bitangents[i].z);
 					bufferData.push_back(m_Bitangents[i].y);
+					bufferData.push_back(m_Bitangents[i].z);
 				}
 			}
 		}
@@ -127,7 +127,7 @@ namespace Crescent
 		if (m_Indices.size() > 0)
 		{
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexBufferID);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_Indices.size(), &m_Indices[0], GL_STATIC_DRAW);
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_Indices.size() * sizeof(unsigned int), &m_Indices[0], GL_STATIC_DRAW);
 		}
 		if (interleaved)
 		{
@@ -141,8 +141,7 @@ namespace Crescent
 			size_t offset = 0;
 			glEnableVertexAttribArray(0);
 			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (GLvoid*)offset);
-			offset = 3 * sizeof(float);
-
+			offset += 3 * sizeof(float);
 			if (m_UV.size() > 0)
 			{
 				glEnableVertexAttribArray(1);
