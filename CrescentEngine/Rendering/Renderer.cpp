@@ -12,6 +12,7 @@
 #include "../Lighting/DirectionalLight.h"
 #include "../Lighting/PointLight.h"
 #include "../Rendering/Resources.h"
+#include "../Shading/TextureCube.h"
 #include <glm/gtc/type_ptr.hpp>
 
 //As of now, our renderer only supports Forward Pass Rendering.
@@ -437,7 +438,14 @@ namespace Crescent
 		auto* samplers = material->GetSamplerUniforms(); //Returns a map of a string (uniform name) and its corresponding uniform information.
 		for (auto iterator = samplers->begin(); iterator != samplers->end(); iterator++)
 		{
-			iterator->second.m_Texture->BindTexture(iterator->second.m_TextureUnit);
+			if (iterator->second.m_UniformType == Shader_Type_SamplerCube)
+			{
+				iterator->second.m_TextureCube->BindTextureCube(iterator->second.m_TextureUnit);
+			}
+			else
+			{
+				iterator->second.m_Texture->BindTexture(iterator->second.m_TextureUnit);
+			}
 		}
 
 		//Set uniform states of material.

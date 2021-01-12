@@ -57,11 +57,11 @@ namespace Crescent
 		RenderTarget* RetrieveCustomRenderTarget();
 
 	public:
-		///Make all states toggable through UI.
 		bool m_ShadowsEnabled = true;
 		bool m_LightsEnabled = true;
 		bool m_ShowDebugLightVolumes = true;
 		bool m_WireframesEnabled = false;
+		bool m_CubemapEnabled = true;
 
 	private:
 		//Renderer-specific logic for rendering a custom forward-pass command.

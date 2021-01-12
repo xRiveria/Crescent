@@ -43,6 +43,7 @@ namespace Crescent
 		void SetShaderInt(const std::string& uniformName, const int& value);
 		void SetShaderFloat(const std::string& uniformName, const float& value);
 		void SetShaderTexture(const std::string& uniformName, Texture* value, unsigned int textureUnit = 0);
+		void SetShaderTextureCube(const std::string& uniformName, TextureCube* value, unsigned int textureUnit = 0);
 		void SetShaderVector2(const std::string& uniformName, const glm::vec2& value);
 		void SetShaderVector3(const std::string& uniformName, const glm::vec3& value);
 		void SetShaderVector3(const std::string& uniformName, const glm::vec4& value);

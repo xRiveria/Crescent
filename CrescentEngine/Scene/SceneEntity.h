@@ -1,3 +1,4 @@
+#pragma once
 #include <glm/glm.hpp>
 #include <vector>
 
@@ -31,6 +32,8 @@ namespace Crescent
 		glm::vec3& RetrieveEntityRotation();
 
 		std::string RetrieveEntityName() const;
+
+		unsigned int RetrieveEntityID() const;
 
 		operator uint32_t() const
 		{

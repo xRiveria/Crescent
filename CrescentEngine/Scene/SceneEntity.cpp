@@ -80,4 +80,9 @@ namespace Crescent
 	{
 		return m_EntityName;
 	}
+
+	unsigned int SceneEntity::RetrieveEntityID() const
+	{
+		return m_EntityID;
+	}
 }

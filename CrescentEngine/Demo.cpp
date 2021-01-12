@@ -10,6 +10,7 @@
 #include "../Scene/Scene.h"
 #include "../Scene/SceneEntity.h"
 #include "../Scene/SceneHierarchyPanel.h"
+#include "../Scene/Entities/Skybox.h"
 #include "Shading/Material.h"
 #include "Rendering/GLStateCache.h"
 #include "Rendering/RendererSettingsPanel.h"
@@ -17,7 +18,18 @@
 #include "Rendering/RenderTarget.h"
 #include "Lighting/DirectionalLight.h"
 #include "Lighting/PointLight.h"
+#include "Shading/TextureCube.h"
 #include <glm/gtc/type_ptr.hpp>
+
+/// To Implement
+/// - Material Creation via UI & Controlling Properties via UI as well.
+/// - Global state switching for renderer through UI - Done
+/// - Adding all lights as scene entities.
+/// - Reintegrate our model loading support.
+/// - Upload and replace texture maps for models through file system and UI.
+/// - IBL/Tonemapping - In Progress
+/// - Add Color Table - Done
+
 
 struct CoreSystems
 {
@@ -76,19 +88,28 @@ int main(int argc, int argv[])
 	Crescent::Material* defaultMaterial = g_CoreSystems.m_Renderer->CreateMaterial();
 
 	Crescent::Cube* cube = new Crescent::Cube();
+	Crescent::Sphere* sphere = new Crescent::Sphere(16, 16);
 
 	Crescent::SceneEntity* sceneCube = demoScene->ConstructNewEntity(cube, defaultMaterial);
 	Crescent::SceneEntity* sceneCube2 = demoScene->ConstructNewEntity(cube, defaultMaterial);
-	sceneCube2->SetEntityPosition(glm::vec3(-0.40, -1.20, 0.50));
+	Crescent::SceneEntity* sceneSphere = demoScene->ConstructNewEntity(sphere, defaultMaterial);
+	
+	//Background
+	Crescent::Skybox* sceneSkybox = new Crescent::Skybox();
+
+
+	sceneCube2->SetEntityPosition(glm::vec3(0.00f, -1.00f, 0.00f));
+	sceneCube2->SetEntityScale(glm::vec3(4.50f, 0.30f, 5.60f));
+	sceneSphere->SetEntityPosition(glm::vec3(0.0f, 2.4f, 0.0f));
 
 	/// To Do: Convert directional light into a screen entity so it may be used in the scene hierarchy.
 	Crescent::DirectionalLight directionalLight;
-	directionalLight.m_LightColor = glm::vec3(1.0f, 0.89f, 0.7f);
-	directionalLight.m_LightIntensity = 50.0f;
+	directionalLight.m_LightColor = glm::vec3(0.258824f, 0.258824f, 0.435294f);
+	directionalLight.m_LightIntensity = 15.0f;
 
 	Crescent::PointLight pointLight;
 	pointLight.m_LightRadius = 2.5f;
-	pointLight.m_LightColor = glm::vec3(1.0f, 0.3f, 0.05f);
+	pointLight.m_LightColor = glm::vec3(1.0f, 1.0f, 1.0f);
 	pointLight.m_LightIntensity = 50.0f;
 	pointLight.m_RenderMesh = true;
 
@@ -127,6 +148,8 @@ int main(int argc, int argv[])
 
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube2);
+		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneSphere);
+		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneSkybox);
 
 		g_CoreSystems.m_Renderer->RenderAllQueueItems();
 

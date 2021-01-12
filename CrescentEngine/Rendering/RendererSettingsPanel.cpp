@@ -15,17 +15,10 @@ namespace Crescent
 	{
 		ImGui::Begin("Settings");
 
-		if (ImGui::Checkbox("Enable Wireframes", &m_RendererContext->RetrieveGLStateCache()->m_WireframesEnabled))
-		{
-			if (m_RendererContext->RetrieveGLStateCache()->m_WireframesEnabled)
-			{
-				m_RendererContext->RetrieveGLStateCache()->SetPolygonMode(GL_LINE);
-			}
-			else
-			{
-				m_RendererContext->RetrieveGLStateCache()->SetPolygonMode(GL_FILL);
-			}
-		}
+		ImGui::Checkbox("Enable Wireframes", &m_RendererContext->m_WireframesEnabled);
+		ImGui::Checkbox("Enable Lighting", &m_RendererContext->m_LightsEnabled);
+		ImGui::Checkbox("Enable Shadows", &m_RendererContext->m_ShadowsEnabled);
+		ImGui::Checkbox("Enable Lighting Volumes", &m_RendererContext->m_ShowDebugLightVolumes);
 
 		ImGui::End();
 

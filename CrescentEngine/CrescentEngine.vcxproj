@@ -194,6 +194,7 @@
     <ClCompile Include="Rendering\RendererSettingsPanel.cpp" />
     <ClCompile Include="Rendering\RenderTarget.cpp" />
     <ClCompile Include="Rendering\Resources.cpp" />
+    <ClCompile Include="Scene\Entities\Skybox.cpp" />
     <ClCompile Include="Shading\Shader.cpp" />
     <ClCompile Include="Core\Defunct\MainLoop.cpp" />
     <ClCompile Include="Models\BoneMapper.cpp" />
@@ -207,13 +208,14 @@
     <ClCompile Include="Core\Defunct\VertexBuffer.cpp" />
     <ClCompile Include="Shading\Material.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
-    <ClCompile Include="Rendering\Cubemap.cpp" />
+    <ClCompile Include="Core\Defunct\Cubemap.cpp" />
     <ClCompile Include="Rendering\Framebuffer.cpp" />
     <ClCompile Include="Rendering\RenderQueue.cpp" />
     <ClCompile Include="Shading\Texture.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Scene\SceneEntity.cpp" />
     <ClCompile Include="Scene\SceneHierarchyPanel.cpp" />
+    <ClCompile Include="Shading\TextureCube.cpp" />
     <ClCompile Include="Vendor\glm\detail\glm.cpp" />
     <ClCompile Include="Vendor\imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -277,6 +279,7 @@
     <ClInclude Include="Rendering\RendererSettingsPanel.h" />
     <ClInclude Include="Rendering\RenderTarget.h" />
     <ClInclude Include="Rendering\Resources.h" />
+    <ClInclude Include="Scene\Entities\Skybox.h" />
     <ClInclude Include="Shading\Shader.h" />
     <ClInclude Include="Models\BoneMapper.h" />
     <ClInclude Include="Models\Mesh.h" />
@@ -299,8 +302,10 @@
     <ClInclude Include="Scene\SceneHierarchyPanel.h" />
     <ClInclude Include="Scene\SceneEntity.h" />
     <ClInclude Include="Shading\ShaderUtilities.h" />
+    <ClInclude Include="Shading\TextureCube.h" />
     <ClInclude Include="Utilities\Camera.h" />
-    <ClInclude Include="Rendering\Cubemap.h" />
+    <ClInclude Include="Core\Defunct\Cubemap.h" />
+    <ClInclude Include="Utilities\ColorTable.h" />
     <ClInclude Include="Utilities\StringID.h" />
     <ClInclude Include="Utilities\Timestep.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\ai_assert.h" />

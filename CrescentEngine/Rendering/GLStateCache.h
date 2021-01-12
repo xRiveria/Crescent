@@ -27,9 +27,6 @@ namespace Crescent
 
 		void SetPolygonMode(GLenum polygonMode);
 
-	public:
-		bool m_WireframesEnabled = false;
-
 	private:
 		//Toggles
 		bool m_DepthTestEnabled = false;

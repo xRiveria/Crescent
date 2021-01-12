@@ -1,9 +1,12 @@
 #include "CrescentPCH.h"
 #include "Scene.h"
 #include "SceneEntity.h"
+#include "Entities/Skybox.h"
 
 namespace Crescent
 {
+	unsigned int Scene::m_SceneEntityCounterID = 0;
+
 	Scene::Scene(bool isEmptyScene)
 	{
 		ConstructDefaultScene();
@@ -35,6 +38,11 @@ namespace Crescent
 		m_SceneEntities.push_back(newEntity);
 		
 		return newEntity;
+	}
+
+	void Scene::ConstructSkyboxEntity(Skybox* skyBox)
+	{
+		m_SceneEntities.push_back(skyBox);
 	}
 
 	void Scene::DeleteSceneEntity(SceneEntity* sceneEntity)

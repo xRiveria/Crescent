@@ -4,6 +4,7 @@
 namespace Crescent
 {
 	class Texture;
+	class TextureCube;
 
 	enum Shader_Type
 	{
@@ -13,6 +14,7 @@ namespace Crescent
 		Shader_Type_Sampler1D,
 		Shader_Type_Sampler2D,
 		Shader_Type_Sampler3D,
+		Shader_Type_SamplerCube,
 		Shader_Type_Vector2,
 		Shader_Type_Vector3,
 		Shader_Type_Vector4,
@@ -68,6 +70,7 @@ namespace Crescent
 		union
 		{
 			Texture* m_Texture;
+			TextureCube* m_TextureCube;
 		};
 
 		UniformSamplerValue() {}
