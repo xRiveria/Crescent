@@ -53,6 +53,17 @@ namespace Crescent
 			UpdateCameraVectors();
 		}
 
+		Camera(glm::vec3 position, glm::vec3 forward, glm::vec3 up)
+		{
+			m_CameraPosition = position;
+			m_CameraFront = forward;
+			m_CameraUp = up;
+			m_CameraYaw = g_CameraYaw;
+			m_CameraPitch = g_CameraPitch;
+
+			UpdateCameraVectors();
+		}
+
 		//Returns the view matrix calculated using Euler Angles and the LookAt matrix.
 		glm::mat4 GetViewMatrix()
 		{

@@ -58,6 +58,11 @@ namespace Crescent
 			stbi_image_free(textureData);
 			return texture;
 		}
+
+		texture.m_TextureWidth = textureWidth;
+		texture.m_TextureHeight = textureHeight;
+
+		return texture;
 	}
 
 	Texture TextureLoader::LoadHDRTexture(const std::string& filePath)
@@ -103,14 +108,14 @@ namespace Crescent
 		return texture;
 	}
 
-	TextureCube TextureLoader::LoadTextureCube(const std::string& right, const std::string& left, const std::string& top, const std::string& bottom, const std::string& front, const std::string& back)
+	TextureCube TextureLoader::LoadTextureCube(const std::string& top, const std::string& bottom, const std::string& left, const std::string& right, const std::string& front, const std::string& back)
 	{
 		TextureCube textureCube;
 
 		//Disable Y flip on Cubemaps.
 		stbi_set_flip_vertically_on_load(false);
 
-		std::vector<std::string> faces = { right, left, top, bottom, front, back };
+		std::vector<std::string> faces = { top, bottom, left, right, front, back };
 		for (unsigned int i = 0; i < faces.size(); i++)
 		{
 			int textureWidth, textureHeight, componentCount;

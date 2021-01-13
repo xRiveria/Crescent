@@ -19,16 +19,17 @@
 #include "Lighting/DirectionalLight.h"
 #include "Lighting/PointLight.h"
 #include "Shading/TextureCube.h"
+#include "Rendering/EnvironmentalPBR.h"
+#include "Rendering/PBR.h"
 #include <glm/gtc/type_ptr.hpp>
 
 /// To Implement
 /// - Material Creation via UI & Controlling Properties via UI as well.
-/// - Global state switching for renderer through UI - Done
 /// - Adding all lights as scene entities.
 /// - Reintegrate our model loading support.
 /// - Upload and replace texture maps for models through file system and UI.
-/// - IBL/Tonemapping - In Progress
-/// - Add Color Table - Done
+/// - IBL/Tonemapping - In Progress (Submit to Render Queue & PBR)
+/// - Make Color Table Work
 
 
 struct CoreSystems
@@ -48,6 +49,7 @@ CoreSystems g_CoreSystems; //Creates our core engine systems.
 //Temporary
 glm::vec3 lightDirection = glm::vec3(-0.3f, -1.7f, 0.6f);
 glm::vec3 pointLightPosition = glm::vec3(1.2f, 0.0f, 0.0f);
+float lodLevel = 0.0f;
 
 //Input Callbacks
 void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::RendererSettingsPanel* rendererPanel);
@@ -59,6 +61,11 @@ void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset);
 
 int main(int argc, int argv[])
 {
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+	glfwWindowHint(GLFW_RESIZABLE, true);
 	glfwWindowHint(GLFW_SAMPLES, 16);
 
 	//Initializes GLFW.
@@ -72,7 +79,7 @@ int main(int argc, int argv[])
 
 	//Initializes OpenGL.
 	g_CoreSystems.m_Renderer = new Crescent::Renderer();
-	g_CoreSystems.m_Renderer->InitializeRenderer(1280.0f, 720.0f);
+	g_CoreSystems.m_Renderer->InitializeRenderer(1280.0f, 720.0f, &g_CoreSystems.m_Camera);
 	g_CoreSystems.m_Renderer->SetSceneCamera(&g_CoreSystems.m_Camera);
 
 	//Setups ImGui
@@ -96,7 +103,8 @@ int main(int argc, int argv[])
 	
 	//Background
 	Crescent::Skybox* sceneSkybox = new Crescent::Skybox();
-
+	Crescent::EnvironmentalPBR* pbrEnvironment = g_CoreSystems.m_Renderer->RetrieveSkyCapture();
+	sceneSkybox->SetCubeMap(pbrEnvironment->m_PrefilteredTextureCube);
 
 	sceneCube2->SetEntityPosition(glm::vec3(0.00f, -1.00f, 0.00f));
 	sceneCube2->SetEntityScale(glm::vec3(4.50f, 0.30f, 5.60f));
@@ -145,6 +153,7 @@ int main(int argc, int argv[])
 		//Rendering
 		pointLight.m_LightPosition = pointLightPosition;
 		directionalLight.m_LightDirection = lightDirection;
+		sceneSkybox->m_Material->SetShaderFloat("lodLevel", lodLevel);
 
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube2);
@@ -172,6 +181,7 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 	ImGui::Begin("Lighting - Temporary");
 	ImGui::DragFloat3("Point Light Position 1", glm::value_ptr(pointLightPosition), 0.10f);
 	ImGui::DragFloat3("Light Direction", glm::value_ptr(lightDirection), 0.10f);
+	ImGui::DragFloat("Sample Level", &lodLevel, 0.1f);
 	ImGui::End();
 
 	sceneHierarchyPanel->RenderSceneEditorUI();

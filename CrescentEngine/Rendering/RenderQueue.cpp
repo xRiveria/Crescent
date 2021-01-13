@@ -10,7 +10,7 @@ namespace Crescent
 		m_Renderer = renderer;
 	}
 
-	void RenderQueue::PushToRenderQueue(Mesh* mesh, Material* material, glm::mat4 transform)
+	void RenderQueue::PushToRenderQueue(Mesh* mesh, Material* material, glm::mat4 transform, RenderTarget* renderTarget)
 	{
 		RenderCommand renderCommand = {};
 
@@ -18,8 +18,34 @@ namespace Crescent
 		renderCommand.m_Material = material;
 		renderCommand.m_Transform = transform;
 
-		//Here, we will have different queue types for different rendering styles. We can filter with material types. For now, we only have Forward Rendering.
-		m_DeferredRenderingCommands.push_back(renderCommand);
+		//Here, we will have different queue types for different rendering styles. We can filter with material types.
+		if (material->m_BlendingEnabled)
+		{
+			//Add to blending command queue.
+		}
+		else
+		{
+			//We check the type of material we have and process differently where necessary.
+			if (material->m_MaterialType == Material_Default)
+			{
+				m_DeferredRenderingCommands.push_back(renderCommand);
+			}
+			else if (material->m_MaterialType == Material_Custom)
+			{
+				//Check if this render target has been pushed before. If so, we add to its vector.
+				//Otherwise, we create a new vector with this render target. 
+				if (m_CustomRenderCommands.find(renderTarget) != m_CustomRenderCommands.end())
+				{
+					m_CustomRenderCommands[renderTarget].push_back(renderCommand);
+				}
+				else
+				{
+					m_CustomRenderCommands[renderTarget] = std::vector<RenderCommand>();
+					m_CustomRenderCommands[renderTarget].push_back(renderCommand);
+				}
+			}
+			//One more check if its a post-processing material. 
+		}
 	}
 
 	std::vector<RenderCommand> RenderQueue::RetrieveDeferredRenderingCommands()
@@ -48,6 +74,13 @@ namespace Crescent
 		}
 
 		return renderCommands;
+	}
+
+	std::vector<RenderCommand> RenderQueue::RetrieveCustomRenderCommands(RenderTarget* renderTarget, bool cullingEnabled)
+	{
+		//Only do culling when on our main/null render target. Culling code here.
+
+		return m_CustomRenderCommands[renderTarget]; //Return render commands belonging to the passed in render target.
 	}
 
 	std::vector<RenderCommand> RenderQueue::RetrievePostProcessingRenderCommands()

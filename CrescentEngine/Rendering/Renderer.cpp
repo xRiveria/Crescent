@@ -27,13 +27,19 @@ namespace Crescent
 	{
 	}
 
-	void Renderer::InitializeRenderer(const int& renderWindowWidth, const int& renderWindowHeight)
+	void Renderer::InitializeRenderer(const int& renderWindowWidth, const int& renderWindowHeight, Camera* sceneCamera)
 	{
 		if (glewInit() != GLEW_OK)
 		{
 			CrescentError("Failed to initialize GLEW.")
 		}
 		CrescentInfo("Successfully initialized GLEW.");
+
+		//Configure Default OpenGL State
+		m_GLStateCache = new GLStateCache();
+		m_GLStateCache->ToggleDepthTesting(true);
+		m_GLStateCache->ToggleFaceCulling(true);
+		glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); //For our prefiltered environment maps to prevent seams. 
 
 		m_DeviceRendererInformation = (char*)glGetString(GL_RENDERER);
 		m_DeviceVendorInformation = (char*)glGetString(GL_VENDOR);
@@ -44,6 +50,8 @@ namespace Crescent
 		glClearDepth(1.0f);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
+		m_Camera = sceneCamera;
+
 		//Core Primitives
 		m_NDCQuad = new Quad();
 		m_DebugLightMesh = new Sphere(16, 16);
@@ -51,12 +59,7 @@ namespace Crescent
 
 		//Core Systems
 		m_RenderQueue = new RenderQueue(this);
-		m_GLStateCache = new GLStateCache();
 		m_MaterialLibrary = new MaterialLibrary(m_GBuffer);
-
-		//Configure Default OpenGL State
-		m_GLStateCache->ToggleDepthTesting(true);
-		m_GLStateCache->ToggleFaceCulling(true);
 
 		//Render Targets
 		m_MainRenderTarget = new RenderTarget(1, 1, GL_FLOAT, 1, true);
@@ -77,6 +80,18 @@ namespace Crescent
 			m_ShadowRenderTargets.push_back(renderTarget);
 		}
 
+		//Cubemap
+		glGenFramebuffers(1, &m_CubemapFramebufferID);
+		glGenRenderbuffers(1, &m_CubemapDepthRenderbufferID);
+
+		m_PBR = new PBR(this);
+
+		//Default PBR Pre-Compute (Get a more default oriented HDR map for this).
+		Texture* milkyWayMap = Resources::LoadHDRTexture("Sky Environment", "Resources/Skybox/MilkyWay/Milkyway_small.hdr");
+		//Texture* milkyWayMap = Resources::LoadHDRTexture("Sky Environment", "Resources/Skybox/AlleyWay/Alley.hdr");
+		EnvironmentalPBR* environmentalCapture = m_PBR->ProcessEquirectangularMap(milkyWayMap);
+		SetSkyCapture(environmentalCapture);
+
 		//Temporary
 		m_PostProcessShader = Resources::LoadShader("Post Processing", "Resources/Shaders/ScreenQuadVertex.shader", "Resources/Shaders/PostProcessingFragment.shader");
 		m_PostProcessShader->UseShader();
@@ -86,6 +101,7 @@ namespace Crescent
 		m_PostProcessShader->SetUniformInteger("TexBloom3", 3);
 		m_PostProcessShader->SetUniformInteger("TexBloom4", 4);
 		m_PostProcessShader->SetUniformInteger("gMotion", 5);
+
 		//Global Uniform Buffer Object
 		//glGenBuffers(1, &m_GlobalUniformBufferID);
 		//glBindBuffer(GL_UNIFORM_BUFFER, m_GlobalUniformBufferID);
@@ -247,8 +263,16 @@ namespace Crescent
 				m_Camera->m_ProjectionMatrix = glm::perspective(glm::radians(m_Camera->m_MouseZoom), (float)m_RenderWindowSize.x / (float)m_RenderWindowSize.y, 0.2f, 100.0f);
 			}
 
-			///Render custom commands here. (Things with custom material).
-			//std::vector<RenderCommand> renderCommands = m_RenderQueue->
+			///Render custom commands here. (Things with custom material). By default, we will have 1 for the sky.
+			std::vector<RenderCommand> renderCommands = m_RenderQueue->RetrieveCustomRenderCommands(renderTarget);
+
+			//Iterate over all render commands and execute.
+			m_GLStateCache->SetPolygonMode(m_WireframesEnabled ? GL_LINE : GL_FILL);
+			for (unsigned int i = 0; i < renderCommands.size(); i++)
+			{
+				RenderCustomCommand(&renderCommands[i], nullptr);
+			}
+			m_GLStateCache->SetPolygonMode(GL_FILL);
 		}
 
 		//7) Alpha Material Pass
@@ -329,6 +353,101 @@ namespace Crescent
 
 		m_PostProcessShader->UseShader();
 		RenderMesh(m_NDCQuad);
+	}
+
+	void Renderer::Blit(Texture* textureSource, RenderTarget* targetDestination, Material* material, std::string textureUniformName)
+	{
+		//If a destination is given, bind to its framebuffer.
+		if (targetDestination)
+		{
+			glViewport(0, 0, targetDestination->m_FramebufferWidth, targetDestination->m_FramebufferHeight);
+			glBindFramebuffer(GL_FRAMEBUFFER, targetDestination->m_FramebufferID);
+			if (targetDestination->m_HasDepthAndStencilAttachments)
+			{
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+			}
+			else
+			{
+				glClear(GL_COLOR_BUFFER_BIT);
+			}
+		}
+		//Else, we bind to the default framebuffer.
+		else
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, m_MainRenderTarget->m_FramebufferID);
+			glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		}
+		//If no material was given, we use our default blit material.
+		if (!material)
+		{
+			material = m_MaterialLibrary->m_DefaultBlitMaterial;
+		}
+		//If a source render target is given, we use its color buffer as input to the material shader.
+		if (textureSource)
+		{
+			material->SetShaderTexture(textureUniformName, textureSource, 0);
+		}
+		//Render screen-space material to Quad which will be displayed in the destination's buffers.
+		RenderCommand renderCommand;
+		renderCommand.m_Material = material;
+		renderCommand.m_Mesh = m_NDCQuad;
+		RenderCustomCommand(&renderCommand, nullptr);
+	}
+
+	void Renderer::RenderCubemap(SceneEntity* sceneEntity, TextureCube* cubemapTarget, glm::vec3 position, unsigned int mipmappingLevel)
+	{
+		//We create a render queue just for this operation as to not conflict with our main command buffer. Rendering a cubemap in PBR is after all a chain of commands in itself.
+		RenderQueue renderQueue(this);
+		renderQueue.PushToRenderQueue(sceneEntity->m_Mesh, sceneEntity->m_Material, sceneEntity->RetrieveEntityTransform());
+
+		std::vector<RenderCommand> renderCommands = renderQueue.RetrieveCustomRenderCommands(nullptr);
+		RenderCubemap(renderCommands, cubemapTarget, position, mipmappingLevel);
+	}
+
+	void Renderer::RenderCubemap(std::vector<RenderCommand>& renderCommands, TextureCube* cubeTarget, glm::vec3 position, unsigned int mipmappingLevel)
+	{
+		//Define 6 camera directions/lookup vectors.
+		Camera faceCameras[6] =
+		{
+			Camera(position, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+			Camera(position, glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+			Camera(position, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+			Camera(position, glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+			Camera(position, glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+			Camera(position, glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))
+		};
+
+		//Resize target dimensions based on the mipmap level we're rendering.
+		float width = (float)cubeTarget->m_TextureCubeFaceWidth * std::pow(0.5f, mipmappingLevel);
+		float height = (float)cubeTarget->m_TextureCubeFaceHeight * std::pow(0.5f, mipmappingLevel);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, m_CubemapFramebufferID);
+		glBindRenderbuffer(GL_RENDERBUFFER, m_CubemapDepthRenderbufferID);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_CubemapDepthRenderbufferID);
+
+		//Resize the relevant buffers.
+		glViewport(0, 0, width, height);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_CubemapFramebufferID);
+
+		for (unsigned int i = 0; i < 6; i++) //Inject the actual texture data (We only default initialized it).
+		{
+			Camera* camera = &faceCameras[i];
+			camera->m_ProjectionMatrix = glm::perspective(glm::radians(90.0f), width / height, 0.1f, 100.0f);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubeTarget->m_TextureCubeID, mipmappingLevel);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			for (unsigned int i = 0; i < renderCommands.size(); i++)
+			{
+				//Cubemap generation only works with custom materials.
+				if (renderCommands[i].m_Material->m_MaterialType != Material_Custom)
+				{
+					CrescentError("Material used to generate cubemap is not a Custom Material.");
+				}
+				RenderCustomCommand(&renderCommands[i], camera);
+			}
+		}
 	}
 
 	//Renders from the light's point of view. 
@@ -414,7 +533,9 @@ namespace Crescent
 
 		if (customRenderCamera) //If a custom camera is defined, we will update our shader uniforms with its information as needed.
 		{
-
+			material->RetrieveMaterialShader()->SetUniformMat4("projection", customRenderCamera->m_ProjectionMatrix);
+			material->RetrieveMaterialShader()->SetUniformMat4("view", customRenderCamera->GetViewMatrix());
+			material->RetrieveMaterialShader()->SetUniformVector3("cameraPosition", customRenderCamera->m_CameraPosition);
 		}
 
 		//==============================================
@@ -555,6 +676,16 @@ namespace Crescent
 	void Renderer::AddLightSource(PointLight* pointLight)
 	{
 		m_PointLights.push_back(pointLight);
+	}
+
+	EnvironmentalPBR* Renderer::RetrieveSkyCapture()
+	{
+		return m_PBR->RetrieveSkyCapture();
+	}
+
+	void Renderer::SetSkyCapture(EnvironmentalPBR* capturedEnvironment)
+	{
+		m_PBR->SetSkyCapture(capturedEnvironment);
 	}
 
 	void Renderer::UpdateGlobalUniformBufferObjects()

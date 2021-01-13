@@ -19,8 +19,10 @@ namespace Crescent
 
 		m_TextureCubeFaceWidth = cubeFaceWidth;
 		m_TextureCubeFaceHeight = cubeFaceHeight;
+
 		m_TextureCubeFormat = textureCubeFormat;
 		m_TextureCubeDataType = textureCubeDataType;
+
 		m_MipmappingEnabled = mipmappingEnabled;
 
 		if (textureCubeDataType == GL_HALF_FLOAT && textureCubeFormat == GL_RGB)

@@ -26,6 +26,8 @@ namespace Crescent
 		//Material* CreateCustomMaterial(Shader* shader);				//These have the custom flag set (will be rnedered in the forward pass).
 		//Material* CreatePostProcessingMaterial(Shader* shader);		//These have the post-processing flags set (will be rendered after deferred/forward pass).
 
+		Material* m_DefaultBlitMaterial;
+
 	private:
 		//Generate all default template materials.
 		void GenerateDefaultMaterials();

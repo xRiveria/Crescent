@@ -189,8 +189,10 @@
     <ClCompile Include="Memory\TextureLoader.cpp" />
     <ClCompile Include="Models\DefaultPrimitives.cpp" />
     <ClCompile Include="Demo.cpp" />
+    <ClCompile Include="Rendering\EnvironmentalPBR.cpp" />
     <ClCompile Include="Rendering\GLStateCache.cpp" />
     <ClCompile Include="Rendering\MaterialLibrary.cpp" />
+    <ClCompile Include="Rendering\PBR.cpp" />
     <ClCompile Include="Rendering\RendererSettingsPanel.cpp" />
     <ClCompile Include="Rendering\RenderTarget.cpp" />
     <ClCompile Include="Rendering\Resources.cpp" />
@@ -273,8 +275,10 @@
     <ClInclude Include="Memory\ShaderLoader.h" />
     <ClInclude Include="Memory\TextureLoader.h" />
     <ClInclude Include="Models\DefaultPrimitives.h" />
+    <ClInclude Include="Rendering\EnvironmentalPBR.h" />
     <ClInclude Include="Rendering\GLStateCache.h" />
     <ClInclude Include="Rendering\MaterialLibrary.h" />
+    <ClInclude Include="Rendering\PBR.h" />
     <ClInclude Include="Rendering\RenderCommand.h" />
     <ClInclude Include="Rendering\RendererSettingsPanel.h" />
     <ClInclude Include="Rendering\RenderTarget.h" />
@@ -672,8 +676,11 @@
     <ClInclude Include="Vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\CellWorking\Cell\build\shaders\screen_quad.vs" />
     <None Include="Resources\Shaders\Constants\BRDF.shader" />
     <None Include="Resources\Shaders\Constants\Constants.shader" />
+    <None Include="Resources\Shaders\Constants\Sampling.shader" />
+    <None Include="Resources\Shaders\PBR\CubeSampleVertex.shader" />
     <None Include="Resources\Shaders\Deferred\DirectionalFragment.shader" />
     <None Include="Resources\Shaders\Deferred\PointLightFragment.shader" />
     <None Include="Resources\Shaders\Deferred\PointLightVertex.shader" />
@@ -702,10 +709,16 @@
     <None Include="Resources\Shaders\Defunct\TransparentVertex.shader" />
     <None Include="Resources\Shaders\LightDebugFragment.shader" />
     <None Include="Resources\Shaders\LightDebugVertex.shader" />
+    <None Include="Resources\Shaders\PBR\IntegrateBRDFFragment.shader" />
+    <None Include="Resources\Shaders\PBR\IrradianceCaptureFragment.shader" />
+    <None Include="Resources\Shaders\PBR\PrefilterCaptureFragment.shader" />
+    <None Include="Resources\Shaders\PBR\SphericalToCubeFragment.shader" />
     <None Include="Resources\Shaders\PostProcessingFragment.shader" />
     <None Include="Resources\Shaders\ScreenQuadVertex.shader" />
     <None Include="Resources\Shaders\ShadowCastFragment.shader" />
     <None Include="Resources\Shaders\ShadowCastVertex.shader" />
+    <None Include="Resources\Shaders\SkyboxFragment.shader" />
+    <None Include="Resources\Shaders\SkyboxVertex.shader" />
     <None Include="Vendor\assimp\include\assimp\.editorconfig" />
     <None Include="Vendor\assimp\include\assimp\color4.inl" />
     <None Include="Vendor\assimp\include\assimp\material.inl" />

@@ -16,13 +16,16 @@ namespace Crescent
 		RenderQueue() {}
 		RenderQueue(Renderer* renderer);
 
-		void PushToRenderQueue(Mesh* model, Material* material, glm::mat4 transform);
+		void PushToRenderQueue(Mesh* model, Material* material, glm::mat4 transform, RenderTarget* renderTarget = nullptr);
 		std::vector<RenderCommand> RetrieveDeferredRenderingCommands();
 
 		//Returns the list of all render commands with mesh shadow casting.
 		std::vector<RenderCommand> RetrieveShadowCastingRenderCommands();
 
 		std::vector<RenderCommand> RetrievePostProcessingRenderCommands();
+		//Returns a list of custom render commands for a specific render target.
+		std::vector<RenderCommand> RetrieveCustomRenderCommands(RenderTarget* renderTarget, bool cullingEnabled = false);
+
 		void ClearQueuedCommands();
 
 	private:
