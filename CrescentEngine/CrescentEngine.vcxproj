@@ -218,6 +218,8 @@
     <ClCompile Include="Scene\SceneEntity.cpp" />
     <ClCompile Include="Scene\SceneHierarchyPanel.cpp" />
     <ClCompile Include="Shading\TextureCube.cpp" />
+    <ClCompile Include="Utilities\Camera.cpp" />
+    <ClCompile Include="Utilities\FlyCamera.cpp" />
     <ClCompile Include="Vendor\glm\detail\glm.cpp" />
     <ClCompile Include="Vendor\imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -310,6 +312,7 @@
     <ClInclude Include="Utilities\Camera.h" />
     <ClInclude Include="Core\Defunct\Cubemap.h" />
     <ClInclude Include="Utilities\ColorTable.h" />
+    <ClInclude Include="Utilities\FlyCamera.h" />
     <ClInclude Include="Utilities\StringID.h" />
     <ClInclude Include="Utilities\Timestep.h" />
     <ClInclude Include="Vendor\assimp\include\assimp\ai_assert.h" />

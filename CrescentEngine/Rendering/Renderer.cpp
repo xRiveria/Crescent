@@ -4,7 +4,7 @@
 #include "GLStateCache.h"
 #include "MaterialLibrary.h"
 #include "../Models/DefaultPrimitives.h"
-#include "../Utilities/Camera.h"
+#include "../Utilities/FlyCamera.h"
 #include "../Scene/SceneEntity.h"
 #include "../Models/Model.h"
 #include "../Shading/Shader.h"
@@ -253,14 +253,14 @@ namespace Crescent
 				{
 					glClear(GL_COLOR_BUFFER_BIT);
 				}
-				m_Camera->m_ProjectionMatrix = glm::perspective(glm::radians(m_Camera->m_MouseZoom), (float)renderTarget->m_FramebufferWidth / (float)renderTarget->m_FramebufferHeight, 0.2f, 100.0f);
+				m_Camera->SetPerspectiveMatrix(glm::radians(60.0f), ((float)renderTarget->m_FramebufferWidth / (float)renderTarget->m_FramebufferHeight), 0.2f, 100.0f);
 			}
 			else
 			{
 				//Don't render to default framebuffer, but to custom target framebuffer which we will use for postprocessing.
 				glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
 				glBindFramebuffer(GL_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID);
-				m_Camera->m_ProjectionMatrix = glm::perspective(glm::radians(m_Camera->m_MouseZoom), (float)m_RenderWindowSize.x / (float)m_RenderWindowSize.y, 0.2f, 100.0f);
+				m_Camera->SetPerspectiveMatrix(m_Camera->m_FieldOfView, m_RenderWindowSize.x / m_RenderWindowSize.y, 0.2f, 100.0f);
 			}
 
 			///Render custom commands here. (Things with custom material). By default, we will have 1 for the sky.
@@ -498,7 +498,7 @@ namespace Crescent
 		pointLightModelMatrix = glm::scale(pointLightModelMatrix, glm::vec3(pointLight->m_LightRadius));
 
 		pointLightShader->SetUniformMat4("projection", m_Camera->m_ProjectionMatrix);
-		pointLightShader->SetUniformMat4("view", m_Camera->GetViewMatrix());
+		pointLightShader->SetUniformMat4("view", m_Camera->m_ViewMatrix);
 		pointLightShader->SetUniformMat4("model", pointLightModelMatrix);
 
 		RenderMesh(m_DeferredPointLightMesh);
@@ -528,13 +528,13 @@ namespace Crescent
 		///To implement with Uniform Buffer Objects.
 		material->RetrieveMaterialShader()->UseShader();
 		material->RetrieveMaterialShader()->SetUniformMat4("projection", m_Camera->m_ProjectionMatrix);
-		material->RetrieveMaterialShader()->SetUniformMat4("view", m_Camera->GetViewMatrix());
+		material->RetrieveMaterialShader()->SetUniformMat4("view", m_Camera->m_ViewMatrix);
 		material->RetrieveMaterialShader()->SetUniformVector3("cameraPosition", m_Camera->m_CameraPosition);
 
 		if (customRenderCamera) //If a custom camera is defined, we will update our shader uniforms with its information as needed.
 		{
 			material->RetrieveMaterialShader()->SetUniformMat4("projection", customRenderCamera->m_ProjectionMatrix);
-			material->RetrieveMaterialShader()->SetUniformMat4("view", customRenderCamera->GetViewMatrix());
+			material->RetrieveMaterialShader()->SetUniformMat4("view", customRenderCamera->m_ViewMatrix);
 			material->RetrieveMaterialShader()->SetUniformVector3("cameraPosition", customRenderCamera->m_CameraPosition);
 		}
 

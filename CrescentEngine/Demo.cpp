@@ -3,7 +3,7 @@
 #include "Editor.h"
 #include "Shading/Texture.h"
 #include "Utilities/Timestep.h"
-#include "Utilities/Camera.h"
+#include "../Utilities/FlyCamera.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/RenderQueue.h"
 #include <imgui/imgui.h>
@@ -28,9 +28,7 @@
 /// - Adding all lights as scene entities.
 /// - Reintegrate our model loading support.
 /// - Upload and replace texture maps for models through file system and UI.
-/// - IBL/Tonemapping - In Progress (Submit to Render Queue & PBR)
 /// - Make Color Table Work
-
 
 struct CoreSystems
 {
@@ -38,7 +36,7 @@ struct CoreSystems
 	Crescent::Editor m_Editor; //Setups our ImGui context.
 	Crescent::Renderer* m_Renderer; //Setups our OpenGL context.
 	Crescent::Timestep m_Timestep; //Setups our Timestep.
-	Crescent::Camera m_Camera = { glm::vec3(0.0f, 0.0f, 5.0) }; //Setups our Camera.
+	Crescent::FlyCamera m_Camera = { glm::vec3(0.0f, 1.0f, 0.0) }; //Setups our Camera.
 
 	float m_LastFrameTime = 0.0f;
 };
@@ -49,7 +47,7 @@ CoreSystems g_CoreSystems; //Creates our core engine systems.
 //Temporary
 glm::vec3 lightDirection = glm::vec3(-0.3f, -1.7f, 0.6f);
 glm::vec3 pointLightPosition = glm::vec3(1.2f, 0.0f, 0.0f);
-float lodLevel = 0.0f;
+float lodLevel = 1.5f;
 
 //Input Callbacks
 void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::RendererSettingsPanel* rendererPanel);
@@ -133,7 +131,7 @@ int main(int argc, int argv[])
 			g_CoreSystems.m_Renderer->SetRenderingWindowSize(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
 			CrescentInfo("Resized Render Target!");
 		}
-		g_CoreSystems.m_Camera.m_ProjectionMatrix = glm::perspective(glm::radians(g_CoreSystems.m_Camera.m_MouseZoom), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
+		g_CoreSystems.m_Camera.SetPerspectiveMatrix(glm::radians(60.0f), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
 
 		//Retrieve Delta Time
 		float currentFrame = g_CoreSystems.m_Window.RetrieveCurrentTime();
@@ -144,7 +142,7 @@ int main(int argc, int argv[])
 		g_CoreSystems.m_Window.PollEvents();
 		ProcessKeyboardEvents(g_CoreSystems.m_Window.RetrieveWindow());
 	
-		g_CoreSystems.m_Camera.UpdateCameraVectors();
+		g_CoreSystems.m_Camera.Update(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds());
 
 		//Randomize
 		pointLight.m_LightRadius = 1.5f + 0.1 * std::cos(std::sin(glfwGetTime() * 1.37 + 0 * 7.31) * 3.1 + 0);
@@ -236,58 +234,62 @@ void ProcessKeyboardEvents(GLFWwindow* window)
 	const float cameraSpeed = g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds() * 2.5f;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Forward, cameraSpeed);
+		g_CoreSystems.m_Camera.InputKey(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), Crescent::CameraForward);
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Backward, cameraSpeed);
+		g_CoreSystems.m_Camera.InputKey(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), Crescent::CameraBack);
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Left, cameraSpeed);
+		g_CoreSystems.m_Camera.InputKey(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), Crescent::CameraLeft);
 	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		g_CoreSystems.m_Camera.ProcessKeyboardEvents(Crescent::CameraMovement::Right, cameraSpeed);
+		g_CoreSystems.m_Camera.InputKey(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), Crescent::CameraRight);
 	}
 }
 
+bool g_CameraMode = false;
 void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
 	{
-		Crescent::g_CameraMode = true;
+		g_CameraMode = true;
 	}
 	else
 	{
-		Crescent::g_CameraMode = false;
+		g_CameraMode = false;
 	}
 }
 
+bool g_FirstMove = true;
+float g_LastXPosition = 640.0f;
+float g_LastYPosition = 360.0f;
 void CameraMovementCallback(GLFWwindow* window, double xPos, double yPos)
 {
-	if (Crescent::g_IsCameraFirstMove)
+	if (g_FirstMove)
 	{
-		Crescent::g_CameraLastXPosition = xPos;
-		Crescent::g_CameraLastYPosition = yPos;
-		Crescent::g_IsCameraFirstMove = false;
+		g_LastXPosition = xPos;
+		g_LastYPosition = yPos;
+		g_FirstMove = false;
 	}
 
-	float xOffset = xPos - Crescent::g_CameraLastXPosition;
-	float yOffset = Crescent::g_CameraLastYPosition - yPos; //Reversed since Y Coordinates go from bottom to top.
-	Crescent::g_CameraLastXPosition = xPos;
+	float xOffset = xPos - g_LastXPosition;
+	float yOffset = g_LastYPosition - yPos;  //Reversed since Y Coordinates go from bottom to left.
 
-	Crescent::g_CameraLastYPosition = yPos;
+	g_LastXPosition = xPos;
+	g_LastYPosition = yPos;
 
-	if (Crescent::g_CameraMode)
+	if (g_CameraMode)
 	{
-		g_CoreSystems.m_Camera.ProcessMouseMovement(xOffset, yOffset);
+		g_CoreSystems.m_Camera.InputMouse(xOffset, yOffset);
 	}
 }
 
 void CameraZoomCallback(GLFWwindow* window, double xOffset, double yOffset)
 {
-	g_CoreSystems.m_Camera.ProcessMouseScroll(yOffset);
+	g_CoreSystems.m_Camera.InputScroll(xOffset, yOffset);
 }
 
 //This is a callback function that is called whenever a window is resized.
