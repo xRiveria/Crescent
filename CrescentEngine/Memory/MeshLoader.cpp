@@ -44,8 +44,7 @@ namespace Crescent
     {
         //Note that we allocate memory ourselves and pass memory responsibility to calling resource manager. 
         //The resource manager is responsible for holding the scene entity pointer and deleting where appropriate.
-
-        SceneEntity* node = new SceneEntity("Model" + fileDirectory, 0);
+        SceneEntity* node = new SceneEntity(aiNode->mName.C_Str(), 0);
 
         for (unsigned int i = 0; i < aiNode->mNumMeshes; ++i)
         {
@@ -71,7 +70,7 @@ namespace Crescent
             //Otherwise, the meshes are considered on equal depth of its children
             else
             {
-                SceneEntity* child = new SceneEntity("Model" + i, 0);
+                SceneEntity* child = new SceneEntity(aiScene->mMeshes[i]->mName.C_Str(), 0);
                 child->m_Mesh = mesh;
                 child->m_Material = material;
                 node->AddChildEntity(child);

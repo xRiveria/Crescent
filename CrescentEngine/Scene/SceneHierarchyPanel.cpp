@@ -1,15 +1,21 @@
 #include "CrescentPCH.h"
 #include "SceneHierarchyPanel.h"
 #include "Scene.h"
+#include "../Core/Window.h"
 #include "SceneEntity.h"
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
+#include "../Shading/Texture.h"
+#include "../Shading/Material.h"
+#include "../Rendering/Resources.h"
+#include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h> //Allows us to retrieve the Window handle.
 
 namespace Crescent
 {
-    SceneHierarchyPanel::SceneHierarchyPanel(Scene* sceneContext)
-    {
-        m_SceneContext = sceneContext;
+    SceneHierarchyPanel::SceneHierarchyPanel(Scene* sceneContext, Window* windowContext) : m_SceneContext(sceneContext), m_WindowContext(windowContext)
+    {	
         m_CurrentlySelectedEntity = nullptr;
     }
 
@@ -47,6 +53,75 @@ namespace Crescent
 			DrawSelectedEntityComponents(m_CurrentlySelectedEntity);
 		}
 		ImGui::End();
+
+		//Material
+		ImGui::Begin("Material");
+		if (m_CurrentlySelectedEntity != nullptr)
+		{
+			DrawSelectedEntityMaterialSettings(m_CurrentlySelectedEntity);
+		}
+		ImGui::End();
+	}
+
+	void SceneHierarchyPanel::DrawSelectedEntityMaterialSettings(SceneEntity* selectedEntity)
+	{
+		if (selectedEntity->m_Material != nullptr)
+		{
+			DrawSelectedEntityMaterialTextureComponent(selectedEntity, "Albedo", "TexAlbedo", 3);
+			DrawSelectedEntityMaterialTextureComponent(selectedEntity, "Normal", "TexNormal", 4);
+			DrawSelectedEntityMaterialTextureComponent(selectedEntity, "Metallic", "TexMetallic", 5);
+			DrawSelectedEntityMaterialTextureComponent(selectedEntity, "Roughness", "TexRoughness", 6);
+			DrawSelectedEntityMaterialTextureComponent(selectedEntity, "Ambient Occlusion", "TexAO", 7);
+		}
+	}
+
+	std::optional<std::string> SceneHierarchyPanel::OpenFile(const char* filter)
+	{
+		OPENFILENAMEA fileDialog; //Passes data to and from GetOpenFileName & GetSaveFileName. It stores settings used to create the dialog box and the results of the user's selection. 
+		CHAR szFile[260] = { 0 }; //Our selected file path's buffer.
+		ZeroMemory(&fileDialog, sizeof(OPENFILENAME)); //Initialize openedFile's memory to 0.
+
+		fileDialog.lStructSize = sizeof(OPENFILENAME); //Sets the struct size. We do this for every Win32 struct.
+		fileDialog.hwndOwner = glfwGetWin32Window(m_WindowContext->RetrieveWindow()); //Gets our currently open window and retrieves it HWND which we set as the struct's owner.
+		fileDialog.lpstrFile = szFile; //Buffer for our file.
+		fileDialog.nMaxFile = sizeof(szFile); //Size of our file buffer.
+		fileDialog.lpstrFilter = filter; //File filter.
+		fileDialog.nFilterIndex = 1; //Which filter is set by default. 
+		fileDialog.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR; //The last flag is very important. If you don't do this and call OpenFileName, it will change the working directory for your application to the folder you open the window from.  
+
+		if (GetOpenFileNameA(&fileDialog) == true)
+		{
+			return fileDialog.lpstrFile; //We return the file path of the file we open and create a string out of the char* path.
+		}
+
+		return std::nullopt; //Return empty string if no file is selected. It means the dialog has been cancelled.
+	}
+
+	void SceneHierarchyPanel::DrawSelectedEntityMaterialTextureComponent(SceneEntity* selectedEntity, const std::string& nodeName, const std::string& uniformTextureName, int uniformTextureUnit)
+	{
+		if (selectedEntity->m_Material->m_SamplerUniforms[uniformTextureName].m_Texture != nullptr)
+		{
+			if (ImGui::CollapsingHeader(nodeName.c_str()))
+			{
+				ImGui::Spacing();
+				ImGui::Image((void*)selectedEntity->m_Material->m_SamplerUniforms[uniformTextureName].m_Texture->RetrieveTextureID(), { 100.0f, 100.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+				ImGui::SameLine();
+				if (ImGui::Button("Load New Texture"))
+				{
+					std::optional<std::string> filePath = OpenFile("Textures");
+					if (filePath.has_value())
+					{
+						std::string path = filePath.value();
+						std::string filePath = path.substr(0, path.find_last_of("/"));
+
+						Texture* loadedTexture = Resources::LoadTexture(filePath, filePath, GL_TEXTURE_2D, GL_RGB, true);
+						selectedEntity->m_Material->SetShaderTexture(uniformTextureName, loadedTexture, uniformTextureUnit);				
+					}
+				}
+
+				ImGui::Spacing();
+			}
+		}
 	}
 
 	void SceneHierarchyPanel::DrawEntityUI(SceneEntity* sceneEntity)
@@ -63,6 +138,14 @@ namespace Crescent
 
 		if (isExpanded)
 		{
+			for (int i = 0; i < sceneEntity->m_ChildEntities.size(); i++)
+			{
+				SceneEntity* childEntity = sceneEntity->m_ChildEntities[i];
+				if (childEntity->m_Material != nullptr)
+				{
+					DrawEntityUI(childEntity);
+				}
+			}
 			ImGui::TreePop(); //Pop it for now since we don't have child entity support yet.
 		}
 	}
@@ -174,4 +257,5 @@ namespace Crescent
 		ImGui::Columns(1);
 		ImGui::PopID();
 	}
+
 }

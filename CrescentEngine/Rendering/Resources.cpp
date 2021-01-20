@@ -23,6 +23,10 @@ namespace Crescent
 
 	void Resources::Clean()
 	{
+		for (auto iterator = m_SceneMeshes.begin(); iterator != m_SceneMeshes.end(); iterator++)
+		{
+			delete iterator->second;
+		}
 	}
 
 	Shader* Resources::LoadShader(const std::string& name, const std::string& vertexShaderPath, const std::string& fragmentShaderPath)
@@ -72,16 +76,16 @@ namespace Crescent
 
 		Texture texture = TextureLoader::LoadTexture(filePath, textureTarget, textureFormat, srgb);
 
-		CrescentInfo("Successfully loaded: " + filePath + ".");
-
 		//Make sure that the texture was properly loaded.
 		if (texture.m_TextureWidth > 0)
 		{
+			CrescentInfo("Successfully loaded: " + filePath + ".");
 			Resources::m_Textures[stringID] = texture;
 			return &Resources::m_Textures[stringID];
 		}
 		else
 		{
+			CrescentLoad("Error loading texture file at: " + filePath + ".");
 			return nullptr;
 		}
 	}

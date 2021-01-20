@@ -20,27 +20,7 @@ namespace Crescent
 
 	unsigned int TextureFromFile(const std::string& path, const std::string& directory);
 
-	std::optional<std::string> Model::OpenFile(const char* filter)
-	{
-		OPENFILENAMEA fileDialog; //Passes data to and from GetOpenFileName & GetSaveFileName. It stores settings used to create the dialog box and the results of the user's selection. 
-		CHAR szFile[260] = { 0 }; //Our selected file path's buffer.
-		ZeroMemory(&fileDialog, sizeof(OPENFILENAME)); //Initialize openedFile's memory to 0.
-		
-		fileDialog.lStructSize = sizeof(OPENFILENAME); //Sets the struct size. We do this for every Win32 struct.
-		fileDialog.hwndOwner = glfwGetWin32Window(m_WindowContext->RetrieveWindow()); //Gets our currently open window and retrieves it HWND which we set as the struct's owner.
-		fileDialog.lpstrFile = szFile; //Buffer for our file.
-		fileDialog.nMaxFile = sizeof(szFile); //Size of our file buffer.
-		fileDialog.lpstrFilter = filter; //File filter.
-		fileDialog.nFilterIndex = 1; //Which filter is set by default. 
-		fileDialog.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR; //The last flag is very important. If you don't do this and call OpenFileName, it will change the working directory for your application to the folder you open the window from.  
-		
-		if (GetOpenFileNameA(&fileDialog) == true)
-		{
-			return fileDialog.lpstrFile; //We return the file path of the file we open and create a string out of the char* path.
-		}
-		
-		return std::nullopt; //Return empty string if no file is selected. It means the dialog has been cancelled.
-	}
+
 
 	void Model::DrawAnimatedModel(const float& deltaTime, bool renderShadowMap, Shader& shader, unsigned int shadowMapTextureID, const glm::vec3& modelScale, const glm::vec3& modelTranslation)
 	{
@@ -569,5 +549,9 @@ namespace Crescent
 		result = convert.str();
 
 		return convert.str();		
+	}
+	std::optional<std::string> Model::OpenFile(const char* filter)
+	{
+		return std::optional<std::string>();
 	}
 }

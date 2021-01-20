@@ -25,12 +25,10 @@
 #include "Rendering/Resources.h"
 
 /// To Implement
-/// - Bring in default normal/roughness maps and TBN matrix.
 /// - Material Creation via UI & Controlling Properties via UI as well.
 /// - Adding all lights as scene entities.
-/// - Reintegrate our model loading support.
-/// - Upload and replace texture maps for models through file system and UI.
 /// - Make Color Table Work
+/// - File System
 
 struct CoreSystems
 {
@@ -88,7 +86,7 @@ int main(int argc, int argv[])
 	g_CoreSystems.m_Editor.InitializeImGui();
 
 	Crescent::Scene* demoScene = new Crescent::Scene();
-	Crescent::SceneHierarchyPanel* sceneHierarchy = new Crescent::SceneHierarchyPanel(demoScene);
+	Crescent::SceneHierarchyPanel* sceneHierarchy = new Crescent::SceneHierarchyPanel(demoScene, &g_CoreSystems.m_Window);
 	Crescent::RendererSettingsPanel* rendererSettingsPanel = new Crescent::RendererSettingsPanel(g_CoreSystems.m_Renderer);
 
 	//===========================================
@@ -106,6 +104,9 @@ int main(int argc, int argv[])
 	Crescent::SceneEntity* backpack = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Backpack", "Resources/Models/Stormtrooper/source/silly_dancing.fbx");
 	sponza->SetEntityPosition(glm::vec3(0.00f, -1.00f, 0.00f));
 	sponza->SetEntityScale(0.01f);
+
+	backpack->SetEntityPosition(glm::vec3(4.10f, 0.0f, -0.10f));
+	backpack->SetEntityRotation(glm::vec3(0.0f, glm::radians(-90.0f), 0.0f));
 
 	//Background
 	Crescent::Skybox* sceneSkybox = new Crescent::Skybox();

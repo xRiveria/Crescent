@@ -10,6 +10,11 @@ namespace Crescent
 		m_Renderer = renderer;
 	}
 
+	RenderQueue::~RenderQueue()
+	{
+		ClearQueuedCommands();
+	}
+
 	void RenderQueue::PushToRenderQueue(Mesh* mesh, Material* material, glm::mat4 transform, RenderTarget* renderTarget)
 	{
 		RenderCommand renderCommand = {};
@@ -91,7 +96,7 @@ namespace Crescent
 	void RenderQueue::ClearQueuedCommands()
 	{
 		m_DeferredRenderingCommands.clear();
-
+		m_PostProcessingRenderCommands.clear();
 		m_CustomRenderCommands.clear();
 	}
 }

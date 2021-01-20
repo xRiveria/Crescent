@@ -75,9 +75,10 @@ namespace Crescent
 		bool m_ShadowCasting = true;
 		bool m_ShadowReceiving = true;
 
+		std::map<std::string, UniformSamplerValue> m_SamplerUniforms;
+
 	private:
 		Shader* m_Shader;
 		std::map<std::string, UniformValue> m_Uniforms;
-		std::map<std::string, UniformSamplerValue> m_SamplerUniforms;
 	};
 }

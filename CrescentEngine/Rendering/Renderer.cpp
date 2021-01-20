@@ -27,6 +27,21 @@ namespace Crescent
 
 	Renderer::~Renderer()
 	{
+		delete m_RenderQueue;
+		delete m_NDCQuad;
+		delete m_MaterialLibrary;
+		delete m_GBuffer;
+		delete m_CustomRenderTarget;
+
+		for (int i = 0; i < m_ShadowRenderTargets.size(); i++)
+		{
+			delete m_ShadowRenderTargets[i];
+		}
+
+		delete m_DebugLightMesh;
+		delete m_PostProcessRenderTarget;
+		delete m_PostProcessor;
+		delete m_PBR;
 	}
 
 	void Renderer::InitializeRenderer(const int& renderWindowWidth, const int& renderWindowHeight, Camera* sceneCamera)
@@ -359,6 +374,7 @@ namespace Crescent
 		BlitToMainFramebuffer(postProcessingCommands.size() % 2 == 0 ? m_CustomRenderTarget->RetrieveColorAttachment(0) : m_PostProcessRenderTarget->RetrieveColorAttachment(0));
 
 		m_RenderQueue->ClearQueuedCommands();
+		m_RenderTargetsCustom.clear();
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}

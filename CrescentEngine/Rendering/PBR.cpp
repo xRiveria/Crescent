@@ -47,6 +47,14 @@ namespace Crescent
 
 	PBR::~PBR()
 	{
+		delete m_PBRCaptureCube;
+		delete m_SceneEnvironmentCube;
+		delete m_RenderTargetBRDFLUT;
+		delete m_PBRHDRToCubemapMaterial;
+		delete m_PBRIrradianceCaptureMaterial;
+		delete m_PBRPrefilterCaptureMaterial;
+		delete m_PBRIntegrateBRDFMaterial;
+		delete m_SkyCapture;
 	}
 
 	EnvironmentalPBR* PBR::ProcessEquirectangularMap(Texture* environmentalMap)

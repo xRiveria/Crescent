@@ -49,12 +49,12 @@ namespace Crescent
 	public:
 		Mesh* m_Mesh = nullptr;
 		Material* m_Material = nullptr;
+		std::vector<SceneEntity*> m_ChildEntities;
 
 	private:
 		//Scene Information
 		std::string m_EntityName = "Entity";
 		SceneEntity* m_ParentEntity;
-		std::vector<SceneEntity*> m_ChildEntities;
 
 		glm::mat4 m_EntityTransform = glm::mat4(1.0f);
 		glm::vec3 m_EntityPosition = glm::vec3(0.0f);

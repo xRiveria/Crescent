@@ -43,7 +43,7 @@ namespace Crescent
 
 	SceneEntity* Scene::ConstructNewEntity(SceneEntity* sceneEntity)
 	{
-		SceneEntity* newEntity = new SceneEntity("MeshHehe", Scene::m_SceneEntityCounterID++);
+		SceneEntity* newEntity = new SceneEntity(sceneEntity->RetrieveEntityName(), Scene::m_SceneEntityCounterID++);
 
 		newEntity->m_Mesh = sceneEntity->m_Mesh;
 		newEntity->m_Material = sceneEntity->m_Material;
@@ -58,8 +58,9 @@ namespace Crescent
 		{
 			SceneEntity* child = nodeStack.top();
 			nodeStack.pop();
+
 			//Similarly, create SceneNode for each child and push to scene node memory list.
-			SceneEntity* newChild = new SceneEntity("MeshHehe", Scene::m_SceneEntityCounterID++);
+			SceneEntity* newChild = new SceneEntity(sceneEntity->RetrieveEntityName(), Scene::m_SceneEntityCounterID++);
 			newChild->m_Mesh = child->m_Mesh;
 			newChild->m_Material = child->m_Material;
 			newEntity->AddChildEntity(newChild);

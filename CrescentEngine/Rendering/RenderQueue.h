@@ -13,8 +13,8 @@ namespace Crescent
 	class RenderQueue
 	{
 	public:
-		RenderQueue() {}
 		RenderQueue(Renderer* renderer);
+		~RenderQueue();
 
 		void PushToRenderQueue(Mesh* model, Material* material, glm::mat4 transform, RenderTarget* renderTarget = nullptr);
 		std::vector<RenderCommand> RetrieveDeferredRenderingCommands();
