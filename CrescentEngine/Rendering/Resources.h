@@ -8,6 +8,9 @@ namespace Crescent
 	class Texture;
 	class TextureCube;
 	class Shader;
+	class Scene;
+	class SceneEntity;
+	class Renderer;
 
 	/*
 		Global resource manager. This class manages and maintains all resource memory used throughout the rendering application.
@@ -35,6 +38,10 @@ namespace Crescent
 		static TextureCube* LoadTextureCube(const std::string& name, const std::string& folderPath);
 		static TextureCube* RetrieveTextureCube(const std::string& name);
 
+		//Meshes
+		static SceneEntity* LoadMesh(Renderer* rendererContext, Scene* sceneContext, const std::string& meshName, const std::string& filePath);
+		static SceneEntity* RetrieveMesh(const std::string& meshName);
+
 	private:
 		//Disallow creation of any Resources object. This is a static object.
 		Resources();
@@ -44,5 +51,6 @@ namespace Crescent
 		static std::map<unsigned int, Shader> m_Shaders;
 		static std::map<unsigned int, Texture> m_Textures;
 		static std::map<unsigned int, TextureCube> m_TextureCubes;
+		static std::map<unsigned int, SceneEntity*> m_SceneMeshes;
 	};
 }

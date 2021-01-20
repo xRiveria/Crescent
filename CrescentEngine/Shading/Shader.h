@@ -24,8 +24,10 @@ namespace Crescent
 		void SetUniformFloat(const std::string name, float value);
 		void SetUniformInteger(std::string name, int value);
 		void SetUniformBool(std::string name, bool value);
+		void SetUniformVector2(std::string name, glm::vec2 value);
 		void SetUniformVector3(std::string name, glm::vec3 value);
 		void SetUniformMat4(std::string name, glm::mat4 value);
+		void SetUniformVectorArray(std::string name, int size, const std::vector<glm::vec3>& values);
 		void SetUniformVectorMat4(std::string identifier, std::vector<glm::mat4> value);
 
 		inline unsigned int GetShaderID() const { return m_ShaderID; }

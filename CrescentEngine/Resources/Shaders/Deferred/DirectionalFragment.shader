@@ -6,9 +6,9 @@ in vec2 TexCoords;
 #include ../Constants/Constants.shader
 #include ../Constants/BRDF.shader
 
-uniform sampler2D gPosition;
-uniform sampler2D gNormal;
-uniform sampler2D gAlbedo;
+uniform sampler2D gPositionMetallic;
+uniform sampler2D gNormalRoughness;
+uniform sampler2D gAlbedoAO;
 
 uniform vec3 lightDirection;
 uniform vec3 lightColor;
@@ -59,30 +59,30 @@ float ShadowFactor(sampler2D shadowMap, vec4 fragPosLightSpace, vec3 N, vec3 L)
 
 void main()
 {
-    vec4 albedoAO = texture(gAlbedo, TexCoords);
-    vec4 normalRoughness = texture(gNormal, TexCoords);
-    vec4 positionMetallic = texture(gPosition, TexCoords);  //Metallic, Roughness and AO are for future support.
+    vec4 albedoAO = texture(gAlbedoAO, TexCoords);
+    vec4 normalRoughness = texture(gNormalRoughness, TexCoords);
+    vec4 positionMetallic = texture(gPositionMetallic, TexCoords);
 
-    vec3 worldPosition = positionMetallic.xyz;
+    vec3 worldPos = positionMetallic.xyz;
     vec3 albedo = albedoAO.rgb;
     vec3 normal = normalRoughness.rgb;
-    float roughness = 0.5f;
-    float metallic = 0.5f;
+    float roughness = normalRoughness.a;
+    float metallic = positionMetallic.a;
 
-    //Lighting Input
+    // lighting input
     vec3 N = normalize(normal);
-    vec3 V = normalize(cameraPosition.xyz - worldPosition);
+    vec3 V = normalize(cameraPosition.xyz - worldPos); // view-space camera is (0, 0, 0): (0, 0, 0) - viewPos = -viewPos
     vec3 L = normalize(-lightDirection);
     vec3 H = normalize(V + L);
 
-    vec3 F0 = vec3(0.04f);
+    vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, metallic);
 
-    //Calulate Light Radiance
+    // calculate light radiance    
     vec3 radiance = lightColor;
 
-    //Light Shadow
-    vec4 fragPosLightSpace = lightShadowViewProjection * vec4(worldPosition, 1.0);
+    // light shadow
+    vec4 fragPosLightSpace = lightShadowViewProjection * vec4(worldPos, 1.0);
     float shadow = ShadowFactor(lightShadowMap, fragPosLightSpace, N, L);
 
     // cook-torrance brdf
@@ -103,6 +103,6 @@ void main()
     vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL * (1.0 - shadow);
 
     FragColor.rgb = Lo;
-
-    FragColor.a = 1.0f;
+    // FragColor.rgb = vec3(shadow);
+    FragColor.a = 1.0;
 }

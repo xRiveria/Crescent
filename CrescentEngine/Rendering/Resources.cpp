@@ -2,15 +2,19 @@
 #include "Resources.h"
 #include "../Memory/ShaderLoader.h"
 #include "../Memory/TextureLoader.h"
+#include "../Memory/MeshLoader.h"
 #include "../Shading/Texture.h"
 #include "../Shading/TextureCube.h"
 #include "../Utilities/StringID.h"
+#include "../Scene/Scene.h"
+#include "../Scene/SceneEntity.h"
 
 namespace Crescent
 {
 	std::map<unsigned int, Shader> Resources::m_Shaders = std::map<unsigned int, Shader>();
 	std::map<unsigned int, Texture> Resources::m_Textures = std::map<unsigned int, Texture>();
 	std::map<unsigned int, TextureCube> Resources::m_TextureCubes = std::map<unsigned int, TextureCube>();
+	std::map<unsigned int, SceneEntity*> Resources::m_SceneMeshes = std::map<unsigned int, SceneEntity*>();
 
 	void Resources::InitializeResourceManager()
 	{
@@ -54,7 +58,7 @@ namespace Crescent
 		}
 	}
 
-	Texture* Crescent::Resources::LoadTexture(const std::string& name, const std::string& filePath, GLenum textureTarget, GLenum textureFormat, bool srgb)
+	Texture* Resources::LoadTexture(const std::string& name, const std::string& filePath, GLenum textureTarget, GLenum textureFormat, bool srgb)
 	{
 		unsigned int stringID = SID(name);
 
@@ -151,6 +155,37 @@ namespace Crescent
 		else
 		{
 			CrescentError("Requested Texture Cube: " + name + " not found.");
+			return nullptr;
+		}
+	}
+
+	SceneEntity* Resources::LoadMesh(Renderer* rendererContext, Scene* sceneContext, const std::string& meshName, const std::string& filePath)
+	{
+		unsigned int stringID = SID(meshName);
+
+		//Check if mesh exists.
+		if (Resources::m_SceneMeshes.find(stringID) != Resources::m_SceneMeshes.end())
+		{
+			return sceneContext->ConstructNewEntity(Resources::m_SceneMeshes[stringID]);
+		}
+
+		SceneEntity* sceneEntity = MeshLoader::LoadMesh(rendererContext, filePath);
+		Resources::m_SceneMeshes[stringID] = sceneEntity;
+
+		return sceneContext->ConstructNewEntity(sceneEntity);
+	}
+
+	SceneEntity* Resources::RetrieveMesh(const std::string& meshName)
+	{
+		unsigned int stringID = SID(meshName);
+
+		if (Resources::m_SceneMeshes.find(stringID) != Resources::m_SceneMeshes.end())
+		{
+			//return Scene::ConstructNewEntity(Resources::m_SceneMeshes[stringID]);
+		}
+		else
+		{
+			CrescentError("Requested Mesh: " + meshName + " not found.");
 			return nullptr;
 		}
 	}

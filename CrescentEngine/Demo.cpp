@@ -22,8 +22,10 @@
 #include "Rendering/EnvironmentalPBR.h"
 #include "Rendering/PBR.h"
 #include <glm/gtc/type_ptr.hpp>
+#include "Rendering/Resources.h"
 
 /// To Implement
+/// - Bring in default normal/roughness maps and TBN matrix.
 /// - Material Creation via UI & Controlling Properties via UI as well.
 /// - Adding all lights as scene entities.
 /// - Reintegrate our model loading support.
@@ -45,9 +47,10 @@ struct CoreSystems
 CoreSystems g_CoreSystems; //Creates our core engine systems.
 
 //Temporary
-glm::vec3 lightDirection = glm::vec3(-0.3f, -1.7f, 0.6f);
+glm::vec3 lightDirection = glm::vec3(0.2f, -1.0f, 0.25f);
+float lightDirectionIntensity = 50.0f;
 glm::vec3 pointLightPosition = glm::vec3(1.2f, 0.0f, 0.0f);
-float lodLevel = 1.5f;
+float lodLevel = 2.5f;
 
 //Input Callbacks
 void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::RendererSettingsPanel* rendererPanel);
@@ -64,7 +67,7 @@ int main(int argc, int argv[])
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 	glfwWindowHint(GLFW_RESIZABLE, true);
-	glfwWindowHint(GLFW_SAMPLES, 16);
+	glfwWindowHint(GLFW_SAMPLES, 64);
 
 	//Initializes GLFW.
 	g_CoreSystems.m_Window.CreateNewWindow("Crescent Engine", 1280.0f, 720.0f);
@@ -93,29 +96,33 @@ int main(int argc, int argv[])
 	Crescent::Material* defaultMaterial = g_CoreSystems.m_Renderer->CreateMaterial();
 
 	Crescent::Cube* cube = new Crescent::Cube();
-	Crescent::Sphere* sphere = new Crescent::Sphere(16, 16);
+	//Crescent::Sphere* sphere = new Crescent::Sphere(16, 16);
 
 	Crescent::SceneEntity* sceneCube = demoScene->ConstructNewEntity(cube, defaultMaterial);
-	Crescent::SceneEntity* sceneCube2 = demoScene->ConstructNewEntity(cube, defaultMaterial);
-	Crescent::SceneEntity* sceneSphere = demoScene->ConstructNewEntity(sphere, defaultMaterial);
-	
+	//Crescent::SceneEntity* sceneCube2 = demoScene->ConstructNewEntity(cube, defaultMaterial);
+	//Crescent::SceneEntity* sceneSphere = demoScene->ConstructNewEntity(sphere, defaultMaterial);
+
+	Crescent::SceneEntity* sponza = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Sponza", "Resources/Models/Sponza/sponza.obj");
+	Crescent::SceneEntity* backpack = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Backpack", "Resources/Models/Stormtrooper/source/silly_dancing.fbx");
+	sponza->SetEntityPosition(glm::vec3(0.00f, -1.00f, 0.00f));
+	sponza->SetEntityScale(0.01f);
+
 	//Background
 	Crescent::Skybox* sceneSkybox = new Crescent::Skybox();
 	Crescent::EnvironmentalPBR* pbrEnvironment = g_CoreSystems.m_Renderer->RetrieveSkyCapture();
 	sceneSkybox->SetCubeMap(pbrEnvironment->m_PrefilteredTextureCube);
 
-	sceneCube2->SetEntityPosition(glm::vec3(0.00f, -1.00f, 0.00f));
-	sceneCube2->SetEntityScale(glm::vec3(4.50f, 0.30f, 5.60f));
-	sceneSphere->SetEntityPosition(glm::vec3(0.0f, 2.4f, 0.0f));
+	//sceneCube2->SetEntityPosition(glm::vec3(0.00f, -1.00f, 0.00f));
+	//sceneCube2->SetEntityScale(glm::vec3(4.50f, 0.30f, 5.60f));
+	//sceneSphere->SetEntityPosition(glm::vec3(0.0f, 2.4f, 0.0f));
 
 	/// To Do: Convert directional light into a screen entity so it may be used in the scene hierarchy.
 	Crescent::DirectionalLight directionalLight;
-	directionalLight.m_LightColor = glm::vec3(0.258824f, 0.258824f, 0.435294f);
-	directionalLight.m_LightIntensity = 15.0f;
+	directionalLight.m_LightColor = glm::vec3(1.0f, 0.89f, 0.7f);
 
 	Crescent::PointLight pointLight;
 	pointLight.m_LightRadius = 2.5f;
-	pointLight.m_LightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+	pointLight.m_LightColor = glm::vec3(1.0f, 0.3f, 0.05f);
 	pointLight.m_LightIntensity = 50.0f;
 	pointLight.m_RenderMesh = true;
 
@@ -131,7 +138,10 @@ int main(int argc, int argv[])
 			g_CoreSystems.m_Renderer->SetRenderingWindowSize(g_CoreSystems.m_Editor.RetrieveViewportWidth(), g_CoreSystems.m_Editor.RetrieveViewportHeight());
 			CrescentInfo("Resized Render Target!");
 		}
-		g_CoreSystems.m_Camera.SetPerspectiveMatrix(glm::radians(60.0f), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
+		if (g_CoreSystems.m_Editor.RetrieveViewportWidth() > 0.1f)
+		{
+			g_CoreSystems.m_Camera.SetPerspectiveMatrix(glm::radians(60.0f), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
+		}
 
 		//Retrieve Delta Time
 		float currentFrame = g_CoreSystems.m_Window.RetrieveCurrentTime();
@@ -151,12 +161,15 @@ int main(int argc, int argv[])
 		//Rendering
 		pointLight.m_LightPosition = pointLightPosition;
 		directionalLight.m_LightDirection = lightDirection;
+		directionalLight.m_LightIntensity = lightDirectionIntensity;
 		sceneSkybox->m_Material->SetShaderFloat("lodLevel", lodLevel);
 
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
-		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube2);
-		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneSphere);
+		//g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube2);
+		//g_CoreSystems.m_Renderer->PushToRenderQueue(sceneSphere);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneSkybox);
+		g_CoreSystems.m_Renderer->PushToRenderQueue(sponza);
+		g_CoreSystems.m_Renderer->PushToRenderQueue(backpack);
 
 		g_CoreSystems.m_Renderer->RenderAllQueueItems();
 
@@ -179,6 +192,7 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 	ImGui::Begin("Lighting - Temporary");
 	ImGui::DragFloat3("Point Light Position 1", glm::value_ptr(pointLightPosition), 0.10f);
 	ImGui::DragFloat3("Light Direction", glm::value_ptr(lightDirection), 0.10f);
+	ImGui::DragFloat("Light Intensity", &lightDirectionIntensity);
 	ImGui::DragFloat("Sample Level", &lodLevel, 0.1f);
 	ImGui::End();
 
@@ -263,16 +277,15 @@ void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mo
 	}
 }
 
-bool g_FirstMove = true;
 float g_LastXPosition = 640.0f;
 float g_LastYPosition = 360.0f;
 void CameraMovementCallback(GLFWwindow* window, double xPos, double yPos)
 {
-	if (g_FirstMove)
+	if (g_CoreSystems.m_Camera.m_FirstMove)
 	{
 		g_LastXPosition = xPos;
 		g_LastYPosition = yPos;
-		g_FirstMove = false;
+		g_CoreSystems.m_Camera.m_FirstMove = false;
 	}
 
 	float xOffset = xPos - g_LastXPosition;

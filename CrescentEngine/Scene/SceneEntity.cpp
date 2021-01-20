@@ -11,12 +11,47 @@ namespace Crescent
 
 	}
 
+	void SceneEntity::AddChildEntity(SceneEntity* childEntity)
+	{
+		//Check if this child already has a parent. If so, first remove this scene node from its current parent. Scene nodes cannot exist under multiple parents.
+		if (childEntity->m_ParentEntity != nullptr)
+		{
+			childEntity->m_ParentEntity->RemoveChildEntity(childEntity->m_EntityID);
+		}
+
+		childEntity->m_ParentEntity = this;
+		m_ChildEntities.push_back(childEntity);
+	}
+
+	void SceneEntity::RemoveChildEntity(unsigned int entityID)
+	{
+		auto iterator = std::find(m_ChildEntities.begin(), m_ChildEntities.end(), RetrieveChildEntity(entityID));
+		if (iterator != m_ChildEntities.end())
+		{
+			m_ChildEntities.erase(iterator);
+		}
+	}
+
 	void SceneEntity::UpdateEntityTransform(bool updatePreviousTransform)
 	{
-		if (updatePreviousTransform)
+		if (m_IsTransformDirty)
 		{
 			glm::mat4 rotation = glm::toMat4(glm::quat(m_EntityRotation));
 			m_EntityTransform = glm::translate(glm::mat4(1.0f), m_EntityPosition) * rotation * glm::scale(glm::mat4(1.0f), m_EntityScale);
+
+			if (m_ParentEntity != nullptr)
+			{
+				m_EntityTransform = m_ParentEntity->m_EntityTransform * m_EntityTransform;
+			}
+		}
+
+		for (int i = 0; i < m_ChildEntities.size(); i++)
+		{
+			if (m_IsTransformDirty)
+			{
+				m_ChildEntities[i]->m_IsTransformDirty = true;
+			}
+			m_ChildEntities[i]->UpdateEntityTransform(updatePreviousTransform);
 		}
 
 		m_IsTransformDirty = false;
@@ -74,6 +109,23 @@ namespace Crescent
 	glm::vec3& SceneEntity::RetrieveEntityRotation()
 	{
 		return m_EntityRotation;
+	}
+
+	SceneEntity* SceneEntity::RetrieveChildEntity(unsigned int entityID)
+	{
+		for (unsigned int i = 0; i < m_ChildEntities.size(); i++)
+		{
+			if (m_ChildEntities[i]->m_EntityID == entityID)
+			{
+				return m_ChildEntities[i];
+			}
+		}
+		return nullptr;
+	}
+
+	SceneEntity* SceneEntity::RetrieveChildByIndex(unsigned int entityIndex)
+	{
+		return m_ChildEntities[entityIndex];
 	}
 
 	std::string SceneEntity::RetrieveEntityName() const

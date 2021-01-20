@@ -91,6 +91,7 @@ namespace Crescent
 	void RenderQueue::ClearQueuedCommands()
 	{
 		m_DeferredRenderingCommands.clear();
+
 		m_CustomRenderCommands.clear();
 	}
 }

@@ -185,6 +185,7 @@
     <ClCompile Include="Core\Editor.cpp" />
     <ClCompile Include="Core\Window.cpp" />
     <ClCompile Include="Core\Defunct\EntryPoint.cpp" />
+    <ClCompile Include="Memory\MeshLoader.cpp" />
     <ClCompile Include="Memory\ShaderLoader.cpp" />
     <ClCompile Include="Memory\TextureLoader.cpp" />
     <ClCompile Include="Models\DefaultPrimitives.cpp" />
@@ -193,6 +194,7 @@
     <ClCompile Include="Rendering\GLStateCache.cpp" />
     <ClCompile Include="Rendering\MaterialLibrary.cpp" />
     <ClCompile Include="Rendering\PBR.cpp" />
+    <ClCompile Include="Rendering\PostProcessor.cpp" />
     <ClCompile Include="Rendering\RendererSettingsPanel.cpp" />
     <ClCompile Include="Rendering\RenderTarget.cpp" />
     <ClCompile Include="Rendering\Resources.cpp" />
@@ -211,7 +213,7 @@
     <ClCompile Include="Shading\Material.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
     <ClCompile Include="Core\Defunct\Cubemap.cpp" />
-    <ClCompile Include="Rendering\Framebuffer.cpp" />
+    <ClCompile Include="Core\Defunct\Framebuffer.cpp" />
     <ClCompile Include="Rendering\RenderQueue.cpp" />
     <ClCompile Include="Shading\Texture.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
@@ -270,10 +272,11 @@
     <ClInclude Include="Core\CrescentPCH.h" />
     <ClInclude Include="Core\Defunct\Primitive.h" />
     <ClInclude Include="Core\Editor.h" />
-    <ClInclude Include="Core\Object.h" />
+    <ClInclude Include="Core\Defunct\Object.h" />
     <ClInclude Include="Core\Window.h" />
     <ClInclude Include="Lighting\DirectionalLight.h" />
     <ClInclude Include="Lighting\PointLight.h" />
+    <ClInclude Include="Memory\MeshLoader.h" />
     <ClInclude Include="Memory\ShaderLoader.h" />
     <ClInclude Include="Memory\TextureLoader.h" />
     <ClInclude Include="Models\DefaultPrimitives.h" />
@@ -281,6 +284,7 @@
     <ClInclude Include="Rendering\GLStateCache.h" />
     <ClInclude Include="Rendering\MaterialLibrary.h" />
     <ClInclude Include="Rendering\PBR.h" />
+    <ClInclude Include="Rendering\PostProcessor.h" />
     <ClInclude Include="Rendering\RenderCommand.h" />
     <ClInclude Include="Rendering\RendererSettingsPanel.h" />
     <ClInclude Include="Rendering\RenderTarget.h" />
@@ -299,7 +303,7 @@
     <ClInclude Include="Core\Defunct\VertexBufferLayout.h" />
     <ClInclude Include="Shading\Material.h" />
     <ClInclude Include="Rendering\Renderer.h" />
-    <ClInclude Include="Rendering\Framebuffer.h" />
+    <ClInclude Include="Core\Defunct\Framebuffer.h" />
     <ClInclude Include="Rendering\RenderQueue.h" />
     <ClInclude Include="Shading\Texture.h" />
     <ClInclude Include="Resources\Shaders\Defunct\OutlineVertex.shader" />
@@ -679,10 +683,12 @@
     <ClInclude Include="Vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\CellWorking\Cell\build\shaders\screen_quad.vs" />
     <None Include="Resources\Shaders\Constants\BRDF.shader" />
     <None Include="Resources\Shaders\Constants\Constants.shader" />
+    <None Include="Resources\Shaders\Constants\Reflections.shader" />
     <None Include="Resources\Shaders\Constants\Sampling.shader" />
+    <None Include="Resources\Shaders\Deferred\AmbienceLightFragment.shader" />
+    <None Include="Resources\Shaders\Deferred\ScreenAmbienceVertex.shader" />
     <None Include="Resources\Shaders\PBR\CubeSampleVertex.shader" />
     <None Include="Resources\Shaders\Deferred\DirectionalFragment.shader" />
     <None Include="Resources\Shaders\Deferred\PointLightFragment.shader" />
@@ -717,6 +723,7 @@
     <None Include="Resources\Shaders\PBR\PrefilterCaptureFragment.shader" />
     <None Include="Resources\Shaders\PBR\SphericalToCubeFragment.shader" />
     <None Include="Resources\Shaders\PostProcessingFragment.shader" />
+    <None Include="Resources\Shaders\Post\SSAOFragment.shader" />
     <None Include="Resources\Shaders\ScreenQuadVertex.shader" />
     <None Include="Resources\Shaders\ShadowCastFragment.shader" />
     <None Include="Resources\Shaders\ShadowCastVertex.shader" />

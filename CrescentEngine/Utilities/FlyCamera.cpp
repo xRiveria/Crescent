@@ -4,6 +4,7 @@
 
 namespace Crescent
 {
+	
 	FlyCamera::FlyCamera(glm::vec3 cameraPosition, glm::vec3 forwardDirection, glm::vec3 upDirection) : Camera(cameraPosition, forwardDirection, upDirection)
 	{
 		m_CameraYaw = -90.0f;
@@ -18,7 +19,6 @@ namespace Crescent
 		//Slowly interpolate to target position each frame given some damping factor.
 		//This gives smooth camera movement that fades out the closer we are to our target.
 		m_CameraPosition = glm::lerp(m_CameraPosition, m_TargetPosition, glm::clamp(deltaTime * m_Damping, 0.0f, 1.0f)); 
-		m_CameraYaw = glm::lerp(m_CameraYaw, m_TargetYaw, glm::clamp(deltaTime * m_Damping * 2.0f, 0.0f, 0.0f));  
 		m_CameraPitch = glm::lerp(m_CameraPitch, m_TargetPitch, glm::clamp(deltaTime * m_Damping * 2.0f, 0.0f, 1.0f));
 
 		//Calculate new cartesian basis vectors from yaw/pitch pair.
@@ -70,7 +70,7 @@ namespace Crescent
 		float xMovement = deltaX * m_MouseSensitivity;
 		float yMovement = deltaY * m_MouseSensitivity;
 
-		m_TargetYaw += xMovement;
+		m_CameraYaw += xMovement;
 		m_TargetPitch += yMovement;
 
 		//Prevents calculating the length of the null vector.

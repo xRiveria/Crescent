@@ -26,10 +26,16 @@ namespace Crescent
 		void SetEntityRotation(glm::vec3 newRotation);
 		void SetEntityName(const std::string& newName);
 
+		void AddChildEntity(SceneEntity* childEntity);
+		void RemoveChildEntity(unsigned int entityID);
+
 		glm::mat4& RetrieveEntityTransform();
 		glm::vec3& RetrieveEntityPosition();
 		glm::vec3& RetrieveEntityScale();
 		glm::vec3& RetrieveEntityRotation();
+		SceneEntity* RetrieveChildEntity(unsigned int entityID);
+		unsigned int RetrieveChildCount() const { return m_ChildEntities.size(); }
+		SceneEntity* RetrieveChildByIndex(unsigned int entityIndex);
 
 		std::string RetrieveEntityName() const;
 

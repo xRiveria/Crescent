@@ -31,6 +31,8 @@ namespace Crescent
 		SceneEntity* ConstructNewEntity(PointLight* pointLight); ///Take lighting positions from the scene entity.
 		SceneEntity* ConstructNewEntity(DirectionalLight* directionalLight); ///Take lighting rotations from the scene entity.
 
+		SceneEntity* ConstructNewEntity(SceneEntity* sceneEntity);
+
 		void ConstructSkyboxEntity(Skybox* skyBox);
 
 		//Deletes a scene node from the global scene hierarchy together with its children.

@@ -23,11 +23,13 @@ namespace Crescent
 		float m_MouseSensitivity = 0.1f;
 		float m_Damping = 5.0f;
 
+		bool m_FirstMove = true;
+
 	private:
 		glm::vec3 m_TargetPosition;
 		glm::vec3 m_WorldUp;
 
 		float m_TargetYaw;
-		float m_TargetPitch;
+		float m_TargetPitch;	
 	};
 }

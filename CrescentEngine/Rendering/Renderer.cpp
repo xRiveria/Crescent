@@ -13,7 +13,9 @@
 #include "../Lighting/PointLight.h"
 #include "../Rendering/Resources.h"
 #include "../Shading/TextureCube.h"
+#include "PostProcessor.h"
 #include <glm/gtc/type_ptr.hpp>
+#include <stack>
 
 //As of now, our renderer only supports Forward Pass Rendering.
 
@@ -66,15 +68,18 @@ namespace Crescent
 		m_GBuffer = new RenderTarget(1, 1, GL_HALF_FLOAT, 4, true);
 		m_CustomRenderTarget = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, true);
 		m_PostProcessRenderTarget = new RenderTarget(1, 1, GL_UNSIGNED_BYTE, 1, false);
+		m_PostProcessor = new PostProcessor(this);
 
 		//Shadows
 		for (int i = 0; i < 4; i++) //Allow for up to a total of 4 directional/spot shadow casters.
 		{
 			RenderTarget* renderTarget = new RenderTarget(2048, 2048, GL_UNSIGNED_BYTE, 1, true);
 			renderTarget->m_DepthAndStencilAttachment.BindTexture();
+
 			renderTarget->m_DepthAndStencilAttachment.SetMinificationFilter(GL_NEAREST);
 			renderTarget->m_DepthAndStencilAttachment.SetMagnificationFilter(GL_NEAREST);
 			renderTarget->m_DepthAndStencilAttachment.SetWrappingMode(GL_CLAMP_TO_BORDER);
+
 			float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 			glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 			m_ShadowRenderTargets.push_back(renderTarget);
@@ -87,20 +92,10 @@ namespace Crescent
 		m_PBR = new PBR(this);
 
 		//Default PBR Pre-Compute (Get a more default oriented HDR map for this).
-		Texture* milkyWayMap = Resources::LoadHDRTexture("Sky Environment", "Resources/Skybox/MilkyWay/Milkyway_small.hdr");
-		//Texture* milkyWayMap = Resources::LoadHDRTexture("Sky Environment", "Resources/Skybox/AlleyWay/Alley.hdr");
+		//Texture* milkyWayMap = Resources::LoadHDRTexture("Sky Environment", "Resources/Skybox/MilkyWay/Milkyway_small.hdr");
+		Texture* milkyWayMap = Resources::LoadHDRTexture("Sky Environment", "Resources/Skybox/AlleyWay/Alley.hdr");
 		EnvironmentalPBR* environmentalCapture = m_PBR->ProcessEquirectangularMap(milkyWayMap);
 		SetSkyCapture(environmentalCapture);
-
-		//Temporary
-		m_PostProcessShader = Resources::LoadShader("Post Processing", "Resources/Shaders/ScreenQuadVertex.shader", "Resources/Shaders/PostProcessingFragment.shader");
-		m_PostProcessShader->UseShader();
-		m_PostProcessShader->SetUniformInteger("TexSource", 0);
-		m_PostProcessShader->SetUniformInteger("TexBloom1", 1);
-		m_PostProcessShader->SetUniformInteger("TexBloom2", 2);
-		m_PostProcessShader->SetUniformInteger("TexBloom3", 3);
-		m_PostProcessShader->SetUniformInteger("TexBloom4", 4);
-		m_PostProcessShader->SetUniformInteger("gMotion", 5);
 
 		//Global Uniform Buffer Object
 		//glGenBuffers(1, &m_GlobalUniformBufferID);
@@ -114,7 +109,27 @@ namespace Crescent
 		//Update transform before pushing node to render command buffer.
 		sceneEntity->UpdateEntityTransform(true);
 
-		m_RenderQueue->PushToRenderQueue(sceneEntity->m_Mesh, sceneEntity->m_Material, sceneEntity->RetrieveEntityTransform());
+		std::stack<SceneEntity*> nodeStack;
+		nodeStack.push(sceneEntity);
+		for (unsigned int i = 0; i < sceneEntity->RetrieveChildCount(); i++)
+		{
+			nodeStack.push(sceneEntity->RetrieveChildByIndex(i));
+		}
+
+		while (!nodeStack.empty())
+		{
+			SceneEntity* node = nodeStack.top();
+			nodeStack.pop();
+			if (node->m_Mesh)
+			{
+				m_RenderQueue->PushToRenderQueue(node->m_Mesh, node->m_Material, node->RetrieveEntityTransform());
+			}
+
+			for (unsigned int i = 0; i < node->RetrieveChildCount(); i++)
+			{
+				nodeStack.push(node->RetrieveChildByIndex(i));
+			}
+		}
 	}
 
 	//Attach shader to material.
@@ -192,6 +207,7 @@ namespace Crescent
 		glDrawBuffers(4, attachments);
 
 		//3) Do post-processing steps before lighting stage.
+		m_PostProcessor->ProcessPreLighting(this, m_GBuffer, m_Camera);
 
 		//4) Render deferred shader for each light (full quad for directional, spheres for point lights).
 		glBindFramebuffer(GL_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID);
@@ -208,6 +224,7 @@ namespace Crescent
 		m_GBuffer->RetrieveColorAttachment(2)->BindTexture(2);
 
 		///Ambient Lighting
+		RenderDeferredAmbientLight();
 
 		if (m_LightsEnabled)
 		{
@@ -260,7 +277,7 @@ namespace Crescent
 				//Don't render to default framebuffer, but to custom target framebuffer which we will use for postprocessing.
 				glViewport(0, 0, m_RenderWindowSize.x, m_RenderWindowSize.y);
 				glBindFramebuffer(GL_FRAMEBUFFER, m_CustomRenderTarget->m_FramebufferID);
-				m_Camera->SetPerspectiveMatrix(m_Camera->m_FieldOfView, m_RenderWindowSize.x / m_RenderWindowSize.y, 0.2f, 100.0f);
+				m_Camera->SetPerspectiveMatrix(m_Camera->m_FieldOfView, m_RenderWindowSize.x / m_RenderWindowSize.y, 0.1f, 100.0f);
 			}
 
 			///Render custom commands here. (Things with custom material). By default, we will have 1 for the sky.
@@ -329,11 +346,17 @@ namespace Crescent
 		}
 
 		//10) Custom Post Processing Pass
-
+		std::vector<RenderCommand> postProcessingCommands = m_RenderQueue->RetrievePostProcessingRenderCommands();
+		for (unsigned int i = 0; i < postProcessingCommands.size(); i++)
+		{
+			//Ping Pong
+			bool even = i % 2 == 0;
+			Blit(even ? m_CustomRenderTarget->RetrieveColorAttachment(0) : m_PostProcessRenderTarget->RetrieveColorAttachment(0),
+				even ? m_PostProcessRenderTarget : m_CustomRenderTarget, postProcessingCommands[i].m_Material);
+		}
 
 		//11) Finally, Blit everything to our framebuffer for rendering.
-		std::vector<RenderCommand> postProcessingCommands = m_RenderQueue->RetrievePostProcessingRenderCommands();
-		BlitToMainFramebuffer(m_CustomRenderTarget->RetrieveColorAttachment(0));
+		BlitToMainFramebuffer(postProcessingCommands.size() % 2 == 0 ? m_CustomRenderTarget->RetrieveColorAttachment(0) : m_PostProcessRenderTarget->RetrieveColorAttachment(0));
 
 		m_RenderQueue->ClearQueuedCommands();
 
@@ -348,10 +371,12 @@ namespace Crescent
 
 		//Bind Input Texture Data
 		sourceRenderTarget->BindTexture(0);
-		//Bloom
+
 		m_GBuffer->RetrieveColorAttachment(3)->BindTexture(5);
 
-		m_PostProcessShader->UseShader();
+		m_PostProcessor->m_PostProcessingShader->UseShader();
+		m_PostProcessor->m_PostProcessingShader->SetUniformBool("SSAO", true);
+
 		RenderMesh(m_NDCQuad);
 	}
 
@@ -454,8 +479,8 @@ namespace Crescent
 	void Renderer::RenderShadowCastCommand(RenderCommand* renderCommand, const glm::mat4& lightSpaceProjectionMatrix, const glm::mat4& lightSpaceViewMatrix)
 	{
 		Shader* shadowShader = m_MaterialLibrary->m_DirectionalShadowShader;
-		shadowShader->UseShader();
 
+		shadowShader->UseShader();
 		shadowShader->SetUniformMat4("lightSpaceProjection", lightSpaceProjectionMatrix);
 		shadowShader->SetUniformMat4("lightSpaceView", lightSpaceViewMatrix);
 		shadowShader->SetUniformMat4("model", renderCommand->m_Transform);
@@ -481,6 +506,26 @@ namespace Crescent
 		}
 
 		RenderMesh(m_NDCQuad);
+	}
+
+	void Renderer::RenderDeferredAmbientLight()
+	{
+		EnvironmentalPBR* skyCapture = m_PBR->RetrieveSkyCapture();
+
+		//Do a full screen ambient pass.
+		if (m_IBLAmbience)
+		{
+			skyCapture->m_IrradianceTextureCube->BindTextureCube(3);
+			skyCapture->m_PrefilteredTextureCube->BindTextureCube(4);
+			m_PBR->m_RenderTargetBRDFLUT->RetrieveColorAttachment(0)->BindTexture(5);
+			m_PostProcessor->m_SSAOOutput->BindTexture(6);
+			
+			Shader* ambientShader = m_MaterialLibrary->m_DeferredAmbientLightShader;
+			ambientShader->UseShader();
+			ambientShader->SetUniformVector3("camPos", m_Camera->m_CameraPosition);
+			ambientShader->SetUniformInteger("SSAO", true);
+			RenderMesh(m_NDCQuad);
+		}
 	}
 
 	void Renderer::RenderDeferredPointLight(PointLight* pointLight)
@@ -624,13 +669,15 @@ namespace Crescent
 		}
 	}
 
-	void Renderer::SetRenderingWindowSize(const int& newWidth, const int& newHeight)
+	void Renderer::SetRenderingWindowSize(int newWidth, int newHeight)
 	{
-		m_RenderWindowSize = glm::vec2((float)newWidth, (float)newHeight);
+		m_RenderWindowSize = glm::vec2(newWidth, newHeight);
 		m_GBuffer->ResizeRenderTarget(newWidth, newHeight);
 		m_CustomRenderTarget->ResizeRenderTarget(newWidth, newHeight);
 		m_PostProcessRenderTarget->ResizeRenderTarget(newWidth, newHeight);
 		m_MainRenderTarget->ResizeRenderTarget(newWidth, newHeight);
+
+		m_PostProcessor->UpdatePostProcessingRenderTargetSizes(newWidth, newHeight);
 	}
 
 	RenderTarget* Renderer::RetrieveMainRenderTarget()

@@ -54,7 +54,7 @@ namespace Crescent
 		}
 		else
 		{
-			CrescentError("Texture failed to load at path " + filePath);
+			CrescentInfo("Texture failed to load at path " + filePath);
 			stbi_image_free(textureData);
 			return texture;
 		}

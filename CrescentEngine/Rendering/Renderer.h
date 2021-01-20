@@ -23,6 +23,7 @@ namespace Crescent
 	class TextureCube;
 	class EnvironmentalPBR;
 	class PBR;
+	class PostProcessor;
 
 	class Renderer
 	{
@@ -37,9 +38,10 @@ namespace Crescent
 		//Rendering Items
 		void PushToRenderQueue(SceneEntity* sceneEntity);
 		void RenderAllQueueItems();
+		void RenderMesh(Mesh* mesh);
 
 		//Window Size
-		void SetRenderingWindowSize(const int& newWidth, const int& newHeight);
+		void SetRenderingWindowSize(int newWidth, int newHeight);
 
 		//Blitting
 		void Blit(Texture* textureSource, RenderTarget* targetDestination = nullptr, Material* material = nullptr, std::string textureUniformName = "TexSrc");
@@ -79,14 +81,20 @@ namespace Crescent
 		bool m_ShowDebugLightVolumes = true;
 		bool m_WireframesEnabled = false;
 		bool m_CubemapEnabled = true;
+		bool m_IBLAmbience = true;
+
+		Quad* m_NDCQuad = nullptr;
+
+		PostProcessor* m_PostProcessor = nullptr;
 
 	private:
 		//Renderer-specific logic for rendering a custom forward-pass command.
 		void RenderCustomCommand(RenderCommand* renderCommand, Camera* customRenderCamera, bool updateGLStates = true);
-		void RenderMesh(Mesh* mesh);
 
 		//Render Directional Light
 		void RenderDeferredDirectionalLight(DirectionalLight* directionalLight);
+		//Render Ambient Lighting (Including Indirect IBL)
+		void RenderDeferredAmbientLight();
 		//Render Point Light
 		void RenderDeferredPointLight(PointLight* pointLight);
 		
@@ -100,9 +108,6 @@ namespace Crescent
 		void BlitToMainFramebuffer(Texture* sourceRenderTarget);
 
 	private:
-		//Temporary
-		Shader* m_PostProcessShader = nullptr;
-
 		//PBR
 		PBR* m_PBR = nullptr;
 
@@ -123,7 +128,6 @@ namespace Crescent
 		unsigned int m_CubemapDepthRenderbufferID;
 
 		std::vector<RenderTarget*> m_RenderTargetsCustom;
-		Quad* m_NDCQuad = nullptr;
 
 		//Shadow Target
 		std::vector<RenderTarget*> m_ShadowRenderTargets;;

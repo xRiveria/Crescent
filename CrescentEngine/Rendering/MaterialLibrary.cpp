@@ -53,9 +53,9 @@ namespace Crescent
 
 		defaultMaterial->m_MaterialType = Material_Default;
 		defaultMaterial->SetShaderTexture("TexAlbedo", Resources::LoadTexture("Default Albedo", "Resources/Textures/Checkerboard.png", GL_TEXTURE_2D, GL_RGB), 3);
-		//defaultMaterial->SetShaderTexture("TexNormal", Resources::LoadTexture("Default Normal", "Resources/Textures/Normal.png"), 4);
-		//defaultMaterial->SetShaderTexture("TexMetallic", Resources::LoadTexture("Default Metallic", "Resouces/Textures/Black.png"), 5);
-		//defaultMaterial->SetShaderTexture("TexRoughness", Resources::LoadTexture("Default Roughness", "Resouces/Textures/Checkboard.png"), 6);
+		defaultMaterial->SetShaderTexture("TexNormal", Resources::LoadTexture("Default Normal", "Resources/Textures/Normals.png"), 4);
+		defaultMaterial->SetShaderTexture("TexMetallic", Resources::LoadTexture("Default Metallic", "Resources/Textures/Black.png"), 5);
+		defaultMaterial->SetShaderTexture("TexRoughness", Resources::LoadTexture("Default Roughness", "Resources/Textures/Checkerboard.png"), 6);
 
 		m_DefaultMaterials[SID("Default")] = defaultMaterial;
 	}
@@ -65,18 +65,30 @@ namespace Crescent
 		//Deferred
 		m_DeferredDirectionalLightShader = Resources::LoadShader("Deferred Directional Light", "Resources/Shaders/Deferred/ScreenDirectionalVertex.shader", "Resources/Shaders/Deferred/DirectionalFragment.shader");
 		m_DeferredPointLightShader = Resources::LoadShader("Deferred Point Light", "Resources/Shaders/Deferred/PointLightVertex.shader", "Resources/Shaders/Deferred/PointLightFragment.shader");
-			
+		m_DeferredAmbientLightShader = Resources::LoadShader("Deferred Ambient Light", "Resources/Shaders/Deferred/ScreenAmbienceVertex.shader", "Resources/Shaders/Deferred/AmbienceLightFragment.shader");
+
+		//Ambience
+		m_DeferredAmbientLightShader->UseShader();
+		m_DeferredAmbientLightShader->SetUniformInteger("gPositionMetallic", 0);
+		m_DeferredAmbientLightShader->SetUniformInteger("gNormalRoughness", 1);
+		m_DeferredAmbientLightShader->SetUniformInteger("gAlbedoAO", 2);
+		m_DeferredAmbientLightShader->SetUniformInteger("envIrradiance", 3);
+		m_DeferredAmbientLightShader->SetUniformInteger("envPrefilter", 4);
+		m_DeferredAmbientLightShader->SetUniformInteger("BRDFLUT", 5);
+		m_DeferredAmbientLightShader->SetUniformInteger("TexSSAO", 6);
+
 		//Take in from GBuffer color buffers.
 		m_DeferredDirectionalLightShader->UseShader();
-		m_DeferredDirectionalLightShader->SetUniformInteger("gPosition", 0);
-		m_DeferredDirectionalLightShader->SetUniformInteger("gNormal", 1);
-		m_DeferredDirectionalLightShader->SetUniformInteger("gAlbedo", 2);
+		m_DeferredDirectionalLightShader->SetUniformInteger("gPositionMetallic", 0);
+		m_DeferredDirectionalLightShader->SetUniformInteger("gNormalRoughness", 1);
+		m_DeferredDirectionalLightShader->SetUniformInteger("gAlbedoAO", 2);
 		m_DeferredDirectionalLightShader->SetUniformInteger("lightShadowMap", 3);
 
+		//Point Light
 		m_DeferredPointLightShader->UseShader();
-		m_DeferredPointLightShader->SetUniformInteger("gPosition", 0);
-		m_DeferredPointLightShader->SetUniformInteger("gNormal", 1);
-		m_DeferredPointLightShader->SetUniformInteger("gAlbedo", 2);
+		m_DeferredPointLightShader->SetUniformInteger("gPositionMetallic", 0);
+		m_DeferredPointLightShader->SetUniformInteger("gNormalRoughness", 1);
+		m_DeferredPointLightShader->SetUniformInteger("gAlbedoAO", 2);
 
 		//Shadows
 		m_DirectionalShadowShader = Resources::LoadShader("Directional Shadow", "Resources/Shaders/ShadowCastVertex.shader", "Resources/Shaders/ShadowCastFragment.shader");

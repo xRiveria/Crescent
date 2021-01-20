@@ -140,6 +140,15 @@ namespace Crescent
 		}
 	}
 
+	void Shader::SetUniformVector2(std::string name, glm::vec2 value)
+	{
+		int location = RetrieveUniformLocation(name);
+		if (location >= 0)
+		{
+			glUniform2fv(location, 1, &value[0]);
+		}
+	}
+
 	void Shader::SetUniformVector3(std::string name, glm::vec3 value)
 	{
 		int location = RetrieveUniformLocation(name);
@@ -155,6 +164,15 @@ namespace Crescent
 		if (location >= 0)
 		{
 			glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]);
+		}
+	}
+
+	void Shader::SetUniformVectorArray(std::string name, int size, const std::vector<glm::vec3>& values)
+	{
+		unsigned int location = glGetUniformLocation(m_ShaderID, name.c_str());
+		if (location >= 0)
+		{
+			glUniform3fv(location, size, (float*)(&values[0].x));
 		}
 	}
 

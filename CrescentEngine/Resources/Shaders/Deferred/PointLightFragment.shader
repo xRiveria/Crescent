@@ -7,9 +7,9 @@ in vec4 ScreenPos;
 #include ../Constants/Constants.shader
 #include ../Constants/BRDF.shader
 
-uniform sampler2D gPosition;
-uniform sampler2D gNormal;
-uniform sampler2D gAlbedo;
+uniform sampler2D gPositionMetallic;
+uniform sampler2D gNormalRoughness;
+uniform sampler2D gAlbedoAO;
 
 uniform vec3 lightPosition;
 uniform vec3 lightColor;
@@ -21,15 +21,15 @@ void main()
 {
     vec2 UV = (ScreenPos.xy / ScreenPos.w) * 0.5 + 0.5;
 
-    vec4 albedoAO = texture(gAlbedo, UV);
-    vec4 normalRoughness = texture(gNormal, UV);
-    vec4 positionMetallic = texture(gPosition, UV);  //Metallic, Roughness and AO are for future support.
+    vec4 albedoAO = texture(gAlbedoAO, UV);
+    vec4 normalRoughness = texture(gNormalRoughness, UV);
+    vec4 positionMetallic = texture(gPositionMetallic, UV);  //Metallic, Roughness and AO are for future support.
 
     vec3 worldPosition = positionMetallic.xyz;
     vec3 albedo = albedoAO.rgb;
     vec3 normal = normalRoughness.rgb;
-    float roughness = 0.5f;
-    float metallic = 0.5f;
+    float roughness = normalRoughness.a;
+    float metallic = positionMetallic.a;
 
     //Lighting Input
     vec3 N = normalize(normal);
