@@ -8,6 +8,7 @@
 #include "../Shading/Texture.h"
 #include "../Shading/Material.h"
 #include "../Rendering/Resources.h"
+#include "../Models/Mesh.h"
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h> //Allows us to retrieve the Window handle.
@@ -61,6 +62,58 @@ namespace Crescent
 			DrawSelectedEntityMaterialSettings(m_CurrentlySelectedEntity);
 		}
 		ImGui::End();
+
+		//Animation
+		ImGui::Begin("Animations");
+		if (m_CurrentlySelectedEntity != nullptr)
+		{
+			DrawSelectedEntityAnimationSettings(m_CurrentlySelectedEntity);
+		}
+	}
+
+	static MeshAnimation* currentSelectedAnimation = nullptr;
+
+	void SceneHierarchyPanel::DrawSelectedEntityAnimationSettings(SceneEntity* selectedEntity)
+	{
+		if (selectedEntity->m_Mesh != nullptr)
+		{
+			if (!selectedEntity->m_Mesh->m_Animations.empty())
+			{
+				bool replayAnimation = true;
+				ImGui::Button("Play");
+				ImGui::SameLine();
+				ImGui::Button("Pause");
+				ImGui::SameLine();
+				ImGui::Checkbox("Loop", &replayAnimation);
+
+				std::vector<MeshAnimation*> meshAnimations = selectedEntity->m_Mesh->m_Animations;
+				if (currentSelectedAnimation == nullptr)
+				{
+					currentSelectedAnimation = meshAnimations[0];
+				}
+				//List all animations.
+				ImGui::Spacing();
+				if (ImGui::BeginCombo("##Animations", currentSelectedAnimation->m_AnimationName.c_str()))
+				{
+					for (int i = 0; i < meshAnimations.size(); i++)
+					{
+						bool isSelected = (currentSelectedAnimation == meshAnimations[i]);
+						if (ImGui::Selectable(meshAnimations[i]->m_AnimationName.c_str(), isSelected))
+						{
+							currentSelectedAnimation = meshAnimations[i];
+						}
+						if (isSelected)
+						{
+							ImGui::SetItemDefaultFocus();
+						}
+					}
+					ImGui::EndCombo();
+				}
+				ImGui::Spacing();
+				//Timer for each selected animation.
+				ImGui::SliderFloat("##Timer", &currentSelectedAnimation->m_AnimationTimeInSeconds, 0.0f, meshAnimations[0]->m_AnimationTimeInSeconds, "%.2f", ImGuiTreeNodeFlags_SpanAvailWidth);
+			}
+		}
 	}
 
 	void SceneHierarchyPanel::DrawSelectedEntityMaterialSettings(SceneEntity* selectedEntity)

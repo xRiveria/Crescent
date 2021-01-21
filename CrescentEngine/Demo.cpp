@@ -45,6 +45,7 @@ struct CoreSystems
 CoreSystems g_CoreSystems; //Creates our core engine systems.
 
 //Temporary
+bool showDemo = false;
 glm::vec3 lightDirection = glm::vec3(0.2f, -1.0f, 0.25f);
 float lightDirectionIntensity = 50.0f;
 glm::vec3 pointLightPosition = glm::vec3(1.2f, 0.0f, 0.0f);
@@ -102,11 +103,13 @@ int main(int argc, int argv[])
 
 	Crescent::SceneEntity* sponza = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Sponza", "Resources/Models/Sponza/sponza.obj");
 	Crescent::SceneEntity* backpack = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Backpack", "Resources/Models/Stormtrooper/source/silly_dancing.fbx");
+	Crescent::SceneEntity* pokeball = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Pokeball", "Resources/Models/Testing/source/Ti-Pche_Skethfab.fbx");
+
 	sponza->SetEntityPosition(glm::vec3(0.00f, -1.00f, 0.00f));
 	sponza->SetEntityScale(0.01f);
-
 	backpack->SetEntityPosition(glm::vec3(4.10f, 0.0f, -0.10f));
 	backpack->SetEntityRotation(glm::vec3(0.0f, glm::radians(-90.0f), 0.0f));
+	pokeball->SetEntityRotation(glm::vec3(glm::radians(-90.0f), 0.0f, 0.0f));
 
 	//Background
 	Crescent::Skybox* sceneSkybox = new Crescent::Skybox();
@@ -141,7 +144,7 @@ int main(int argc, int argv[])
 		}
 		if (g_CoreSystems.m_Editor.RetrieveViewportWidth() > 0.1f)
 		{
-			g_CoreSystems.m_Camera.SetPerspectiveMatrix(glm::radians(60.0f), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 100.0f);
+			g_CoreSystems.m_Camera.SetPerspectiveMatrix(glm::radians(60.0f), ((float)g_CoreSystems.m_Editor.RetrieveViewportWidth() / (float)g_CoreSystems.m_Editor.RetrieveViewportHeight()), 0.2f, 1000.0f);
 		}
 
 		//Retrieve Delta Time
@@ -165,12 +168,13 @@ int main(int argc, int argv[])
 		directionalLight.m_LightIntensity = lightDirectionIntensity;
 		sceneSkybox->m_Material->SetShaderFloat("lodLevel", lodLevel);
 
-		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
+		//g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube);
 		//g_CoreSystems.m_Renderer->PushToRenderQueue(sceneCube2);
 		//g_CoreSystems.m_Renderer->PushToRenderQueue(sceneSphere);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneSkybox);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sponza);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(backpack);
+		g_CoreSystems.m_Renderer->PushToRenderQueue(pokeball);
 
 		g_CoreSystems.m_Renderer->RenderAllQueueItems();
 
@@ -189,7 +193,7 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 {
 	g_CoreSystems.m_Editor.BeginEditorRenderLoop();
 	g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
-
+	ImGui::ShowDemoWindow(&showDemo);
 	ImGui::Begin("Lighting - Temporary");
 	ImGui::DragFloat3("Point Light Position 1", glm::value_ptr(pointLightPosition), 0.10f);
 	ImGui::DragFloat3("Light Direction", glm::value_ptr(lightDirection), 0.10f);
@@ -262,6 +266,10 @@ void ProcessKeyboardEvents(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
 		g_CoreSystems.m_Camera.InputKey(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds(), Crescent::CameraRight);
+	}
+	if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
+	{
+		showDemo = !showDemo;
 	}
 }
 

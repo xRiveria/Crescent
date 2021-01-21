@@ -39,7 +39,7 @@ namespace Crescent
 
         return MeshLoader::ProcessNode(rendererContext, scene->mRootNode, scene, directory, setDefaultMaterial);
     }
-    // --------------------------------------------------------------------------------------------
+
     SceneEntity* MeshLoader::ProcessNode(Renderer* rendererContext, aiNode* aiNode, const aiScene* aiScene, const std::string& fileDirectory, bool setDefaultMaterial)
     {
         //Note that we allocate memory ourselves and pass memory responsibility to calling resource manager. 
@@ -85,7 +85,7 @@ namespace Crescent
 
         return node;
     }
-    // --------------------------------------------------------------------------------------------
+    
     Mesh* MeshLoader::ParseMesh(aiMesh* aiMesh, const aiScene* aiScene)
     {
         std::vector<glm::vec3> positions;
@@ -140,12 +140,67 @@ namespace Crescent
         mesh->m_Topology = Triangles;
         mesh->FinalizeMesh(true);
 
+        if (aiScene->HasAnimations())
+        {
+            ProcessMeshAnimations(aiScene, aiMesh, mesh);
+
+            /*
+            auto mat4_from_aimatrix4x4 = [](aiMatrix4x4 matrix) -> glm::mat4
+            {
+                glm::mat4 res;
+                for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) res[j][i] = matrix[i][j];
+                return res;
+            };
+
+            for (int i = 0; aiMesh->mNumBones; i++)
+            {
+                aiBone* bone = aiMesh->mBones[i];
+                uint32_t boneID = mesh->m_BoneMapper.Name(bone->mName.C_Str());
+
+                mesh->m_BoneOffsets.resize(std::max(boneID + 1, (uint32_t)mesh->m_BoneOffsets.size()));
+                mesh->m_BoneOffsets[boneID] = mat4_from_aimatrix4x4(bone->mOffsetMatrix);
+
+                for (int j = 0; bone->mNumWeights; j++)
+                {
+                   // auto weight = bone->mWeights[j];
+                    //mesh->AddBone(weight.mVertexId, boneID, weight.mWeight);
+                }
+            }
+
+            mesh->m_BoneMatrices.resize(mesh->m_BoneMapper.RetrieveTotalBones());
+            */
+        }
+
         //Store newly generated mesh in globally stored mesh store for memory de-allocation when a clean is required.
         MeshLoader::m_MeshStore.push_back(mesh);
 
         return mesh;
     }
-    // --------------------------------------------------------------------------------------------
+
+    void MeshLoader::ProcessMeshAnimations(const aiScene* aiScene, aiMesh* aiMesh, Mesh* mesh)
+    {
+        mesh->m_Animations.clear();
+        mesh->m_AnimationChannelMap.clear();
+        if (aiScene->HasAnimations())
+        {
+            for (int i = 0; i < aiScene->mNumAnimations; i++)
+            {
+                aiAnimation* animation = aiScene->mAnimations[i];
+                float animationTime = aiScene->mAnimations[i]->mDuration / aiScene->mAnimations[i]->mTicksPerSecond;
+                std::string animationName = aiScene->mAnimations[i]->mName.C_Str();
+                mesh->m_Animations.push_back(new MeshAnimation(animation, animationName, animationTime, i));
+
+                //Channel Mapping
+                for (int j = 0; j < animation->mNumChannels; j++) //Each channelm is actually a bone with all of its transformations. 
+                {
+                    aiNodeAnim* channel = animation->mChannels[j];
+                    mesh->m_AnimationChannelMap[std::pair<uint32_t, std::string>(i, channel->mNodeName.C_Str())] = j; //Creates a map of the animation index and its node channel name mapped to the channel index.
+                }
+            }
+        }
+        return;      
+    }
+
     Material* MeshLoader::ParseMaterial(Renderer* rendererContext, aiMaterial* aiMaterial, const aiScene* aiScene, const std::string& fileDirectory)
     {
         //Create a unique default material for each loaded mesh.     
@@ -244,7 +299,7 @@ namespace Crescent
 
         return material;
     }
-    // --------------------------------------------------------------------------------------------
+
     std::string MeshLoader::ProcessPath(aiString* aPath, std::string directory)
     {
         std::string path = std::string(aPath->C_Str());

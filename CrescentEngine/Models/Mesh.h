@@ -5,6 +5,9 @@
 #include <vector>
 #include "../Shading/Shader.h"
 #include <algorithm>
+#include <assimp/scene.h>
+#include <map>
+#include "BoneMapper.h"
 
 namespace Crescent
 {
@@ -24,27 +27,6 @@ namespace Crescent
 			std::fill(BoneIDs, BoneIDs + 8, 0);
 			std::fill(BoneWeights, BoneWeights + 8, 0);
 		}
-
-		void AddBone(int id, float weight)
-		{
-			int i;
-			for (i = 0; i < 8; i++)
-			{
-				if (BoneWeights[i] == 0) //Find empty slot.
-				{
-					break;
-				}
-
-				if (i >= 8) //If we have more bones than supported.
-				{
-					CrescentError("Model has more bones than supported.");
-				}
-			}
-
-			//Once empty slot is found, assign here.
-			BoneWeights[i] = weight;
-			BoneIDs[i] = id;
-		}
 	};
 
 	struct MeshTexture
@@ -52,6 +34,20 @@ namespace Crescent
 		unsigned int id;  //Assigned Memory Location
 		std::string type; //Type of texture eg. Specular/Diffuse
 		std::string path;
+	};
+
+	struct MeshAnimation
+	{
+		MeshAnimation(aiAnimation* animation, std::string animationName, float animationTimeInSeconds, int animationIndex) : m_Animation(animation),
+			m_AnimationName(animationName), m_AnimationTimeInSeconds(animationTimeInSeconds), m_AnimationIndex(animationIndex)
+		{
+
+		}
+
+		aiAnimation* m_Animation;
+		std::string m_AnimationName;
+		int m_AnimationIndex;
+		float m_AnimationTimeInSeconds;
 	};
 
 	enum Topology
@@ -80,6 +76,33 @@ namespace Crescent
 		//Retrieves
 		unsigned int RetrieveVertexArrayID() const { return m_VertexArrayID; }
 
+		//Skeletal Animations
+		void RecursivelyUpdateBoneMatrices(int animation_id, aiNode* node, glm::mat4 transform, double ticks);
+		glm::mat4 InterpolateTranslationMatrix(aiVectorKey* keys, uint32_t n, double ticks);
+		glm::mat4 InterpolateRotationMatrix(aiQuatKey* keys, uint32_t n, double ticks);
+		glm::mat4 InterpolateScalingMatrix(aiVectorKey* keys, uint32_t n, double ticks);
+
+		void AddBone(int vertexWeightID, int id, float weight)
+		{
+			int i;
+			for (i = 0; i < 8; i++)
+			{
+				if (m_BoneWeights[i].first == 0) //Find empty slot.
+				{
+					break;
+				}
+
+				if (i >= 8) //If we have more bones than supported.
+				{
+					CrescentError("Model has more bones than supported.");
+				}
+			}
+
+			//Once empty slot is found, assign here.
+			m_BoneIDs[vertexWeightID] = std::pair<int, int>(i, id);
+			m_BoneWeights[vertexWeightID] = std::pair<int, float>(i, weight);
+		}
+
 	public:
 		Topology m_Topology = Triangles;
 
@@ -87,9 +110,19 @@ namespace Crescent
 		std::vector<glm::vec2> m_UV;
 		std::vector<glm::vec3> m_Normals;
 		std::vector<glm::vec3> m_Tangents;
-		std::vector<glm::vec3> m_Bitangents;
+		std::vector<glm::vec3> m_Bitangents;	
+		std::vector<std::pair<int, int>> m_BoneIDs;
+		std::vector<std::pair<int, float>> m_BoneWeights;
+		
 
 		std::vector<unsigned int> m_Indices;
+
+		//Skeletal Animations
+		std::vector<glm::mat4> m_BoneMatrices, m_BoneOffsets;
+		int m_CurrentlyPlayingAnimationIndex;
+		std::vector<MeshAnimation*> m_Animations; //Stores a vector of animations mapped to an index.
+		std::map<std::pair<uint32_t, std::string>, uint32_t> m_AnimationChannelMap;
+		BoneMapper m_BoneMapper;
 
 	private:
 		unsigned int m_VertexArrayID = 0;

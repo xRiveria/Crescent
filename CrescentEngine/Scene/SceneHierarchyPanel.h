@@ -27,6 +27,7 @@ namespace Crescent
 		void DrawSelectedEntityMaterialSettings(SceneEntity* selectedEntity);
 		void DrawVector3Controls(const std::string& uiLabel, glm::vec3& values, SceneEntity* selectedEntity, float resetValue = 0.0f, float columnWidth = 100.0f);
 		void DrawSelectedEntityMaterialTextureComponent(SceneEntity* selectedEntity, const std::string& nodeName, const std::string& uniformTextureName, int uniformTextureUnit);
+		void DrawSelectedEntityAnimationSettings(SceneEntity* selectedEntity);
 
 		std::optional<std::string> OpenFile(const char* filter);
 

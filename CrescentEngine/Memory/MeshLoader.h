@@ -27,6 +27,7 @@ namespace Crescent
 
 	private:
 		static SceneEntity* ProcessNode(Renderer* rendererContext, aiNode* aiNode, const aiScene* aiScene, const std::string& fileDirectory, bool setDefaultMaterial = true);
+		static void ProcessMeshAnimations(const aiScene* aiScene, aiMesh* aiMesh, Mesh* mesh);
 		static Mesh* ParseMesh(aiMesh* aiMesh, const aiScene* aiScene);
 		static Material* ParseMaterial(Renderer* rendererContext, aiMaterial* aiMaterial, const aiScene* aiScene, const std::string& fileDirectory);
 		static std::string ProcessPath(aiString* filePath, std::string fileDirectory);

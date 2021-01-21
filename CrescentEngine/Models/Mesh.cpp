@@ -1,6 +1,8 @@
 #include "CrescentPCH.h"
 #include "Mesh.h"
 #include "GL/glew.h"
+#include <glm/gtc/type_ptr.hpp>
+#include <algorithm>
 
 namespace Crescent
 {
@@ -82,7 +84,7 @@ namespace Crescent
 					bufferData.push_back(m_Bitangents[i].x);
 					bufferData.push_back(m_Bitangents[i].y);
 					bufferData.push_back(m_Bitangents[i].z);
-				}
+				}				
 			}
 		}
 		else
@@ -122,7 +124,7 @@ namespace Crescent
 		//Configure vertex attributes only if vertex data size is more than 0.
 		glBindVertexArray(m_VertexArrayID);
 		glBindBuffer(GL_ARRAY_BUFFER, m_VertexBufferID);
-		glBufferData(GL_ARRAY_BUFFER, bufferData.size() * sizeof(float), &bufferData[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, (bufferData.size() * sizeof(float) + (m_BoneIDs.size() * sizeof(int)) + (m_BoneWeights.size() * sizeof(float))), &bufferData[0], GL_STATIC_DRAW);
 		//Only fill the index buffer if the index array is not empty.
 		if (m_Indices.size() > 0)
 		{
@@ -137,6 +139,8 @@ namespace Crescent
 			if (m_Normals.size() > 0) stride += 3 * sizeof(float);
 			if (m_Tangents.size() > 0) stride += 3 * sizeof(float);
 			if (m_Bitangents.size() > 0) stride += 3 * sizeof(float);
+			//if (m_BoneIDs.size() > 0) stride += 8 * sizeof(int);
+			//if (m_BoneWeights.size() > 0) stride += 8 * sizeof(float);
 
 			size_t offset = 0;
 			glEnableVertexAttribArray(0);
@@ -166,6 +170,29 @@ namespace Crescent
 				glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, stride, (GLvoid*)offset);
 				offset += 3 * sizeof(float);
 			}
+			/*
+			if (m_BoneIDs.size() > 0)
+			{
+				glEnableVertexAttribArray(5);
+				glVertexAttribIPointer(5, 4, GL_INT, stride, (GLvoid*)(offset));
+				offset += 4 * sizeof(int);
+
+				glEnableVertexAttribArray(6);
+				glVertexAttribIPointer(6, 4, GL_INT, stride, (GLvoid*)(offset));
+				offset += 4 * sizeof(int);
+			}
+
+			if (m_BoneWeights.size() > 0)
+			{
+				glEnableVertexAttribArray(7);
+				glVertexAttribPointer(7, 4, GL_FLOAT, false, stride, (GLvoid*)(offset));
+				offset += 4 * sizeof(float);
+
+				glEnableVertexAttribArray(8);
+				glVertexAttribPointer(8, 4, GL_FLOAT, false, stride, (GLvoid*)(offset));
+				offset += 4 * sizeof(float);
+			}
+			*/
 		}
 		else
 		{
@@ -198,6 +225,28 @@ namespace Crescent
 				glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)offset);
 				offset += m_Bitangents.size() * sizeof(float);
 			}
+
+			/*
+			if (m_BoneIDs.size() > 0)
+			{
+				glEnableVertexAttribArray(5);
+				glVertexAttribIPointer(5, 4, GL_INT, 0, (GLvoid*)(offset));
+
+				glEnableVertexAttribArray(6);
+				glVertexAttribIPointer(6, 4, GL_INT, 0, (GLvoid*)(offset));
+				offset += m_BoneIDs.size() * sizeof(int);
+			}
+
+			if (m_BoneWeights.size() > 0)
+			{
+				glEnableVertexAttribArray(7);
+				glVertexAttribPointer(7, 4, GL_FLOAT, false, 0, (GLvoid*)(offset));
+
+				glEnableVertexAttribArray(8);
+				glVertexAttribPointer(8, 4, GL_FLOAT, false, 0, (GLvoid*)(offset));
+				offset += m_BoneWeights.size() * sizeof(float);
+			}
+			*/
 		}
 		glBindVertexArray(0);
 	}	
@@ -320,5 +369,116 @@ namespace Crescent
 		glVertexAttribPointer(8, 4, GL_FLOAT, false, sizeof(Vertex), (void*)(offsetof(Vertex, BoneWeights) + 4 * sizeof(float)));
 		
 		glBindVertexArray(0);
+	}
+
+	void Mesh::RecursivelyUpdateBoneMatrices(int animationIndex, aiNode* node, glm::mat4 transform, double ticks)
+	{
+		static auto mat4_from_aimatrix4x4 = [](aiMatrix4x4 matrix) -> glm::mat4 {
+			glm::mat4 res;
+			for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) res[j][i] = matrix[i][j];
+			return res;
+		};
+
+		std::string node_name = node->mName.C_Str();
+		auto animation = m_Animations[animationIndex]->m_Animation;
+		glm::mat4 current_transform;
+
+		if (m_AnimationChannelMap.count(std::pair<uint32_t, std::string>(animationIndex, node_name)))
+		{
+			uint32_t channel_id = m_AnimationChannelMap[std::pair<uint32_t, std::string>(animationIndex, node_name)];
+			auto channel = animation->mChannels[channel_id];
+
+			// translation matrix
+			glm::mat4 translation_matrix = InterpolateTranslationMatrix(channel->mPositionKeys, channel->mNumPositionKeys, ticks);
+			// rotation matrix
+			glm::mat4 rotation_matrix = InterpolateRotationMatrix(channel->mRotationKeys, channel->mNumRotationKeys, ticks);
+			// scaling matrix
+			glm::mat4 scaling_matrix = InterpolateScalingMatrix(channel->mScalingKeys, channel->mNumScalingKeys, ticks);
+
+			current_transform = translation_matrix * rotation_matrix * scaling_matrix;
+		}
+		else
+		{
+			current_transform = mat4_from_aimatrix4x4(node->mTransformation);
+		}
+
+		if (m_BoneMapper.RetrieveBoneLibrary().count(node_name))
+		{
+			uint32_t i = m_BoneMapper.RetrieveBoneLibrary()[node_name];
+			m_BoneMatrices[i] = transform * current_transform * m_BoneOffsets[i];
+		}
+
+		for (int i = 0; i < node->mNumChildren; i++)
+		{
+			RecursivelyUpdateBoneMatrices(animationIndex, node->mChildren[i], transform * current_transform, ticks);
+		}
+	}
+
+	glm::mat4 Mesh::InterpolateTranslationMatrix(aiVectorKey* keys, uint32_t n, double ticks)
+	{
+		static auto mat4_from_aivector3d = [](aiVector3D vector) -> glm::mat4 {
+			return glm::translate(glm::mat4(1), glm::vec3(vector.x, vector.y, vector.z));
+		};
+		if (n == 0) return glm::mat4(1);
+		if (n == 1) return mat4_from_aivector3d(keys->mValue);
+		if (ticks <= keys[0].mTime) return mat4_from_aivector3d(keys[0].mValue);
+		if (keys[n - 1].mTime <= ticks) return mat4_from_aivector3d(keys[n - 1].mValue);
+
+		aiVectorKey anchor;
+		anchor.mTime = ticks;
+		auto right_ptr = std::upper_bound(keys, keys + n, anchor, [](const aiVectorKey& a, const aiVectorKey& b) {
+			return a.mTime < b.mTime;
+			});
+		auto left_ptr = right_ptr - 1;
+
+		float factor = (ticks - left_ptr->mTime) / (right_ptr->mTime - left_ptr->mTime);
+		return mat4_from_aivector3d(left_ptr->mValue * (1.0f - factor) + right_ptr->mValue * factor);
+	}
+
+	glm::mat4 Mesh::InterpolateRotationMatrix(aiQuatKey* keys, uint32_t n, double ticks)
+	{
+		static auto mat4_from_aiquaternion = [](aiQuaternion quaternion) -> glm::mat4 {
+			auto rotation_matrix = quaternion.GetMatrix();
+			glm::mat4 res(1);
+			for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) res[j][i] = rotation_matrix[i][j];
+			return res;
+		};
+		if (n == 0) return glm::mat4(1);
+		if (n == 1) return mat4_from_aiquaternion(keys->mValue);
+		if (ticks <= keys[0].mTime) return mat4_from_aiquaternion(keys[0].mValue);
+		if (keys[n - 1].mTime <= ticks) return mat4_from_aiquaternion(keys[n - 1].mValue);
+
+		aiQuatKey anchor;
+		anchor.mTime = ticks;
+		auto right_ptr = std::upper_bound(keys, keys + n, anchor, [](const aiQuatKey& a, const aiQuatKey& b) {
+			return a.mTime < b.mTime;
+			});
+		auto left_ptr = right_ptr - 1;
+
+		double factor = (ticks - left_ptr->mTime) / (right_ptr->mTime - left_ptr->mTime);
+		aiQuaternion out;
+		aiQuaternion::Interpolate(out, left_ptr->mValue, right_ptr->mValue, factor);
+		return mat4_from_aiquaternion(out);
+	}
+
+	glm::mat4 Mesh::InterpolateScalingMatrix(aiVectorKey* keys, uint32_t n, double ticks)
+	{
+		static auto mat4_from_aivector3d = [](aiVector3D vector) -> glm::mat4 {
+			return glm::scale(glm::mat4(1), glm::vec3(vector.x, vector.y, vector.z));
+		};
+		if (n == 0) return glm::mat4(1);
+		if (n == 1) return mat4_from_aivector3d(keys->mValue);
+		if (ticks <= keys[0].mTime) return mat4_from_aivector3d(keys[0].mValue);
+		if (keys[n - 1].mTime <= ticks) return mat4_from_aivector3d(keys[n - 1].mValue);
+
+		aiVectorKey anchor;
+		anchor.mTime = ticks;
+		auto right_ptr = std::upper_bound(keys, keys + n, anchor, [](const aiVectorKey& a, const aiVectorKey& b) {
+			return a.mTime < b.mTime;
+			});
+		auto left_ptr = right_ptr - 1;
+
+		float factor = (ticks - left_ptr->mTime) / (right_ptr->mTime - left_ptr->mTime);
+		return mat4_from_aivector3d(left_ptr->mValue * (1.0f - factor) + right_ptr->mValue * factor);
 	}
 }

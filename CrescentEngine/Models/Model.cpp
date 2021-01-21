@@ -347,7 +347,7 @@ namespace Crescent
 			for (int j = 0; j < bone->mNumWeights; j++)
 			{
 				auto weight = bone->mWeights[j];
-				vertices[weight.mVertexId].AddBone(id, weight.mWeight);
+				//vertices[weight.mVertexId].AddBone(id, weight.mWeight);
 			}
 		}
 		
