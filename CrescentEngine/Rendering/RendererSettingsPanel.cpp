@@ -2,6 +2,7 @@
 #include "RendererSettingsPanel.h"
 #include "Renderer.h"
 #include "GLStateCache.h"
+#include "PostProcessor.h"
 #include <imgui/imgui.h>
 
 namespace Crescent
@@ -19,8 +20,10 @@ namespace Crescent
 		ImGui::Checkbox("Enable Lighting", &m_RendererContext->m_LightsEnabled);
 		ImGui::Checkbox("Enable Shadows", &m_RendererContext->m_ShadowsEnabled);
 		ImGui::Checkbox("Enable Lighting Volumes", &m_RendererContext->m_ShowDebugLightVolumes);
-
-		ImGui::End();
+		ImGui::Spacing();
+		ImGui::Text("Effects");
+		ImGui::Checkbox("Enable Inversion", &m_RendererContext->m_PostProcessor->m_InversionEnabled);
+		ImGui::Checkbox("Enable Greyscale", &m_RendererContext->m_PostProcessor->m_GreyscaleEnabled);
 
 		RenderDeviceInformationUI();
 	}

@@ -33,8 +33,7 @@ namespace Crescent
 		//Draw Static Model
 		void DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID);
 		void DrawStaticModel(Shader& shader, bool renderShadowMap, unsigned int shadowMapTextureID, bool temporary, const glm::vec3& transformScale = glm::vec3(0.0f), const glm::vec3& transformPosition = glm::vec3(0.0f));
-
-				
+			
 		float RetrieveAnimationTime() const { return m_AnimationTime; }
 
 		void RenderSettingsInEditor(glm::vec3& modelPosition, glm::vec3& modelScale);

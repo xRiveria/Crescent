@@ -12,6 +12,7 @@ uniform sampler2D TexAlbedo;
 uniform sampler2D TexNormal;
 uniform sampler2D TexMetallic;
 uniform sampler2D TexRoughness;
+
 uniform sampler2D TexAO;
 
 void main()

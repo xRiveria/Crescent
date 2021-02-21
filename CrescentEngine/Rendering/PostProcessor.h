@@ -31,6 +31,11 @@ namespace Crescent
 
 	public:
 		bool m_SSAOEnabled = true;
+		bool m_BloomEnabled = true;
+
+		bool m_InversionEnabled = false;
+		bool m_GreyscaleEnabled = false;
+
 		int SSAOKernelSize = 32;
 		Texture* m_SSAOOutput;
 
@@ -42,6 +47,21 @@ namespace Crescent
 		Shader* m_SSAOShader;
 		Shader* m_SSAOBlurShader;
 		Texture* m_SSAONoiseTexture;
+
+		//Bloom
+		Shader* m_BloomShader;
+		Shader* m_BloomBlurShader;
+
+		RenderTarget* m_BloomRenderTarget0;
+		RenderTarget* m_BloomRenderTarget1;
+		RenderTarget* m_BloomRenderTarget2;
+		RenderTarget* m_BloomRenderTarget3;
+		RenderTarget* m_BloomRenderTarget4;
+
+		Texture* m_BloomOutput1;
+		Texture* m_BloomOutput2;
+		Texture* m_BloomOutput3;
+		Texture* m_BloomOutput4;
 
 		Renderer* m_Renderer;
 	};

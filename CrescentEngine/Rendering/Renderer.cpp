@@ -392,6 +392,8 @@ namespace Crescent
 
 		m_PostProcessor->m_PostProcessingShader->UseShader();
 		m_PostProcessor->m_PostProcessingShader->SetUniformBool("SSAO", true);
+		m_PostProcessor->m_PostProcessingShader->SetUniformBool("GreyscaleEnabled", m_PostProcessor->m_GreyscaleEnabled);
+		m_PostProcessor->m_PostProcessingShader->SetUniformBool("InverseEnabled", m_PostProcessor->m_InversionEnabled);
 
 		RenderMesh(m_NDCQuad);
 	}

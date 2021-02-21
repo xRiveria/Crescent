@@ -7,9 +7,13 @@ uniform sampler2D TexSrc;
 
 //Post-Processing Effect Toggles
 uniform int SSAO;
+uniform bool GreyscaleEnabled;
+uniform bool InverseEnabled;
 
 //Motion Blur
 uniform sampler2D gMotion;
+
+const float offset = 1.0 / 300.0;
 
 void main()
 {
@@ -25,5 +29,16 @@ void main()
 	// gamma correct
 	color = pow(color, vec3(1.0 / 2.2));
 
-	FragColor = vec4(color, 1.0);
+	vec4 processedColor = vec4(color, 1.0);
+	if (InverseEnabled)
+	{
+		processedColor = vec4(vec3(1.0 - processedColor.xyz), 1.0f);
+	}
+	if (GreyscaleEnabled)
+	{
+		float average = 0.2126 * processedColor.r + 0.7152 * processedColor.g + 0.0722 * processedColor.b;
+		processedColor = vec4(average, average, average, 1.0);
+	}
+
+	FragColor = processedColor;
 }

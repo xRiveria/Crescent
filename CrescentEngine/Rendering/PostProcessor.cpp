@@ -68,8 +68,19 @@ namespace Crescent
 		m_SSAOShader->SetUniformInteger("sampleCount", SSAOKernelSize);
 		m_SSAOShader->SetUniformInteger("HDRScene", 0);
 
-		//m_SSAOShader->UseShader();
-		//m_SSAOShader->SetUniformInteger("HDRScene", 0);
+		//Bloom
+		m_BloomRenderTarget0 = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, false);
+		m_BloomRenderTarget1 = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, false);
+		m_BloomRenderTarget2 = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, false);
+		m_BloomRenderTarget3 = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, false);
+		m_BloomRenderTarget4 = new RenderTarget(1, 1, GL_HALF_FLOAT, 1, false);
+
+		m_BloomOutput1 = m_BloomRenderTarget1->RetrieveColorAttachment(0);
+		m_BloomOutput2 = m_BloomRenderTarget1->RetrieveColorAttachment(0);
+		m_BloomOutput3 = m_BloomRenderTarget1->RetrieveColorAttachment(0);
+		m_BloomOutput4 = m_BloomRenderTarget1->RetrieveColorAttachment(0);
+
+		//m_BloomShader = Resources::LoadShader("Bloom", "Resources/Shaders/ScreenQuadVertex.shader", "Resources/Shaders/Post/BloomFragment.shader");
 	}
 
 	PostProcessor::~PostProcessor()
@@ -79,6 +90,12 @@ namespace Crescent
 	void PostProcessor::UpdatePostProcessingRenderTargetSizes(unsigned int newWidth, unsigned int newHeight)
 	{
 		m_SSAORenderTarget->ResizeRenderTarget((int)newWidth * 0.5f, (int)(newHeight * 0.5f));
+
+		m_BloomRenderTarget0->ResizeRenderTarget((int)newWidth * 0.5f, (int)(newHeight * 0.5f));
+		m_BloomRenderTarget1->ResizeRenderTarget((int)newWidth * 0.5f, (int)(newHeight * 0.5f));
+		m_BloomRenderTarget2->ResizeRenderTarget((int)newWidth * 0.25f, (int)(newHeight * 0.25f));
+		m_BloomRenderTarget3->ResizeRenderTarget((int)newWidth * 0.125f, (int)(newHeight * 0.125f));
+		m_BloomRenderTarget4->ResizeRenderTarget((int)newWidth * 0.0675f, (int)(newHeight * 0.0675f));
 	}
 
 	void PostProcessor::ProcessPreLighting(Renderer* rendererContext, RenderTarget* gBuffer, Camera* cameraContext)
@@ -103,6 +120,7 @@ namespace Crescent
 
 	void PostProcessor::ProcessPostLighting(Renderer* rendererContext, RenderTarget* gBuffer, RenderTarget& outputRenderTarget, Camera* cameraContext)
 	{
+
 	}
 
 	void PostProcessor::BlitToMainFramebuffer(Renderer* rendererContext, Texture* sourceTexture)

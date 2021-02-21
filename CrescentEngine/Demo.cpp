@@ -103,13 +103,15 @@ int main(int argc, int argv[])
 
 	Crescent::SceneEntity* sponza = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Sponza", "Resources/Models/Sponza/sponza.obj");
 	Crescent::SceneEntity* backpack = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Backpack", "Resources/Models/Stormtrooper/source/silly_dancing.fbx");
-	Crescent::SceneEntity* pokeball = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Pokeball", "Resources/Models/Testing/source/Ti-Pche_Skethfab.fbx");
+	Crescent::SceneEntity* gun = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Gun", "Resources/Models/Gun/Cerberus_LP.FBX");
 
 	sponza->SetEntityPosition(glm::vec3(0.00f, -1.00f, 0.00f));
 	sponza->SetEntityScale(0.01f);
+	gun->SetEntityScale(0.02);
+	gun->SetEntityRotation(glm::vec3(glm::radians(90.0f), 0.0f, glm::radians(180.0f)));
+
 	backpack->SetEntityPosition(glm::vec3(4.10f, 0.0f, -0.10f));
 	backpack->SetEntityRotation(glm::vec3(0.0f, glm::radians(-90.0f), 0.0f));
-	pokeball->SetEntityRotation(glm::vec3(glm::radians(-90.0f), 0.0f, 0.0f));
 
 	//Background
 	Crescent::Skybox* sceneSkybox = new Crescent::Skybox();
@@ -174,7 +176,7 @@ int main(int argc, int argv[])
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneSkybox);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sponza);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(backpack);
-		g_CoreSystems.m_Renderer->PushToRenderQueue(pokeball);
+		g_CoreSystems.m_Renderer->PushToRenderQueue(gun);
 
 		g_CoreSystems.m_Renderer->RenderAllQueueItems();
 

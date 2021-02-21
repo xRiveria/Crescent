@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30104.148
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CrescentEngine", "CrescentEngine\CrescentEngine.vcxproj", "{D700B27D-E80A-4777-96D8-A957F5665916}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VulkanSupport", "VulkanSupport\VulkanSupport.vcxproj", "{E20F222C-42F2-4718-A671-33798ACC2DD7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{D700B27D-E80A-4777-96D8-A957F5665916}.Release|x64.Build.0 = Release|x64
 		{D700B27D-E80A-4777-96D8-A957F5665916}.Release|x86.ActiveCfg = Release|Win32
 		{D700B27D-E80A-4777-96D8-A957F5665916}.Release|x86.Build.0 = Release|Win32
+		{E20F222C-42F2-4718-A671-33798ACC2DD7}.Debug|x64.ActiveCfg = Debug|x64
+		{E20F222C-42F2-4718-A671-33798ACC2DD7}.Debug|x64.Build.0 = Debug|x64
+		{E20F222C-42F2-4718-A671-33798ACC2DD7}.Debug|x86.ActiveCfg = Debug|Win32
+		{E20F222C-42F2-4718-A671-33798ACC2DD7}.Debug|x86.Build.0 = Debug|Win32
+		{E20F222C-42F2-4718-A671-33798ACC2DD7}.Release|x64.ActiveCfg = Release|x64
+		{E20F222C-42F2-4718-A671-33798ACC2DD7}.Release|x64.Build.0 = Release|x64
+		{E20F222C-42F2-4718-A671-33798ACC2DD7}.Release|x86.ActiveCfg = Release|Win32
+		{E20F222C-42F2-4718-A671-33798ACC2DD7}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
