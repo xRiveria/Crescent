@@ -15,10 +15,10 @@
 
 namespace Crescent
 {
-    SceneHierarchyPanel::SceneHierarchyPanel(Scene* sceneContext, Window* windowContext) : m_SceneContext(sceneContext), m_WindowContext(windowContext)
-    {	
-        m_CurrentlySelectedEntity = nullptr;
-    }
+	SceneHierarchyPanel::SceneHierarchyPanel(Scene* sceneContext, Window* windowContext) : m_SceneContext(sceneContext), m_WindowContext(windowContext)
+	{
+		m_CurrentlySelectedEntity = nullptr;
+	}
 
 	void SceneHierarchyPanel::RenderSceneEditorUI()  //Flows information into the other UI render functions.
 	{
@@ -159,8 +159,7 @@ namespace Crescent
 				ImGui::Spacing();
 				ImGui::Image((void*)selectedEntity->m_Material->m_SamplerUniforms[uniformTextureName].m_Texture->RetrieveTextureID(), { 100.0f, 100.0f }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 				ImGui::SameLine();
-				std::string buttonName = "Load New Texture##" + std::string(nodeName.c_str());
-				if (ImGui::Button(buttonName.c_str()))
+				if (ImGui::Button("Load New Texture"))
 				{
 					std::optional<std::string> filePath = OpenFile("Textures");
 					if (filePath.has_value())
@@ -169,12 +168,7 @@ namespace Crescent
 						std::string filePath = path.substr(0, path.find_last_of("/"));
 
 						Texture* loadedTexture = Resources::LoadTexture(filePath, filePath, GL_TEXTURE_2D, GL_RGB, true);
-						selectedEntity->m_Material->SetShaderTexture(uniformTextureName, loadedTexture, uniformTextureUnit);	
-						return;
-					}
-					else
-					{
-						return;
+						selectedEntity->m_Material->SetShaderTexture(uniformTextureName, loadedTexture, uniformTextureUnit);
 					}
 				}
 
@@ -316,5 +310,4 @@ namespace Crescent
 		ImGui::Columns(1);
 		ImGui::PopID();
 	}
-
 }

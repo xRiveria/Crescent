@@ -103,15 +103,13 @@ int main(int argc, int argv[])
 
 	Crescent::SceneEntity* sponza = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Sponza", "Resources/Models/Sponza/sponza.obj");
 	Crescent::SceneEntity* backpack = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Backpack", "Resources/Models/Stormtrooper/source/silly_dancing.fbx");
-	Crescent::SceneEntity* gun = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Gun", "Resources/Models/Gun/Cerberus_LP.FBX");
+	Crescent::SceneEntity* pokeball = Crescent::Resources::LoadMesh(g_CoreSystems.m_Renderer, demoScene, "Pokeball", "Resources/Models/Eyeball/Wyvern.fbx");
 
 	sponza->SetEntityPosition(glm::vec3(0.00f, -1.00f, 0.00f));
 	sponza->SetEntityScale(0.01f);
-	gun->SetEntityScale(0.02);
-	gun->SetEntityRotation(glm::vec3(glm::radians(90.0f), 0.0f, glm::radians(180.0f)));
-
 	backpack->SetEntityPosition(glm::vec3(4.10f, 0.0f, -0.10f));
 	backpack->SetEntityRotation(glm::vec3(0.0f, glm::radians(-90.0f), 0.0f));
+	pokeball->SetEntityRotation(glm::vec3(glm::radians(-90.0f), 0.0f, 0.0f));
 
 	//Background
 	Crescent::Skybox* sceneSkybox = new Crescent::Skybox();
@@ -157,7 +155,7 @@ int main(int argc, int argv[])
 		//Poll Events
 		g_CoreSystems.m_Window.PollEvents();
 		ProcessKeyboardEvents(g_CoreSystems.m_Window.RetrieveWindow());
-	
+
 		g_CoreSystems.m_Camera.Update(g_CoreSystems.m_Timestep.GetDeltaTimeInSeconds());
 
 		//Randomize
@@ -176,7 +174,7 @@ int main(int argc, int argv[])
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sceneSkybox);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(sponza);
 		g_CoreSystems.m_Renderer->PushToRenderQueue(backpack);
-		g_CoreSystems.m_Renderer->PushToRenderQueue(gun);
+		g_CoreSystems.m_Renderer->PushToRenderQueue(pokeball);
 
 		g_CoreSystems.m_Renderer->RenderAllQueueItems();
 
@@ -195,7 +193,7 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 {
 	g_CoreSystems.m_Editor.BeginEditorRenderLoop();
 	g_CoreSystems.m_Editor.RenderDockingContext(); //This contains a Begin().
-	ImGui::ShowDemoWindow(&showDemo);
+
 	ImGui::Begin("Lighting - Temporary");
 	ImGui::DragFloat3("Point Light Position 1", glm::value_ptr(pointLightPosition), 0.10f);
 	ImGui::DragFloat3("Light Direction", glm::value_ptr(lightDirection), 0.10f);
@@ -236,7 +234,7 @@ void RenderEditor(Crescent::SceneHierarchyPanel* sceneHierarchyPanel, Crescent::
 
 	unsigned int colorAttachment = g_CoreSystems.m_Renderer->RetrieveMainRenderTarget()->RetrieveColorAttachment(0)->RetrieveTextureID();
 	ImGui::Image((void*)colorAttachment, { (float)g_CoreSystems.m_Editor.RetrieveViewportWidth(), (float)g_CoreSystems.m_Editor.RetrieveViewportHeight() }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
-	
+
 	ImGui::End();
 	ImGui::PopStyleVar(); //Pops the pushed style so other windows beyond this won't have the style's properties.
 
@@ -322,5 +320,3 @@ void FramebufferResizeCallback(GLFWwindow* window, int windowWidth, int windowHe
 	//g_CoreSystems.m_Renderer->SetRenderingWindowSize(windowWidth, windowHeight);
 	g_CoreSystems.m_Window.ResizeWindow((float)windowWidth, (float)windowHeight);
 }
-
-
