@@ -1,3 +1,4 @@
+#define NOMINMAX
 #define GLFW_INCLUDE_VULKAN
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
@@ -13,6 +14,9 @@
 #include <cstdint> // Necessary for UINT32_MAX
 #include <optional>
 #include <set>
+#include <fstream>
+#include <cassert>
+#include <cstdint>
 
 //As this is an extension function, it is not automatically loaded. We will thus look up its address ourselves by using vkGetInstanceProcAddr.
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator,
@@ -67,6 +71,8 @@ private:
 		PickPhysicalDevice();
 		CreateLogicalDevice();
 		CreateSwapChain();
+		CreateImageViews();
+		CreateGraphicsPipeline();
 	}
 
 	void MainLoop()
@@ -81,6 +87,12 @@ private:
 	{
 		//Every Vulkan object that we create needs to be explicitly destroyed when we no longer need it.
 		//Vulkan's niche is to be explicit about every operation. Thus, its good to be about the lifetime of objects as well.
+		for (VkImageView imageView : m_SwapChainImageViews)
+		{
+			vkDestroyImageView(m_Device, imageView, nullptr);
+		}
+
+		vkDestroySwapchainKHR(m_Device, m_SwapChain, nullptr);
 		vkDestroyDevice(m_Device, nullptr); //Logical devices don't interact directly with instances, which is why it isn't needed as a parameter.
 
 		if (m_ValidationLayersEnabled)
@@ -398,6 +410,8 @@ private:
 			details.m_PresentationModes.resize(presentModeCount);
 			vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_Surface, &presentModeCount, details.m_PresentationModes.data());
 		}
+
+		return details;
 	}
 
 	//If the swapChainAdequete conditions were met, then the support is definitely sufficient. However, there may still be many modes with varying optimality.
@@ -409,7 +423,7 @@ private:
 	{
 		/*
 			Each VkSurfaceFormatKHR entry contains a format and a colorspace member. The format member specifies color channels and types. For example, VK_FORMAT_B8G8R8A8_SRGB means
-			that we store the B, R, G and Alpha channels in that order with an 8 bit unsigned integer for a total fo 32 bits per pixel. The colorSpace member indicates if the SRGB color
+			that we store the B, R, G and Alpha channels in that order with an 8 bit unsigned integer for a total of 32 bits per pixel. The colorSpace member indicates if the SRGB color
 			space is supported or not using the VK_COLOR_SPACE_SRGB_NONLINEAR_KHR flag. For the color space, we will use SRGB if it is avaliable, because it results in more accurately
 			perceived colors. It is also pretty much the standard color space for images, like the textures we will use later on. Because of that, we should also use an SRGB color format, a common
 			one being VK_FORMAT_B8G8R8A8_SRGB. 
@@ -481,13 +495,13 @@ private:
 		{
 			return capabilities.currentExtent;
 		}
-		else
+		else //We pick the resolution that best matches the window.
 		{
 			int windowWidth, windowHeight;
 			glfwGetFramebufferSize(m_Window, &windowWidth, &windowHeight);
 			VkExtent2D actualExtent = { static_cast<uint32_t>(windowWidth), static_cast<uint32_t>(windowHeight) };
 
-			//The max and min functions are used here to clamp the value of WIDTH and HEIGHT between the allowed minimum and maximum extentrs that are supported by the implementation.
+			//The max and min functions are used here to clamp the value of WIDTH and HEIGHT between the allowed minimum and maximum extents that are supported by the implementation.
 			actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
 			actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
 
@@ -651,7 +665,197 @@ private:
 		VkExtent2D swapExtent = ChooseSwapExtent(swapChainSupport.m_Capabilities);
 
 		//Aside from these properties, we also have to decide how many images we would like to have in the swap chain. The implementation specifies the minimum number
-		//that it requires to function. 
+		//that it requires to function. However, simply sticking to this minimum means that we may sometimes have to wait on the driver to complete internal operations before
+		//we can acquire another image to render to. Therefore, it is recommended to request at least 1 more image than the minimum.
+		uint32_t imageCount = swapChainSupport.m_Capabilities.minImageCount + 1;
+		//We should also make sure to not exceed the maximum number of images while doing this, while 0 is a special value that means that there is no maximum. 
+		if (swapChainSupport.m_Capabilities.maxImageCount > 0 && imageCount > swapChainSupport.m_Capabilities.maxImageCount)
+		{
+			imageCount = swapChainSupport.m_Capabilities.maxImageCount;
+		}
+		
+		VkSwapchainCreateInfoKHR creationInfo{};
+		creationInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+		creationInfo.surface = m_Surface; //Which surface the swapchain should be tied to.
+		creationInfo.minImageCount = imageCount;
+		creationInfo.imageFormat = surfaceFormat.format;
+		creationInfo.imageColorSpace = surfaceFormat.colorSpace;
+		creationInfo.imageExtent = swapExtent;
+		//imageArrayLayers specifies the amount of layers each image consists of. This is always 1 unless you are developing a stereoscopic 3D application.
+		//The imageUsage biut field specifies what klind of operations we will be using the images in the swapchain for. Here, we're going to render directly to them,
+		//which means that they're used as color attachments. It is also possible that you will render images to a seperate image first to perform operations like post-processing.
+		//In that case, you may use a value like VK_IMAGE_USAGE_TRANSFER_DST_BIT instead and use a memory operation to transfer the rendered image to a swapchain image.
+		creationInfo.imageArrayLayers = 1;
+		creationInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		/*
+			We now specify how to handle swap chain images that will be used across multiple queue families. That will be the case in our application if the graphics queue family
+			is different from the presentation queue. We will be drawing on the images in the swap chain from the graphics queue and then submitting them on the presentation queue. 
+			There are two ways to handle images that are accessed from multiple queues:
+			- VK_SHARING_MODE_EXCLUSIVE: An image is owned by one queue family at a time and ownership must be explictly transferred before using it in another queue family. This offers the best performance.
+			- VK_SHARING_MODE_CONCURRENT: Images can be used across multiple queue families without explicit ownership transfers.
+			Concurrent mode requires you to specify in advance between which queue families ownership will be sharing using queueFamilyIndexCount and pQueueFamilyIdnices parameters.
+			If the graphics queue family and presentation queue family are the same, which will be the case on most hardware, we should stick to exclusive mode, because concurrent mode requires you to specify at least 2 distinct queue families.
+		*/
+		QueueFamilyIndices indices = FindQueueFamilies(m_PhysicalDevice);
+		uint32_t queueFamilyIndices[] = { indices.m_GraphicsFamily.value(), indices.m_PresentationFamily.value() };
+
+		if (indices.m_GraphicsFamily != indices.m_PresentationFamily)
+		{
+			creationInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+			creationInfo.queueFamilyIndexCount = 2;
+			creationInfo.pQueueFamilyIndices = queueFamilyIndices;
+		}
+		else
+		{
+			creationInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			creationInfo.queueFamilyIndexCount = 0; //Optional
+			creationInfo.pQueueFamilyIndices = nullptr;
+		}
+
+		//We can also specify that a certain transform be applied to images in the swapchain if it is supported (supportTransforms in capabilities), like a 90 degree clockwise roation or horizontal flip.
+		//To specify that you do not want any transformation, simply specify the current transformatiohn.
+		creationInfo.preTransform = swapChainSupport.m_Capabilities.currentTransform;
+
+		//The compositeAlpha field specifies if the alpha channel should be used for blending with other windows in the window system. You will almost always want to simply ignore the alpha channel.
+		//Hence, use VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR.
+		creationInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+
+		//The presentMode member speaks for itself. If the clipped member is set to VK_TRUE, then that means that we don't care about the color of pixels that are obscured,
+		//for example because another window is in front of them. Unless you really need to be able to read these pixels back and get predictable results, you will get the best performance by enabling clipping.
+		creationInfo.presentMode = presentMode;
+		creationInfo.clipped = VK_TRUE;
+
+		//That leaves one last field, oldSwapChain. With Vulkan, it is possible that your swapchain becomes invalid or unoptimized while your application is running, for example
+		//because the window was resized. In that case, the swapchain actually needs to be recreated from scratch and a reference to the old one must be specified in this field. 
+		//This is rather complex, so for now we will assume that we will only ever create one swap chain.
+		creationInfo.oldSwapchain = VK_NULL_HANDLE;
+
+		if (vkCreateSwapchainKHR(m_Device, &creationInfo, nullptr, &m_SwapChain) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create swapchain!");
+		}
+		else
+		{
+			std::cout << "Successfully created Swapchain." << "\n";
+		}
+
+		//Remember that we only specified a minimum number of images in the swapchain, so the implementation is allowed to create a swapchain with more.
+		//Thus, we will first query the final number of images with vkGetSwapchainImagesKHR, then resize the container and finally call it again to retrieve the handles.
+		vkGetSwapchainImagesKHR(m_Device, m_SwapChain, &imageCount, nullptr);
+		m_SwapChainImages.resize(imageCount);
+		vkGetSwapchainImagesKHR(m_Device, m_SwapChain, &imageCount, m_SwapChainImages.data());
+		m_SwapChainImageFormat = surfaceFormat.format;
+		m_SwapChainExtent = swapExtent;
+	}
+
+	void CreateImageViews()
+	{
+		//An image view is literally a view into image and is required to use any vkImage. It describes how to access the image and which part of the image to access.
+		//For example, if it should be treated as a 2D texture depth texture without any mipmapping levels. 
+		//An image view is sufficient to start using an image as a texture, but its not quite ready to be used as a render target just yet. We need just one more step of indirection, known as a framebuffer.
+		m_SwapChainImageViews.resize(m_SwapChainImages.size());
+
+		for (size_t i = 0; i < m_SwapChainImages.size(); i++)
+		{
+			VkImageViewCreateInfo creationInfo{};
+			creationInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			creationInfo.image = m_SwapChainImages[i];
+			//The viewType and format fields specifies how the image data should be intepreted. The viewType parameter allows you to treat images as 1D textures, 2D textures, 3D textures and cubemaps.
+			creationInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			creationInfo.format = m_SwapChainImageFormat;
+			//The components field allow you to swizzle the color channels around. For example, you can map all of the channels to the red channel for a monochrome texture.
+			//You can also map constant values of 0 and 1 to a channel. In this case, we will stick to default mapping.
+			creationInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+			creationInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+			creationInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+			creationInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+			//The subresourceRange fields describes what the image's purpose is and which part of the image should be accessed. Our images will be used as color targets
+			//without any mipmapping levels or multiple layers.
+			creationInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			creationInfo.subresourceRange.baseMipLevel = 0;
+			creationInfo.subresourceRange.levelCount = 1;
+			creationInfo.subresourceRange.baseArrayLayer = 0;
+			//If this was a stereographic 3D application, we would create a swapchain with multiple layers. We can then create multiple image views for each image representing the views for the
+			//left and right eyes by accessing different layers. 
+			creationInfo.subresourceRange.layerCount = 1; 
+
+			if (vkCreateImageView(m_Device, &creationInfo, nullptr, &m_SwapChainImageViews[i]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("Failed to create image views.");
+			}
+			else
+			{
+				std::cout << "Successfully create image view." << "\n";
+			}
+		}
+	}
+
+	static std::vector<char> ReadFile(const std::string& fileName)
+	{
+		//The ate flag will start reading at the end of the file, and binary indicates that we are reading the file as a binary file to avoid text transformations.
+		//The advantage of starting to read at the end of the file is that we can use the read position to determine the size of the file and allocate a buffer.
+		std::ifstream file(fileName, std::ios::ate | std::ios::binary); 
+
+		if (!file.is_open())
+		{
+			throw std::runtime_error("Failed to open file " + fileName);
+		}
+
+		size_t fileSize = (size_t)file.tellg(); //Retrieves the position of the current character in the input stream. Since its at the end, hence the size of the buffer.
+		std::vector<char> buffer(fileSize);
+
+		file.close();
+
+		//Make sure the shaders are loaded correctly by printing the size of the buffers and checking if they match the actual file size in bytes. 
+		//Note that the code doesn't need to be null-terminated since its binary code and will later be explicit about its size.
+		std::cout << buffer.size() << "\n";
+		return buffer;
+	}
+
+	VkShaderModule CreateShaderModule(const std::vector<char>& code)
+	{
+		//Before we can pass our shader code to the pipeline, we have to wrap it in a VkShaderModule object. This function will take a buffer with the bytecode as parameter and create a VkShaderModule from it. 
+		VkShaderModuleCreateInfo creationInfo;
+		creationInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		creationInfo.codeSize = code.size();
+		/*
+			The catch here is that the size of the bytecode is specified in bytes, but the bytecode pointer is a uint32_t pointer rather than a char pointer.
+			Therefore, we will need to cast the pointer with a reintepret cast as shown below. When you a perform a cast like this, you also need to ensure that the data
+			satisfies the alignment requirements of uint32_t. Lucky for us, the data is stored in an std::vector where the default allocator already ensures that the data satisfies
+			the worse case alignment requirements. 
+		*/	
+		//reinterpret_cast is used to convert one pointer to another pointer of any type, no matter whether the class is related to each other or not.
+		//It does not check if the pointer type and data pointed by the pointer is the same or not.
+		creationInfo.pCode = reinterpret_cast<const uint32_t*>(code.data()); 
+
+		VkShaderModule shaderModule;
+		if (vkCreateShaderModule(m_Device, &creationInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create shader module.");
+		}
+
+		return shaderModule;
+	}
+
+	void CreateGraphicsPipeline()
+	{
+		std::vector<char> vertexShaderCode = ReadFile("Shaders/vertex.spv");
+		std::vector<char> fragmentShaderCode = ReadFile("Shaders/fragment.spv");
+
+		//Shader modules are just a thin wrapper around the shader bytecode that we previously loaded from a file and the functions defined in it. The compilation and
+		//linking of the SPIR-V bytecode to machine code for execution by the GPU doesn't happen until the graphics pipeline is created. That means that we are allowed
+		//to destroy the shader modules again as soon as the pipeline creation is finished, which is why we will make them local variables in the CreateGraphicsPipeline function instead of class members. 
+		VkShaderModule vertexShaderModule = CreateShaderModule(vertexShaderCode);
+		VkShaderModule fragmentShaderModule = CreateShaderModule(fragmentShaderCode);
+
+		VkPipelineShaderStageCreateInfo vertexShaderStageInfo{};
+		//The first step besides the obligatory stype member is telling Vulkan in which pipeline stage the shader is going to be used. There is an enum value for each of the programmable shader stages.
+		vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertexShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		//The next two members specify the shader module containing the code, and the function to invoke known as the entry point. 
+
+		vkDestroyShaderModule(m_Device, fragmentShaderModule, nullptr);
+		vkDestroyShaderModule(m_Device, vertexShaderModule, nullptr);
 	}
 
 private:
@@ -666,6 +870,13 @@ private:
 	VkDevice m_Device; //Used to interface with the physical device. Multiple logical devices can be created from the same physical device.
 	VkQueue m_GraphicsQueue; //Used to interface with the queues in our logical device. This is implicitly destroyed with the device. 
 	VkQueue m_PresentationQueue;
+
+	//Swapchain
+	VkSwapchainKHR m_SwapChain;
+	std::vector<VkImage> m_SwapChainImages; //Images are created by the swapchain and will be automatically cleaned up as well when it is destroyed. 
+	std::vector<VkImageView> m_SwapChainImageViews;		
+	VkFormat m_SwapChainImageFormat;
+	VkExtent2D m_SwapChainExtent;
 
 	const std::vector<const char*> m_ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
 	const std::vector<const char*> m_DeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
