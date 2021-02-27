@@ -852,7 +852,109 @@ private:
 		//The first step besides the obligatory stype member is telling Vulkan in which pipeline stage the shader is going to be used. There is an enum value for each of the programmable shader stages.
 		vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		vertexShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+
 		//The next two members specify the shader module containing the code, and the function to invoke known as the entry point. 
+		//That means that its possible to combine multiple fragment shaders into a single shader module, and use different entry points to differentiate between
+		//their behaviors. In this case, we will stick to the standard "main", however. There is one more optional member, pSpecializationInfo, which we won't be using here.
+		//It allows you to specify values for shader constants. You can use a single shader module where its behavior can be configured at pipeline creation by specifying
+		//different values for the constants used in it. This is more efficient than confugirng the shader using variables at render time, because the compiler can do
+		//optimizations like eliminating if statements that depend on these values. If you do not have any constants like this, then you can set the member to nullptr, which our struct initialization does automatically.
+		//Modifying the structure to suit the fragment shader is easy.
+		VkPipelineShaderStageCreateInfo fragmentShaderStageInfo{};
+		fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		fragmentShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		fragmentShaderStageInfo.module = fragmentShaderModule;
+		fragmentShaderStageInfo.pName = "main";
+
+		VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderStageInfo, fragmentShaderStageInfo };
+
+		/*
+			The older graphics APIs provided default state for most of the stages of the graphics pipeline. In Vulkan, you will have to be explicit about everything,
+			from viewport size to color blending functions. We will thus have to create each of these ourselves.
+			The VkPipelineVertexInputStateCreateInfo structure describes the format of the vertex data that will be passed to the vertex shader. It describes this in roughly two ways:
+				- Bindings: Spacing between data and whether the data is per-vertex or per-instance (Geometry Instancing, where multiple copies of the same mesh are rendered at once in a scene).
+				- Attribute Descriptions: Type of the attributes passed to the vertex shader, which binding to load them from and at which offset.
+		*/
+
+		//Because we're hard coding the vertex data directly in the vertex shader, we will fill this structure to specify that there is no data to load for now.
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertexInputInfo.vertexBindingDescriptionCount = 0;
+		vertexInputInfo.pVertexBindingDescriptions = nullptr; //Optional. This points to an array of structs that describe the aforementioned details for loading vertex data.
+		vertexInputInfo.vertexAttributeDescriptionCount = 0;
+		vertexInputInfo.pVertexAttributeDescriptions = nullptr; //Optional. This points to an array of structs that describe the aforementioned details for loading vertex data.
+
+		/*
+			The VkPipelineInputAssemblyStateCreateInfo struct describes two things: what kind of geometry will be drawn from the vertices and if primitive restart should be enabled.
+			The former is specified in to the "topology" member and can have values like:
+			- VK_PRIMITIVE_TOPOLOGY_POINT_LIST: Points from vertices.
+			- VK_PRIMITIVE_TOPOLOGY_LINE_LIST: Line from every 2 vertices without reuse.
+			- VK_PRIMITIVE_TOPOLOGY_LINE_STRIP: The end vertex of every line is used as start vertex for the next line.
+			- VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST: Triangle from every 3 vertices without reuse.
+			- VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP: The second and third vertex of every triangle are used as first two vertices of the next triangle.
+
+			Normally, the vertices are loaded from the vertex buffer by index in sequential order, but with an element buffer, you can specify the indices to use yourself.
+			This allows you to perform optimizations like reusing vertices. If you set the primitiveRestartEnable to VK_TRUE, then its possible to break up lines and triangles in the
+			_STRIP topology modes by using a special index of 0xFFFF or 0xFFFFFFFF. 
+		*/
+
+		//As we intend to draw triangles throughout this tutorial, we will stick to the following data for the structure.
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+		//A viewport basically describes the region of the framebuffer than the output will be rendered to. This will almost always be (0, 0) to (wdith, height).
+		//Remember that the size of the swapchain and its images may differ from the WIDTH/HEIGHT of the window. The swapchain images will be used as framebuffers later on,
+		//so we should stick to their size. 
+
+		VkViewport viewportInfo{};
+		viewportInfo.x = 0.0f;
+		viewportInfo.y = 0.0f;
+		viewportInfo.width = (float)m_SwapChainExtent.width;
+		viewportInfo.height = (float)m_SwapChainExtent.height;
+		viewportInfo.minDepth = 0.0f; //The minDepthand maxDepth values specify the range of depth values to use for the framebuffer.
+		viewportInfo.maxDepth = 1.0f; //These values must be within the [0.0f, 1.0f] range, but minDepth may be higer than maxDepth. If you aren't doing anything special, then you should stick to the standard values of 0.0f and 1.0f.
+
+		//While viewports define the transformation from the image to the framebuffer, scissor rectangles define in which regions pixels will actually be stored.
+		//Any pixels outside the scissor rectangles will be discarded by the rasterizer  They function like a filter rather than a transformation. 
+		//In this tutorial, we simply want to draw to the entire framebuffer, so we will specify a scissor rectangle that covers it entirely.
+		VkRect2D scissorInfo{};
+		scissorInfo.offset = { 0, 0 };
+		scissorInfo.extent = m_SwapChainExtent;
+
+		//Now, this viewport and scissor rectangle need to be combined into a viewport state using the VkPipelineViewportStateCreateInfo struct. 
+		//It is possible to use multiple viewports and scissor rectangles on some graphics cards, so its members reference an array of them. Using multiple requires enabling a GPU feature.
+		VkPipelineViewportStateCreateInfo viewportState{};
+		viewportState.viewportCount = 1;
+		viewportState.pViewports = &viewportInfo;
+		viewportState.scissorCount = 1;
+		viewportState.pScissors = &scissorInfo;
+		 
+		//The rasterizer takes the geometry that is shaped by the vertices from the vertex shader and turns it into fragments to be colored by the fragment shader. 
+		//It also performs depth testing, face culling and the scissor test, and it can be configured to output fragments that fill entire polygons or just the edges (wireframe rendering).
+		//All this is configuring using the VkPipelineRasterizationStateCreateInfo structure. 
+		VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
+		rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		rasterizerInfo.depthClampEnable = VK_FALSE; //If this is true, then fragments that are beyond the near and far planes are clamped to them as opposed to discarding them.  This is useful in special cases like shadow maps. This requires a GPU feature as well.
+		//The polygonMode determines how fragments are generated for geometry. The following modes are avaliable and using any other mode other than fill requires enabling a GPU feature.
+		//- VK_POLYGON_MODE_FILL: Fills the area of the polygon with fragments.
+		//- VK_POLYGON_MODE_LINE: Polygon edges are drawn as lines.
+		//- VK_POLYGON_MODE_POINT: Polygon vertices are drawn as points.
+		rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL; 
+		//The lineWidth member is straightforward. It describes the thickness of lines in terms of number of fragments. The maximum line width that is supported depends on the hardware
+		//and any line thicker than 1.0f requires you to enable the wideLines GPU feature.
+		rasterizerInfo.lineWidth = 1.0f;
+		//The cullMode variable determines the type of face culling to use. You can disable culling, cull the front faces, cull the back faces or both. The frontFace variable describes the
+		//vertex order for faces to be considered front-facing and can be clockwise or counter-clockwise.
+		rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizerInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		//The rasterizer can alter the depth values by adding a constant value or biasing them based on a fragment's slope. This is sometimes used for shadow mapping, but we won't be using it.
+		rasterizerInfo.depthBiasEnable = VK_FALSE;
+		rasterizerInfo.depthBiasConstantFactor = 0.0f; // Optional
+		rasterizerInfo.depthBiasClamp = 0.0f; // Optional
+		rasterizerInfo.depthBiasSlopeFactor = 0.0f; // Optional
+
 
 		vkDestroyShaderModule(m_Device, fragmentShaderModule, nullptr);
 		vkDestroyShaderModule(m_Device, vertexShaderModule, nullptr);
