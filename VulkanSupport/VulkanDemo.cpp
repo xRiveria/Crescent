@@ -77,6 +77,7 @@ private:
 		CreateFramebuffers();
 		CreateCommandPool();
 		CreateCommandBuffers();
+		CreateSemaphores();
 	}
 
 	void MainLoop()
@@ -86,12 +87,16 @@ private:
 			glfwPollEvents();
 			DrawFrame();
 		}
+
+		vkDeviceWaitIdle(m_Device);
 	}
 
 	void CleanUp()
 	{
 		//Every Vulkan object that we create needs to be explicitly destroyed when we no longer need it.
 		//Vulkan's niche is to be explicit about every operation. Thus, its good to be about the lifetime of objects as well.
+		vkDestroySemaphore(m_Device, m_RenderFinishedSemaphore, nullptr);
+		vkDestroySemaphore(m_Device, m_ImageAvaliableSemaphore, nullptr);
 		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
 		for (VkFramebuffer framebuffer : m_SwapChainFramebuffers)
 		{
@@ -943,6 +948,32 @@ private:
 		{
 			std::cout << "Successfully created Render Pass." << "\n";
 		}
+
+		/*
+			Remember that the subpasses in a render pass automatically take care of image layout transitions. These transitions are controlled by subpass dependencies,
+			which specify memory and execution dependencies between subpasses. We have only a single subpass right now, but the operations right before and right after
+			this subpass also count as implicit "subpasses". There are two built-in dependencies that take care of the transition at the start of the render pass and
+			at the end of the render pass, but the former does not occur at the right time. It assumes that the transition occurs at the start of the pipeline,
+			but we haven't acquired the image yet at that point. There are two ways to deal with this problem.
+			We could change the waitStages for the m_ImageAvaliableSemaphore to VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT to ensure that the render passes don't begin until the
+			image is avaliable, or we can make the render pass wait for the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage.
+			Lets go wih the second option here as it is a good excuse to have a look at subpass dependencies and how they work.
+
+			Subpass dependencies are specified in VkSubpassDependency structs.
+		*/
+
+		//The first two fields specify the indices of the dependency and the dependent subpass. The special value VK_SUBPASS_EXTERNAL refers to the implicit subpass before
+		//or after the render pass on n
+
+		VkSubpassDependency dependency{};
+		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependency.dstSubpass = 0;
+		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependency.srcAccessMask = 0;
+		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		renderPassInfo.dependencyCount = 1;
+		renderPassInfo.pDependencies = &dependency;
 	}
 
 	void CreateGraphicsPipeline()
@@ -1340,6 +1371,18 @@ private:
 		}
 	}
 
+	void CreateSemaphores()
+	{
+		//We will need one semaphore to signal that an image has been acquired and is ready for rendering, and another one to signal that rendering has finished and presentation can happen.
+		VkSemaphoreCreateInfo semaphoreInfo{};
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		//Future versions of the Vulkan API or extensions may add functionality for the flags and pNext parameters like it does for the other structures.
+		if (vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_ImageAvaliableSemaphore) != VK_SUCCESS || vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphore))
+		{
+			throw std::runtime_error("Failed to create Semaphores.");
+		}
+	}
+
 	void DrawFrame()
 	{
 		/*
@@ -1354,6 +1397,75 @@ private:
 			your program using calls like vkWaitForFences and semaphores cannot be. Fences are mainly designed to synchronize your application itself with rendering operations,
 			whereas semaphores are used to synchronize operations within or across command queues. We want to synchronize the queue operations of drawing commands and presentations, which makes semaphores the best fit.
 		*/
+
+		//As mentioned before, the first thing we need to do in the DrawFrame function is acquire an image from the swap chain. Recall that the swap chain is an extension feature,
+		//so we must use a function with the vhKHR naming convention.
+		uint32_t imageIndex;
+		/*
+			The first two parameters of vkAcquireNextImageKHR are the logical device and the swapchain from which we wish to acquire an image. The third parameter
+			specifies a timeout in nanoseconds for an image to become avaliable. Using a maximum value of a 64 bit unsigned integer disables the timeout.
+			The next two parameters specify synchronization objects that are to be signaled when the presentation engine is finished using the image. 
+			The last parameter specifies a variable to output the index of the swap chain image that has become avaliable. The index refers to the VkImage in our m_SwapchainImages array.
+			We're going to use that index to pick the right command buffer. 
+		*/
+		vkAcquireNextImageKHR(m_Device, m_SwapChain, UINT64_MAX, m_ImageAvaliableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+		//Queue submission and synchronization is configured through parameters in the VkSubmitInfo structure.
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		/*
+			The first three parameters specify which semaphores to wait on before execution begins and in which stage(s) of the pipeline to wait. We want to wait with
+			writing colors to the image until its avaliable, so we're specifying the start of the graphics pipeline that write to the color attachment. That means that
+			thereotically the implementation can already start executing our vertex shader and such while the image is not yet avaliable. Each entry in the 
+			waitStages array corresponds to the semaphore with the same index in pWaitSemaphores. 
+		*/
+		VkSemaphore waitSemaphores[] = { m_ImageAvaliableSemaphore };
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = waitSemaphores;
+		submitInfo.pWaitDstStageMask = waitStages;
+
+		//The next two parameters specify which command buffers to actually submit for execution. As mentioned earlier, we should submit the command buffer that
+		//binds the swapchain image we just acquired as color attachment. 
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_CommandBuffers[imageIndex];
+
+		//The signalSemaphoreCount and pSignalSemaphores parameters specify which semaphores to signal once the command buffer(s) have finished execution. In our case, we're
+		//using the renderFinishedSemaphore for that purpose. 
+		VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphore };
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = signalSemaphores;
+
+		//We can now submit the command buffer to the graphics queue using vkQueueSubmit. The function takes an array of VkSubmitInfo structures as arugment for efficiency when the workload is much larger.
+		//The last parameter references an optional fence that will be signalled when the command buffers finish execution. We're using semaphores for synchronization, so we will just pass a VK_NULL_HANDLE.
+		if (vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to submit draw command buffers.");
+		}
+
+		//The last step of drawing a frame is submitting the result back to the swapchain to have it eventually show up on the screen. Presentation is configured
+		//through a VkPresentInfoKHR structure at the end of DrawFrame function. 
+		VkPresentInfoKHR presentInfo{};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		//The first two parameter specify which semaphores to wait on before presentation can happen, just like VkSubmitInfo.
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = signalSemaphores;
+
+		//The next two parameter specify the swapchains to present images to and the index of the image for each swapchain. This will almost always be a single one.
+		VkSwapchainKHR swapchains[] = { m_SwapChain };
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = swapchains;
+		presentInfo.pImageIndices = &imageIndex;
+		//There is one last optional parameter called pResults. It allows you to specify an array of VkResult values to check for every individual swapchain if 
+		//presentation was successful. Its not necessary if you're only using a single swapchain, because you can simply use the return value of the present function.
+		presentInfo.pResults = nullptr; //Optional
+
+		//The vkQueuePresentKHR function submits the request to present an image to the swapchain. We will add error handling for both vkAcquireNextImageKHR and 
+		//vkQueuePresenrtKHR eventually because their failure does not mean that the program should terminate, unlike the functions we've so far.
+		vkQueuePresentKHR(m_PresentationQueue, &presentInfo);
+
+		vkQueueWaitIdle(m_PresentationQueue);
 	}
 
 private:
@@ -1374,6 +1486,8 @@ private:
 	std::vector<VkFramebuffer> m_SwapChainFramebuffers; 
 	VkCommandPool m_CommandPool;
 	std::vector<VkCommandBuffer> m_CommandBuffers;
+	VkSemaphore m_ImageAvaliableSemaphore;
+	VkSemaphore m_RenderFinishedSemaphore;
 
 	//Swapchain
 	VkSwapchainKHR m_SwapChain;
