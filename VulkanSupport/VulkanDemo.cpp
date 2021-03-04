@@ -72,7 +72,11 @@ private:
 		CreateLogicalDevice();
 		CreateSwapChain();
 		CreateImageViews();
+		CreateRenderPass();
 		CreateGraphicsPipeline();
+		CreateFramebuffers();
+		CreateCommandPool();
+		CreateCommandBuffers();
 	}
 
 	void MainLoop()
@@ -80,6 +84,7 @@ private:
 		while (!glfwWindowShouldClose(m_Window))
 		{
 			glfwPollEvents();
+			DrawFrame();
 		}
 	}
 
@@ -87,6 +92,15 @@ private:
 	{
 		//Every Vulkan object that we create needs to be explicitly destroyed when we no longer need it.
 		//Vulkan's niche is to be explicit about every operation. Thus, its good to be about the lifetime of objects as well.
+		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
+		for (VkFramebuffer framebuffer : m_SwapChainFramebuffers)
+		{
+			vkDestroyFramebuffer(m_Device, framebuffer, nullptr);
+		}
+		
+		vkDestroyPipeline(m_Device, m_GraphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr); //As the pipeline layout will be referenced throughout the program's lifetime, it should be destroyed.
+		vkDestroyRenderPass(m_Device, m_RenderPass, nullptr);
 		for (VkImageView imageView : m_SwapChainImageViews)
 		{
 			vkDestroyImageView(m_Device, imageView, nullptr);
@@ -625,8 +639,10 @@ private:
 		//Main device creation info struct.
 		VkDeviceCreateInfo creationInfo{};
 		creationInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		creationInfo.pQueueCreateInfos = queueCreationInfos.data();
+
 		creationInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreationInfos.size());
+		creationInfo.pQueueCreateInfos = queueCreationInfos.data();
+
 		creationInfo.pEnabledFeatures = &deviceFeatures;
 		//We now have to specify extensions and validation layers similar to VkInstanceCreateInfo. However, the difference is that these are device specific this time.
 		//An example of a device specific extension is VK_KHR_swapchain, which allows you to present rendered images from that device to windows. It is possible that there are
@@ -743,6 +759,7 @@ private:
 		//Thus, we will first query the final number of images with vkGetSwapchainImagesKHR, then resize the container and finally call it again to retrieve the handles.
 		vkGetSwapchainImagesKHR(m_Device, m_SwapChain, &imageCount, nullptr);
 		m_SwapChainImages.resize(imageCount);
+
 		vkGetSwapchainImagesKHR(m_Device, m_SwapChain, &imageCount, m_SwapChainImages.data());
 		m_SwapChainImageFormat = surfaceFormat.format;
 		m_SwapChainExtent = swapExtent;
@@ -804,6 +821,9 @@ private:
 		size_t fileSize = (size_t)file.tellg(); //Retrieves the position of the current character in the input stream. Since its at the end, hence the size of the buffer.
 		std::vector<char> buffer(fileSize);
 
+		file.seekg(0);
+		file.read(buffer.data(), fileSize);
+
 		file.close();
 
 		//Make sure the shaders are loaded correctly by printing the size of the buffers and checking if they match the actual file size in bytes. 
@@ -812,29 +832,117 @@ private:
 		return buffer;
 	}
 
-	VkShaderModule CreateShaderModule(const std::vector<char>& code)
+	VkShaderModule CreateShaderModule(const std::vector<char>& code) 
 	{
 		//Before we can pass our shader code to the pipeline, we have to wrap it in a VkShaderModule object. This function will take a buffer with the bytecode as parameter and create a VkShaderModule from it. 
-		VkShaderModuleCreateInfo creationInfo;
-		creationInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		creationInfo.codeSize = code.size();
+		VkShaderModuleCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = code.size();
 		/*
 			The catch here is that the size of the bytecode is specified in bytes, but the bytecode pointer is a uint32_t pointer rather than a char pointer.
 			Therefore, we will need to cast the pointer with a reintepret cast as shown below. When you a perform a cast like this, you also need to ensure that the data
 			satisfies the alignment requirements of uint32_t. Lucky for us, the data is stored in an std::vector where the default allocator already ensures that the data satisfies
-			the worse case alignment requirements. 
-		*/	
+			the worse case alignment requirements.
+		*/
 		//reinterpret_cast is used to convert one pointer to another pointer of any type, no matter whether the class is related to each other or not.
 		//It does not check if the pointer type and data pointed by the pointer is the same or not.
-		creationInfo.pCode = reinterpret_cast<const uint32_t*>(code.data()); 
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
 		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(m_Device, &creationInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		if (vkCreateShaderModule(m_Device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create shader module!");
+		}
+		else
 		{
-			throw std::runtime_error("Failed to create shader module.");
+			std::cout << "Successfully created Shader Module." << "\n";
 		}
 
 		return shaderModule;
+	}
+
+	void CreateRenderPass()
+	{
+		//We need to tell Vulkan about the framebuffer attachments that will be used while rendering. We need to specify how many color and depth buffers there will be,
+		//how many samples to use for each of them and how their contents should be handled throughout the rendering operations. All of this is information is wrapped in a 
+		//render pass object, for while we'll create a new CreateRenderPass function. Call this function from InitializedVulkan before CreateGraphicsPipeline.
+		//In our case, we will only need to have a single color buffer attachment represented by one of the images from the swapchain.
+		VkAttachmentDescription colorAttachmentInfo{};
+		colorAttachmentInfo.format = m_SwapChainImageFormat; //The format of the color attachment should match the format of the swapchain images, and we're doing anything with multisampling yet, so we will stick with 1 sample.
+		colorAttachmentInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		/*
+			The loadOp and storeOp determine what to do with the data in the attachment before rendering and after rendering. We have the following choices for loadOp:
+			- VK_ATTACHMENT_LOAD_OP_LOAD: Preserve the existing contents of the attachment.
+			- VK_ATTACHMENT_LOAD_OP_CLEAR: Clear the values to a constant at the start.
+			- VK_ATTACHMENT_LOAD_OP_DONT_CARE: Existing contents are undefined; we don't care about them.
+			In our case, we're going to use the clear operation to clear the framebuffer to black before drawing a new frame.  There are only two possibilities for storeOp:
+		
+			- VK_ATTACHMENT_STORE_OP_STORE: Rendered contents will be stored in memory and can be read later.
+			- VK_ATTACHMENT_STORE_OP_DONT_CARE: Contents of the framebuffer will be undefined after the rendering operation.
+			As we're only interested in seeing the rendered triangle on the screen, we're going with the store operation.
+		*/
+		colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		//The loadOp and storeOp apply to color and depth data, and stencilLoadOp/stencilStoreOp apply to stencil data. For now, we won't be doing anything with the stencil buffer, so they are irrelevant for now.
+		colorAttachmentInfo.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachmentInfo.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		
+		/*
+			Textures and framebuffers in Vulkan are represented by VkImage objects with a certain pixel format, however the layout of the pixels in memory can change based
+			on what you're trying to do with an image. The most important thing to know right now is that images need to be transitioned to certain layouts that are suitable for
+			the operation they're going to be involved in next. Some of the most common layouts are:
+			- VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: Images used as color attachment.
+			- VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: Images to be presented in the swapchain.
+			- VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: Images to be used as destination for a memory copy operation.
+			The initialLayout specifies which layout the image will have before the render pass begins. THe finalLayout specifies the layout to automatically transition to
+			when the render pass finishes. Using VK_IMAGE_LAYOUT_UNDEFINED for initialLayout means that we don't care what previous layout the image was in. The caveat of this
+			special value is that the contents of the image are not guarenteed to be preserved, but that doesn't matter since we're going to clear it anyway. We want the image
+			to be ready for presentation using the swapchain after rendering, which is why we use the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR as finalLayout. 
+		*/
+		colorAttachmentInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachmentInfo.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		/*
+			A single renderpass can consist of multiple subpasses. Subpasses are subsequent rendering operations that depend on the contents of framebuffers in previous
+			passes, for example a sequence of post-processing effects that are applied one after another. If you group these rendering operations into one render pass, then
+			Vulkan is able to reorder the operations and conserve memory bandwidth for possibly better performance. For our very first triangle, however, we will stick to a 
+			single subpass. Every subpass references one or more of the attachments that we've described using the structure in the previous sections. These references are
+			themselves VkAttachmentReference structs that look like this:
+		*/
+		VkAttachmentReference colorAttachmentReference{};
+		colorAttachmentReference.attachment = 0; //This parameter specifies which attachment to reference by its index in the attachment descriptions array. Our array consists of a single VkAttachmentDescription, so its index is 0.
+		//The layout parameter specifies which layout we would like the attachment to have during a subpass that uses this reference. Vulkan will automatically transition the
+		//attachment to the layout when the subpass is started. We intend to use the attachment to function as a color buffer and the VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL layout will give us the best performance as the name implies. 
+		colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; 
+
+		//The subpass is described using a VkSubpassDescriptionStructure.
+		VkSubpassDescription subpassInfo{};
+		subpassInfo.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; //As compute subpasses may become avaliable, we have to be explict about this being a graphics subpass.
+		//The index of the attachment in this array is directly referenced from the fragment shader with the "layout(location = 0) out vec4 outColor" directive. The
+		//following other types of attachments can be refered by a subpass:
+		//- pInputAttachments: Attachments that are read from a shader.
+		//- pResolveAttachments: Attachments used for multisampling color attachments.
+		//- pDepthStencilAttachment: Attachment for depth and stencil data.
+		//- pPreserveAttachments: Attachments that are not used by this subpass, but for which the data must be preserved. 
+		subpassInfo.colorAttachmentCount = 1;
+		subpassInfo.pColorAttachments = &colorAttachmentReference;
+
+		//Now that the attachment and a basic subpass referencing it have been described, we can create the render pass itself. The render pass object can be created
+		//by filling in the VkRenderPassCreateInfo structure with an array of attachments and subpasses. The VkAttachmentReference objects reference attachments using the indices of this array.
+		VkRenderPassCreateInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = 1;
+		renderPassInfo.pAttachments = &colorAttachmentInfo;
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpassInfo;
+
+		if (vkCreateRenderPass(m_Device, &renderPassInfo, nullptr, &m_RenderPass) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create render pass.");
+		}
+		else
+		{
+			std::cout << "Successfully created Render Pass." << "\n";
+		}
 	}
 
 	void CreateGraphicsPipeline()
@@ -859,6 +967,10 @@ private:
 		//It allows you to specify values for shader constants. You can use a single shader module where its behavior can be configured at pipeline creation by specifying
 		//different values for the constants used in it. This is more efficient than confugirng the shader using variables at render time, because the compiler can do
 		//optimizations like eliminating if statements that depend on these values. If you do not have any constants like this, then you can set the member to nullptr, which our struct initialization does automatically.
+		vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertexShaderStageInfo.module = vertexShaderModule;
+		vertexShaderStageInfo.pName = "main";
+		
 		//Modifying the structure to suit the fragment shader is easy.
 		VkPipelineShaderStageCreateInfo fragmentShaderStageInfo{};
 		fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -926,6 +1038,7 @@ private:
 		//Now, this viewport and scissor rectangle need to be combined into a viewport state using the VkPipelineViewportStateCreateInfo struct. 
 		//It is possible to use multiple viewports and scissor rectangles on some graphics cards, so its members reference an array of them. Using multiple requires enabling a GPU feature.
 		VkPipelineViewportStateCreateInfo viewportState{};
+		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		viewportState.viewportCount = 1;
 		viewportState.pViewports = &viewportInfo;
 		viewportState.scissorCount = 1;
@@ -955,9 +1068,292 @@ private:
 		rasterizerInfo.depthBiasClamp = 0.0f; // Optional
 		rasterizerInfo.depthBiasSlopeFactor = 0.0f; // Optional
 
+		//The VkPipelineMultisampleStateCreateInfo struct configures multisampling, which is one of the ways to perform anti-aliasing. It works by combining the fragment
+		//shader results of multiple polygons that rasterize to the same pixel. This mainly occurs along edges, which is also where the most noticeable aliasing artifacts occur.
+		//Because it doesn't need to run the fragment shader multiple times if only one polygon maps to a pixel, it is signicantly less expensive than simply rendering to a higher resolution and then downscaling.
+		//Enabling it requires enabling a GPU feature. 
+		VkPipelineMultisampleStateCreateInfo multisampleInfo{};
+		multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisampleInfo.sampleShadingEnable = VK_FALSE;
+		multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		multisampleInfo.minSampleShading = 1.0f; //Optional;
+		multisampleInfo.pSampleMask = nullptr; //Optional
+		multisampleInfo.alphaToCoverageEnable = VK_FALSE; //Optional
+		multisampleInfo.alphaToOneEnable = VK_FALSE; //Optional
+
+		//If you are using a depth/stencil buffer, then you also need to configure the depth and stencil tests using VkPipelineDepthStencilStateCreateInfo. As we don't have
+		//one right now, so we can simply pass a nullptr instead of a pointer to such a struct. 
+
+		/*
+			After a fragment shader has returned a color, its needs to be combined with the color that is already in the framebuffer. This transformation is known as color
+			blending and there are two ways to do it:
+			- Mix the old and new value to produce a final colkor.
+			- Combine the old and new value using a bitwise operation.
+			There are two types of structs to configure color blending. The first struct, VkPipelineColorBlendAttachmentState contains the configuration per attached framebuffer
+			and the second struct VkPipelineColorBlendStateCreateInfo contains the global color blending settings. In our case, we only have 1 framebuffer. 
+		*/
+		VkPipelineColorBlendAttachmentState colorBlendAttachmentInfo{};
+		colorBlendAttachmentInfo.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachmentInfo.blendEnable = VK_FALSE;
+		colorBlendAttachmentInfo.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; //Optional
+		colorBlendAttachmentInfo.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; //Optional
+		colorBlendAttachmentInfo.colorBlendOp = VK_BLEND_OP_ADD; //Optional
+		colorBlendAttachmentInfo.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; //Optional
+		colorBlendAttachmentInfo.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; //Optional
+		colorBlendAttachmentInfo.alphaBlendOp = VK_BLEND_OP_ADD; //Optional
+
+		//The second struct references an array of structures for all of the framebuffers and allows you to set blend constants that you can use as blend factors in the aforementioned calculations.
+		VkPipelineColorBlendStateCreateInfo colorBlending{};
+		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		//Set this to true if you wish to use the second method of blending (bitwise combination). This will automatically disable the first method, as if you have set blendEnable to VK_FALSE for every attached framebuffer.
+		//Of course, it is possible to disable both modes as we've done here, in which case the fragment colors will be written tot he framebuffer unmodified.
+		colorBlending.logicOpEnable = VK_FALSE; 
+		colorBlending.logicOp = VK_LOGIC_OP_COPY; //This is where the bitwise operation can be specified. 
+		colorBlending.attachmentCount = 1;
+		colorBlending.pAttachments = &colorBlendAttachmentInfo;
+		colorBlending.blendConstants[0] = 0.0f; //Optional
+		colorBlending.blendConstants[1] = 0.0f;
+		colorBlending.blendConstants[2] = 0.0f;
+		colorBlending.blendConstants[3] = 0.0f;
+
+		/*
+			You can use uniform values in shaders, which are globals similar to dynamic state variables that can be changed at drawing time to alter the behavior of your shaders
+			without having to recreate them. They are commonly used to pass the transformation matrix to the vertex shader, or to create texture samplers in the fragment shader.
+			These uniform values need to be specified during pipeline creation by creating a vkPipelineLayout object. Even though we won't be using them, we are still required
+			to create an empty pipeline layout. 
+		*/
+
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 0; //Optional
+		pipelineLayoutInfo.pSetLayouts = nullptr; //Optional
+		pipelineLayoutInfo.pushConstantRangeCount = 0; //Optional
+		pipelineLayoutInfo.pPushConstantRanges = nullptr; //Optional. Push Constants are another way of passing dynamic values to shaders. 
+
+		if (vkCreatePipelineLayout(m_Device, &pipelineLayoutInfo, nullptr, &m_PipelineLayout))
+		{
+			throw std::runtime_error("Failed to create pipeline layout.");
+		}
+
+		//Finally, we can create our graphics pipeline.
+		VkGraphicsPipelineCreateInfo pipelineCreationInfo{};
+		pipelineCreationInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		//We start by referencing the array of VkPipelineShaderStageCreateInfo structs.
+		pipelineCreationInfo.stageCount = 2; 
+		pipelineCreationInfo.pStages = shaderStages;
+		//Then, we reference all of the structures describing the fixed-function stage.
+		pipelineCreationInfo.pVertexInputState = &vertexInputInfo;
+		pipelineCreationInfo.pInputAssemblyState = &inputAssembly;
+		pipelineCreationInfo.pViewportState = &viewportState;
+		pipelineCreationInfo.pRasterizationState = &rasterizerInfo;
+		pipelineCreationInfo.pMultisampleState = &multisampleInfo;
+		pipelineCreationInfo.pDepthStencilState = nullptr; //Optional
+		pipelineCreationInfo.pColorBlendState = &colorBlending;
+		pipelineCreationInfo.pDynamicState = nullptr;
+		//After that comes the pipeline layout, which is a Vulkan handle rather than a struct pointer.
+		pipelineCreationInfo.layout = m_PipelineLayout;
+		//And finally, we have a reference to the render pass and the index of the subpass where this graphics pipeline will be used. It is also possible to use other render passes
+		//with this pipeline instead of this specific instance, but they have to be compatible with the renderPass parameter. The requirements for compatibility are described in the specification, but we won't be using that feature.
+		pipelineCreationInfo.renderPass = m_RenderPass;
+		pipelineCreationInfo.subpass = 0;
+		/*
+			There are two more parameters: basedPipelineHandle and basePipelineIndex. Vulkan allows you to create a new graphics pipeline by deriving from an existing pipeline.
+			The idea of pipeline derivatives is that it is less expensive to set up pipelines when they have much functionality in common with an existing pipeline and switching
+			between pipelines from the same parent can also be done much quicker. You can either specify the handle of an existing pipeline with basePipelineHandle or reference another
+			pipeline that is about to be created by index with basePipelineIndex. Right now, there is only a single pipeline, so we will simply specify a null handle and an invalid index.
+			These values are only used if the VK_PIPELINE_CREATE_DERIVATIVE_BIT flag is also specified in the flags field of VkGraphicsPipelineCreateInfo.
+		*/
+
+		//The vkCreateGraphicsPipelines function actually has more parameters than the usual object creation functions in Vulkan. It is designed to take multiple VkGraphicsPipelineCreateInfo objects and
+		//and create multiple VkPipeline objects in a single call. The second parameter, in which we've passed VK_NULL_HANDLE as argument, references an optional VkPipelineCache object.
+		//A pipeline cache can be used to store and reuse data relevant to pipeline creation across multiple calls to VkCreateGraphicsPipelines and even across program executions if the cache is stored to a file.
+		//This makes it possible to significantly speed up pipeline creation at a later time. We will get into this eventually. 
+		if (vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineCreationInfo, nullptr, &m_GraphicsPipeline) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create graphics pipeline.");
+		}
+		else
+		{
+			std::cout << "Successfully created Graphics Pipeline.";
+		}
 
 		vkDestroyShaderModule(m_Device, fragmentShaderModule, nullptr);
 		vkDestroyShaderModule(m_Device, vertexShaderModule, nullptr);
+	}
+
+	void CreateFramebuffers()
+	{
+		/*
+			We've set up the render pass to expect a single framebuffer with the same format as the swap chain images, but we haven't actually created any yet.
+			The attachments specified during render pass creation are bound by wrapping them into a VkFramebuffer object. A framebuffer object references all of the
+			VkImageView objects that represent the attachments. In our case, there will only be a single one: the color attachment. However, the image that we have to use for
+			the attachment depends on which image the swapchain returns when we retrieve one for presentation. That means that we have to create a framebuffer for all of the images
+			in the swapchaim and use the one that corresponds to the retrieved image at drawing time.
+		*/
+		m_SwapChainFramebuffers.resize(m_SwapChainImageViews.size());
+		//We will then iterate through the image views and create framebuffers from them.
+
+		/*
+			As seen, the creation of framebuffers is quite straigtforward. We first need to specify with which renderPass the framebuffer needs to be compatible. You only
+			use a framebuffer with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments. 
+			The attachmentCount and pAttachments parameters specify the VkImageView objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
+			The width and height parameters are self explainatory and layers refer to the number of layers in image arrays. Our swap chain images are single images, so the number of layers is 1. 
+		*/
+		for (size_t i = 0; i < m_SwapChainImageViews.size(); i++)
+		{
+			VkImageView attachments[] = { m_SwapChainImageViews[i] };
+			VkFramebufferCreateInfo framebufferInfo{};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferInfo.renderPass = m_RenderPass;
+			framebufferInfo.attachmentCount = 1;
+			framebufferInfo.pAttachments = attachments;
+			framebufferInfo.width = m_SwapChainExtent.width;
+			framebufferInfo.height = m_SwapChainExtent.height;
+			framebufferInfo.layers = 1;
+
+			if (vkCreateFramebuffer(m_Device, &framebufferInfo, nullptr, &m_SwapChainFramebuffers[i]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("Failed to create framebuffer.");
+			}
+			else
+			{
+				std::cout << "Successfully created Framebuffer." << "\n";
+			}
+		}
+	}
+		
+	void CreateCommandPool()
+	{
+		/*
+			Commands in Vulkan, like drawing operations and memory transfers are not executed directly using function calls. You have to record all of the operations
+			you want to perform in command buffer objects. The advantage of this is that all of the hard work of setting up drawing commands can be done in advance and in multiple
+			threads. After that, you just have to tell Vulkan to execute the commands in the main loop.
+
+			We have to create a command pool before we can create command buffers. Command pools manage the memory that is used to store the buffers and command buffers are allocated from them.
+			Command buffers are executed by submitting them on one of the device queues, like the graphics and presentation queues we've retrieved. Each command pool can only
+			allocate command buffers that are submitted on a single type of queue. We're going to record commands for drawing, which is why we've chosen the graphics queue family.
+			There are two possible flags for command pools:
+			- VK_COMMAND_POOL_CREATE_TRANSIENT_BIT: Hint that command buffers are rerecorded with new commands very often (may change memory allocated behavior).
+			- VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT: Allow command buffers to be rerecorded individually, without this flag they all have to be reset together.
+			We will only record the command buffers at the beginning of the program and then execute them many times in the main loop, so we don't have to use any of these flags.
+		*/
+		QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(m_PhysicalDevice);
+		VkCommandPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolInfo.queueFamilyIndex = queueFamilyIndices.m_GraphicsFamily.value();
+		poolInfo.flags = 0;
+
+		if (vkCreateCommandPool(m_Device, &poolInfo, nullptr, &m_CommandPool) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create command pool.");
+		}
+		else
+		{
+			std::cout << "Successfully created Command Pool." << "\n";
+		}
+	}
+
+	void CreateCommandBuffers()
+	{
+		//With the command pool created, we can now start allocating command buffers and recording drawing commands in them. Because one of the drawing commands involves
+		//binding the right vkFramebuffer, we will actually have to record a command buffer for every image in the swap chain once again. Thus, we have to create a list of vkCommandBuffer
+		//objects as a class member. These command buffers will be automatically freed when their command pool is destroyed, so we don't need an explicit cleanup.
+		//Command buffers are allocated with the vkAllocateCommandBuffers function, which takes a VkCommandBufferAllocateInfo struct as parameter that specifies the command pool and number of buffers to allocate.
+		m_CommandBuffers.resize(m_SwapChainFramebuffers.size());
+		
+		VkCommandBufferAllocateInfo allocateInfo{};
+		allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocateInfo.commandPool = m_CommandPool;
+		//The level parameter specifies if the allocated command buffers are primary or secondary command buffers.
+		//- VK_COMMAND_BUFFER_LEVEL_PRIMARY: Can be submitted to a queue for execution, but cannot be called from other command buffers.
+		//- VK_COMMAND_BUFFER_LEVEL_SECONDARY: Cannot be submitted directly, but can be called from primary command buffers. 
+		//While we won't make use of secondary command buffers functionalities, you can imagine that its helpful to reuse common operations from primary command buffers.
+		allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocateInfo.commandBufferCount = (uint32_t)m_CommandBuffers.size();
+
+		if (vkAllocateCommandBuffers(m_Device, &allocateInfo, m_CommandBuffers.data()) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to allocate command buffers.");
+		}
+
+		//We begin recording a command buffer by calling vkBeginCommandBuffer with a small VkCommandBufferBeginInfo struct as argument that specifies some details about the usage of this specific command buffer.
+		for (size_t i = 0; i < m_CommandBuffers.size(); i++)
+		{
+			VkCommandBufferBeginInfo beginInfo{};
+			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			/*
+				The flags parameter specifies how we're going to use the command buffer. The following values are avaliable:
+				- VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT: The command buffer will be rerecorded right after executing it once.
+				- VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT: This is a secondary command buffer that will be entirely within a single render pass. 
+				- VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT: The command buffer can be resubmitted while it is also already pending execution.
+				None of these flags are applicable for us at the moment. The pInheritenceInfo parameter is only relevant for secondary command buffers. It specifies which
+				state to inherit from the calling primary command buffers. If the command buffer was already recorded once, then a call to vkBeginCommandBuffer will implictly
+				reset it. Its not possible to append commands to a buffer at a later time.
+			*/
+			beginInfo.flags = 0; //Optional
+			beginInfo.pInheritanceInfo = nullptr; //Optional
+
+			if (vkBeginCommandBuffer(m_CommandBuffers[i], &beginInfo) != VK_SUCCESS)
+			{
+				throw std::runtime_error("Failed to begin recording command buffer.");
+			}
+
+			//Drawing starts by beginning the render pass with vkCmdBeginRenderPass. The render pass is configured using some parameters in a VkRenderPassBeginInfo struct.
+			VkRenderPassBeginInfo renderPassInfo{};
+			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			//The first parameters are the render pass itself and the attachments to bind. We created a framebuffer for each swapchain image that specifies it as color attachment.
+			renderPassInfo.renderPass = m_RenderPass;
+			renderPassInfo.framebuffer = m_SwapChainFramebuffers[i];
+			//The next two parameters define the size of the render area. The render area defines where shaders load and stores will take place. The pixels outside this region will have undefined values.
+			//It should match the size of the attachments for best performance.
+			renderPassInfo.renderArea.offset = { 0, 0 };
+			renderPassInfo.renderArea.extent = m_SwapChainExtent;
+			//The last two parameters define the clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we used as load operation for the color attachment. Here, we define it to be simply black with 100% opacity. 
+			VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 0.0f };
+			renderPassInfo.clearValueCount = 1;
+			renderPassInfo.pClearValues = &clearColor;
+
+			//The render pass can now begin. All of the functions that record commands can be recognized by their vkCmd prefix. They all return void, so there will be no error handling until we've finished recording.
+			//The first parameter for every command is always the command buffer to record the command to. The second parameter specifies the details of the render pass we've just provided. The
+			//final parameter controls how the drawing commands within the render pass will be provided. It can have one of two values:
+			//- VK_SUBPASS_CONTENTS_INLINE: The render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed.
+			//- VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS: The render pass contents will be executed from secondary command buffers. 
+			//We will not be using secondary command buffers, so we will go with the first option.
+			vkCmdBeginRenderPass(m_CommandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			//We can now bind the graphics pipeline. The second parameter specifies if the pipeline object is a graphics or compute pipeline. 
+			vkCmdBindPipeline(m_CommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline); 
+			//We've now told Vulkan which operations to execute in the graphics pipeline and which attachment to use in the fragment shader, so all that remains is telling it to draw the triangle.
+			//The actual vkCmdDraw function is a bit anticlimatic, but its so simple because of all the information we specified in advance. It has the following parameters, aside from the command buffer:
+			//- vertexCount: Even though we don't have a vertex buffer, we technically still have 3 vertices to draw.
+			//- instanceCount: Used for instanced rendering, use 1 if you're not doing that.
+			//- firstVertex: Used as an offset into the vertex buffer, defines the lowest value of gl_VertexIndex.
+			//- firstInstance: Used as an offset for instanced rendering, defines the lowest value of gl_InstanceIndex.
+			vkCmdDraw(m_CommandBuffers[i], 3, 1, 0, 0);
+
+			//The render pass can now be ended.
+			vkCmdEndRenderPass(m_CommandBuffers[i]);
+			//And we've finished recording the command buffer.
+			if (vkEndCommandBuffer(m_CommandBuffers[i]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("Failed to record command buffer.");
+			}
+		}
+	}
+
+	void DrawFrame()
+	{
+		/*
+			We will perform the following operations:
+			- Acquire an image from the swapchain.
+			- Execute the command buffer with that image as attachment in the framebuffer.
+			- Return the image to the swapchain for presentation.
+			Each of these events is set in motion using a single function call, but they are executed asynchronously. The function calls will return before the operations
+			are actually finished and the order of execution is also undefined. That is unfortunate, because each of the operations depend on the previous one finishing. 
+			There are two ways of synchronizing swapchain events: fences and semaphores. They're both objects that can be used to coordinating operations by having one operation signal and another
+			operation wait for a fence or semaphore to go from the unsignaled state to signaled state. The difference is that the state of fences can be accessed from
+			your program using calls like vkWaitForFences and semaphores cannot be. Fences are mainly designed to synchronize your application itself with rendering operations,
+			whereas semaphores are used to synchronize operations within or across command queues. We want to synchronize the queue operations of drawing commands and presentations, which makes semaphores the best fit.
+		*/
 	}
 
 private:
@@ -972,6 +1368,12 @@ private:
 	VkDevice m_Device; //Used to interface with the physical device. Multiple logical devices can be created from the same physical device.
 	VkQueue m_GraphicsQueue; //Used to interface with the queues in our logical device. This is implicitly destroyed with the device. 
 	VkQueue m_PresentationQueue;
+	VkRenderPass m_RenderPass;
+	VkPipelineLayout m_PipelineLayout;
+	VkPipeline m_GraphicsPipeline;
+	std::vector<VkFramebuffer> m_SwapChainFramebuffers; 
+	VkCommandPool m_CommandPool;
+	std::vector<VkCommandBuffer> m_CommandBuffers;
 
 	//Swapchain
 	VkSwapchainKHR m_SwapChain;
