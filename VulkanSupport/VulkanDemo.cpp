@@ -18,6 +18,11 @@
 #include <cassert>
 #include <cstdint>
 
+const int g_MaxFramesInFlight = 2;
+size_t g_CurrentFrameIndex = 0;
+//Although many drivers and platforms trigger VK_ERROR_OUT_OF_DATE_KHR automatically after a window resize, it is not guarenteed to happen.
+//That's why we will add some extra code to handle resizing ourselves. 
+
 //As this is an extension function, it is not automatically loaded. We will thus look up its address ourselves by using vkGetInstanceProcAddr.
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator,
 	VkDebugUtilsMessengerEXT* pDebugMessenger)
@@ -58,8 +63,15 @@ private:
 	{
 		glfwInit();
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); //GLFW was originally designed to create an OpenGL context. We need to tell it to not create an OpenGL context.
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); //Handling resized windows also takes special care that we will look into later. Disable it for now.
 		m_Window = glfwCreateWindow(m_WindowWidth, m_WindowHeight, "Crescent Engine", nullptr, nullptr);
+		glfwSetWindowUserPointer(m_Window, this); //Sets a user-defined pointer of the specified window that can be retrieved. 
+		glfwSetFramebufferSizeCallback(m_Window, FramebufferResizeCallback);
+	}
+
+	static void FramebufferResizeCallback(GLFWwindow* window, int width, int height)
+	{
+		VulkanApplication* ourApplication = reinterpret_cast<VulkanApplication*>(glfwGetWindowUserPointer(window));
+		ourApplication->m_FramebufferResized = true;
 	}
 
 	void InitializeVulkan()
@@ -77,7 +89,7 @@ private:
 		CreateFramebuffers();
 		CreateCommandPool();
 		CreateCommandBuffers();
-		CreateSemaphores();
+		CreateSyncObjects();
 	}
 
 	void MainLoop()
@@ -88,30 +100,51 @@ private:
 			DrawFrame();
 		}
 
+		//Remember that all of the operations we have while drawing frames are asynchronous. That means that when we exit the loop in the main loop, drawing and presentation
+		//operations may still be going on. Cleaning up resources while that is happening is a bad idea. To fix that, we should wait for the logical device to finish operations
+		//before exiting the update function and destroying the window. Alternatively, you can also wait for operations in a specific command queue to be finished with vkQueueWaitIdle.
+		//These functions can be used as a very rudimentary way to perform synchronization. You will see that the program will exit without problems while doing so. 
 		vkDeviceWaitIdle(m_Device);
+	}
+
+	void CleanUpSwapChain()
+	{
+		for (size_t i = 0; i < m_SwapChainFramebuffers.size(); i++)
+		{
+			vkDestroyFramebuffer(m_Device, m_SwapChainFramebuffers[i], nullptr);
+		}
+
+		//We could recreate the command pool from scratch, but that is rather wasteful. Instead, we will opt to clean up the existing command buffers with the vkFreeCommandBuffers function.
+		//This way, we can reuse the existing pool to allocate the new command buffers.
+		vkFreeCommandBuffers(m_Device, m_CommandPool, static_cast<uint32_t>(m_CommandBuffers.size()), m_CommandBuffers.data());
+
+		vkDestroyPipeline(m_Device, m_GraphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr); //As the pipeline layout will be referenced throughout the program's lifetime, it should be destroyed.
+		vkDestroyRenderPass(m_Device, m_RenderPass, nullptr);
+
+		for (size_t i = 0; i < m_SwapChainImageViews.size(); i++)
+		{
+			vkDestroyImageView(m_Device, m_SwapChainImageViews[i], nullptr);
+		}
+
+		vkDestroySwapchainKHR(m_Device, m_SwapChain, nullptr);
 	}
 
 	void CleanUp()
 	{
 		//Every Vulkan object that we create needs to be explicitly destroyed when we no longer need it.
 		//Vulkan's niche is to be explicit about every operation. Thus, its good to be about the lifetime of objects as well.
-		vkDestroySemaphore(m_Device, m_RenderFinishedSemaphore, nullptr);
-		vkDestroySemaphore(m_Device, m_ImageAvaliableSemaphore, nullptr);
-		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
-		for (VkFramebuffer framebuffer : m_SwapChainFramebuffers)
+		CleanUpSwapChain();
+
+		for (size_t i = 0; i < g_MaxFramesInFlight; i++)
 		{
-			vkDestroyFramebuffer(m_Device, framebuffer, nullptr);
-		}
-		
-		vkDestroyPipeline(m_Device, m_GraphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr); //As the pipeline layout will be referenced throughout the program's lifetime, it should be destroyed.
-		vkDestroyRenderPass(m_Device, m_RenderPass, nullptr);
-		for (VkImageView imageView : m_SwapChainImageViews)
-		{
-			vkDestroyImageView(m_Device, imageView, nullptr);
+			vkDestroySemaphore(m_Device, m_RenderFinishedSemaphores[i], nullptr);
+			vkDestroySemaphore(m_Device, m_ImageAvaliableSemaphores[i], nullptr);
+			vkDestroyFence(m_Device, m_InFlightFences[i], nullptr);
 		}
 
-		vkDestroySwapchainKHR(m_Device, m_SwapChain, nullptr);
+		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);	
+
 		vkDestroyDevice(m_Device, nullptr); //Logical devices don't interact directly with instances, which is why it isn't needed as a parameter.
 
 		if (m_ValidationLayersEnabled)
@@ -121,6 +154,7 @@ private:
 
 		vkDestroySurfaceKHR(m_VulkanInstance, m_Surface, nullptr);
 		vkDestroyInstance(m_VulkanInstance, nullptr); //All Vulkan resources should be destroyed before the instance is destroyed.
+
 		glfwDestroyWindow(m_Window);
 		glfwTerminate();
 	}
@@ -1371,20 +1405,89 @@ private:
 		}
 	}
 
-	void CreateSemaphores()
+	void CreateSyncObjects()
 	{
 		//We will need one semaphore to signal that an image has been acquired and is ready for rendering, and another one to signal that rendering has finished and presentation can happen.
+		m_ImageAvaliableSemaphores.resize(g_MaxFramesInFlight);
+		m_RenderFinishedSemaphores.resize(g_MaxFramesInFlight);
+		m_InFlightFences.resize(g_MaxFramesInFlight);
+		m_ImagesInFlight.resize(m_SwapChainImages.size(), VK_NULL_HANDLE); //Initially, not a single frame is using an image so we explictly initialize it to no fence. 
+
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		//Future versions of the Vulkan API or extensions may add functionality for the flags and pNext parameters like it does for the other structures.
-		if (vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_ImageAvaliableSemaphore) != VK_SUCCESS || vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphore))
+
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+		for (size_t i = 0; i < g_MaxFramesInFlight; i++)
 		{
-			throw std::runtime_error("Failed to create Semaphores.");
+			if (vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_ImageAvaliableSemaphores[i]) != VK_SUCCESS ||
+				vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]) != VK_SUCCESS ||
+				vkCreateFence(m_Device, &fenceInfo, nullptr, &m_InFlightFences[i]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("Failed to create semaphores for a frame.");
+			}
 		}
+	}
+
+	void RecreateSwapChain()
+	{
+		//Minimizaton will result in a framebuffer size of 0. We will handle that by pausing the window until the window is in the foreground again.
+		//The initial call to glfwGetFramebufferSize handles the case where the size is already correct and glfwWaitEvents will thus have nothing to wait on.
+		int width = 0, height = 0;
+		glfwGetFramebufferSize(m_Window, &width, &height);
+		while (width == 0 || height == 0)
+		{
+			glfwGetFramebufferSize(m_Window, &width, &height);
+			glfwWaitEvents(); //Await events by putting the current thread to sleep. Once a event is handled, the function returns instantly. 
+		}
+
+		/*
+			Even though the application has successfully rendered your stuff, there are still some circumstances that we will have to handle. It is possible, for example, for the
+			window surface to change such that the swapchain is no longer compatible with it. One of the reasons that could cause this to happen is the size of the window changing.
+			We have to catch these events and recreate the swapchain. We will call for the CreateSwapchain function along with all of its dependencies here.
+
+			We first call vkDeviceWaitIdle as we usually do as we shouldn't touch resources that may still be in use. Obviously the first thing we will have to do is recreate
+			the swapchain itself. The image views need to be recreated as they are based directly on the swapchain images. The render pass needs to be recreated because
+			because it depends on the format of the swapchain images. It is rare of the swapchain image format to change during an operation like a window resize, but it should
+			still be handled. Viewport and scissor rectangle size is specified during graphics pipeline creation, so the pipeline also needs to be rebuilt. It is possible to
+			avoid this by using dynamic state for the viewports and scissor rectangles. Finally, the framebuffers and command buffers also directly depend on the swapchain images.
+
+			To make sure that the old versions of these objects are cleaned up before recreating them, we should move some of the cleanup code to a seperate function that we can call from here.
+			Note that while calling ChooseSwapExtent within CreateSwapChain(), we already query the new window resolution to make sure that the swapchain images have the (new)
+			right size, so there's no need to modify ChooseSwapExtent (remember that we already had to use glfwGetFramebufferSize get the resolution of the surface in pixels when creating the swapchain.			
+		
+			That's all it takes to recreate the swapchain. However, the disadvantage of this approach is that we need to stop all rendering before creating the new swapchain.
+			It is possible to create a new swapchain while drawing commands on an image from the old swapchain are still in-flight. You need to pass the previous swapchain
+			to the oldSwapChain field in the VkSwapchainCreateInfoKHR struct and destroy the old swapchain as soon as you've finished using it.
+		*/
+
+		vkDeviceWaitIdle(m_Device); //Wait for all ongoing operations to be complete before recreating the swapchain.
+		CleanUpSwapChain();
+
+		CreateSwapChain();
+		CreateImageViews();
+		CreateRenderPass();
+		CreateGraphicsPipeline();
+		CreateFramebuffers();
+		CreateCommandBuffers();
 	}
 
 	void DrawFrame()
 	{
+		/*
+			Wait for the previous operations/frame to finish before continuing with drawing operations. The vkWaitForFences function takes an array of fences and waits
+			for either any or all of them to be signalled before returning. The VK_TRUE we pass in here signifies that we want to wait for all fences, but in the case of a single
+			one, it obviously doesn't really matter. Just like vkAcquireNextImageKHR, this function also takes a timeout. Unlike the semaphores, we manually need to restore the
+			fence to the unsignaled state by resetting it with the vkResetFences call. 
+
+			However, if you simply run the program, nothing will render. That is because by default, fences are created in the unsignaled state. That means that vkWaitForFences
+			will wait forever if we haven't used the fence before. To solve that, we can change the fence creation to initialize it in signalled state as if we had rendered an initial frame that finished. 
+		*/
+
+		vkWaitForFences(m_Device, 1, &m_InFlightFences[g_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
+
 		/*
 			We will perform the following operations:
 			- Acquire an image from the swapchain.
@@ -1401,26 +1504,57 @@ private:
 		//As mentioned before, the first thing we need to do in the DrawFrame function is acquire an image from the swap chain. Recall that the swap chain is an extension feature,
 		//so we must use a function with the vhKHR naming convention.
 		uint32_t imageIndex;
+
 		/*
+			We have to figure out when swap chain recreation is necessary and call our RecreateSwapChain function accordingly. Luckily, Vulkan will usually just tell us
+			that the swap chain is no longer adequate during presentation. The vkAcquireNextImageKHR and vkQueuePresentKHR functions can return the following special values to
+			indicate this:
+			- VK_ERROR_OUT_OF_DATE_KHR: The swapchain has become incompatible with the surface and can no longer be used for rendering. Usually happens after a window resize.
+			- VK_SUBOPTIMAL_KHR: The swapchain can still be used to successfully present to the surface, but the surface properties are no longer matched directly. 
+
 			The first two parameters of vkAcquireNextImageKHR are the logical device and the swapchain from which we wish to acquire an image. The third parameter
 			specifies a timeout in nanoseconds for an image to become avaliable. Using a maximum value of a 64 bit unsigned integer disables the timeout.
 			The next two parameters specify synchronization objects that are to be signaled when the presentation engine is finished using the image. 
 			The last parameter specifies a variable to output the index of the swap chain image that has become avaliable. The index refers to the VkImage in our m_SwapchainImages array.
 			We're going to use that index to pick the right command buffer. 
 		*/
-		vkAcquireNextImageKHR(m_Device, m_SwapChain, UINT64_MAX, m_ImageAvaliableSemaphore, VK_NULL_HANDLE, &imageIndex);
+		
+		VkResult result = vkAcquireNextImageKHR(m_Device, m_SwapChain, UINT64_MAX, m_ImageAvaliableSemaphores[g_CurrentFrameIndex], VK_NULL_HANDLE, &imageIndex);
+		//If the swapchain turns out to be out of date when attempting to acquire an image, then it is no longer possible to present to it.
+		//Thus, we should immediately recreate the swapchain and try again in the next DrawFrame call.
+		//We should also decide to do so if the swapchain is suboptimal, but we've chosen to proceed anyway in that case as we've already acquired an image. Both VK_SUCCESS
+		//and VK_SUBOPTIMAL_KHR are considered "success" return codes. 
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) 
+		{
+			RecreateSwapChain();
+			return;
+		}
+		else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		{
+			throw std::runtime_error("Failed to acquire swapchain image.");
+		}
+
+		//Now, we will wait on any previous frame that is using the image that we've just assigned for the new frame.
+		//Check if a previous frame is using this image (i.e. there is its fence to wait on)
+		if (m_ImagesInFlight[imageIndex] != VK_NULL_HANDLE)
+		{
+			vkWaitForFences(m_Device, 1, &m_ImagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+		}
+
+		//Once done, mark the image as now being in use by this frame.
+		m_ImagesInFlight[imageIndex] = m_InFlightFences[g_CurrentFrameIndex];
 
 		//Queue submission and synchronization is configured through parameters in the VkSubmitInfo structure.
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 		/*
-			The first three parameters specify which semaphores to wait on before execution begins and in which stage(s) of the pipeline to wait. We want to wait with
+			The first three parameters specify which semaphores to wait on before execution begins and in which stage(s) of the pipeline to wait. We want to prevent from
 			writing colors to the image until its avaliable, so we're specifying the start of the graphics pipeline that write to the color attachment. That means that
-			thereotically the implementation can already start executing our vertex shader and such while the image is not yet avaliable. Each entry in the 
-			waitStages array corresponds to the semaphore with the same index in pWaitSemaphores. 
+			thereotically the implementation can already start executing our vertex shader and such while the image is not yet avaliable. We don't want that to happen.
+			Note that each entry in the waitStages array corresponds to the semaphore with the same index in pWaitSemaphores. 
 		*/
-		VkSemaphore waitSemaphores[] = { m_ImageAvaliableSemaphore };
+		VkSemaphore waitSemaphores[] = { m_ImageAvaliableSemaphores[g_CurrentFrameIndex] };
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 		submitInfo.waitSemaphoreCount = 1;
 		submitInfo.pWaitSemaphores = waitSemaphores;
@@ -1433,13 +1567,16 @@ private:
 
 		//The signalSemaphoreCount and pSignalSemaphores parameters specify which semaphores to signal once the command buffer(s) have finished execution. In our case, we're
 		//using the renderFinishedSemaphore for that purpose. 
-		VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphore };
+		VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[g_CurrentFrameIndex] };
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
+		
+		//Because we now have more calls to vkWaitForFences, the vkResetFences call should be moved. Its best so imply call it right before actually using the fence. 
+		vkResetFences(m_Device, 1, &m_InFlightFences[g_CurrentFrameIndex]);
 
 		//We can now submit the command buffer to the graphics queue using vkQueueSubmit. The function takes an array of VkSubmitInfo structures as arugment for efficiency when the workload is much larger.
-		//The last parameter references an optional fence that will be signalled when the command buffers finish execution. We're using semaphores for synchronization, so we will just pass a VK_NULL_HANDLE.
-		if (vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+		//The last parameter references an optional fence that will be signalled when the command buffers finish execution. We will pass our fence in to signal when a frame has finished.
+		if (vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_InFlightFences[g_CurrentFrameIndex]) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Failed to submit draw command buffers.");
 		}
@@ -1448,7 +1585,7 @@ private:
 		//through a VkPresentInfoKHR structure at the end of DrawFrame function. 
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		//The first two parameter specify which semaphores to wait on before presentation can happen, just like VkSubmitInfo.
+		//The first two parameter specify which semaphores to wait on before presentation can happen, just like VkSubmitInfo. We just thus await for the signal before presentation.
 		presentInfo.waitSemaphoreCount = 1;
 		presentInfo.pWaitSemaphores = signalSemaphores;
 
@@ -1461,17 +1598,56 @@ private:
 		//presentation was successful. Its not necessary if you're only using a single swapchain, because you can simply use the return value of the present function.
 		presentInfo.pResults = nullptr; //Optional
 
-		//The vkQueuePresentKHR function submits the request to present an image to the swapchain. We will add error handling for both vkAcquireNextImageKHR and 
-		//vkQueuePresenrtKHR eventually because their failure does not mean that the program should terminate, unlike the functions we've so far.
-		vkQueuePresentKHR(m_PresentationQueue, &presentInfo);
+		//The vkQueuePresentKHR function submits the request to present an image to the swapchain. Similar to vkAcquireNextImageKHR, we will check if the swapchain is still valid.
+		result = vkQueuePresentKHR(m_PresentationQueue, &presentInfo);
 
-		vkQueueWaitIdle(m_PresentationQueue);
+		//It is important to do this after vkQueuePresentKHR to ensure that the semaphores are in a consistent state, otherwise a signalled semaphore may never be properly waited upon.
+		//Now, to actually detect resizes, we can use the glfwSetFramebufferSizeCallback function in the GLFW framework to setup a callback.
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_FramebufferResized) 
+		{
+			m_FramebufferResized = false;
+			RecreateSwapChain();
+		}
+		else if (result != VK_SUCCESS) 
+		{
+			throw std::runtime_error("Failed to present swapchain image.");
+		}
+
+		/*
+			If you run your application with validation layers enabled, you may get either errors or notice that the memory usage usually slowly grows. The reason for this is that
+			the application is rapidly submitting work in the DrawFrame function, but doesn't actually check if any of it finishes. If the CPU is submitting work faster than the GPU
+			can keep up,then the queue will slowly fill up with work. Worse, even, is that we are reusing the m_ImageAvaliableSemaphore and m_RenderFinishedSemaphore semaphores along with command buffers
+			for multiple frames at the same time. The easy way to solve this is to wait for work to finish right after submitting it, for example by using vkQueueWaitIdle.
+			
+			However, we are likely not optimally using the GPU in this way, because the whole graphics pipeline is only used for one frame at a time right now. The stages that the
+			current frame has already progressed through are idle and could already be used for a next frame. We will now extend our application to allow for multiple frames to be
+			in-flight while still bounding the amount of work that piles up. Start by adding a constant at the top of the program that specifies how many frames should be processed concurrently. 
+			
+			Although we've now set up the required objects to faciliate processing of multiple frames simultaneously, we still don't acrtually prevent more than g_MaxFramesInFlight from being submitted.
+			Right now, there is only GPU-GPU synchronization and no CPU-GPU synchronization going on to keep track of how the work is going. We may be using the frame #0 objects while frame #0 is still in-flight.
+
+			To perform CPU-GPU synchronization, Vulkan offers a second tpye of synchronization primitive called fences. Fences are similar to semaphores in the sense that they can be signalled and waited for,
+			but this time, we actually wait for them in our own code. We will first create a fence for each frame. Then, we will adjust our present function to signmal the fence
+			that rendering is complete, which the fence is waiting for at the start of this function. This allows for operations to complete before a new frame is drawn.
+
+			The memory leak problem is gone now, but the program is still not working quite correctly yet. If g_MaxFramesInFlight is higher than the number of swapchain images or
+			vkAcquireNextImageKHR returns images-out-of-order, then its possible that we may start rendering to a swap chain image that is already in flight. To avoid this, we need
+			to track for each swapchain image if a frame in flight is currently using it. This mapping will refer to frames in flight by their fences so we will
+			immediately have a synchronization object to wait on before a new frame can use that image.
+
+			We have now implemented all the needed synchronmization to ensure that there are no more than 2 frames of work enqueued and that these frames are not accidentally using the same image.
+		*/
+		vkQueueWaitIdle(m_PresentationQueue); //Wait for work to finish after submitting it.
+
+		//By using the modulo operator, we ensure that the frame index loops around every g_MaxFramesInFlight enqueued frames.
+		g_CurrentFrameIndex = (g_CurrentFrameIndex + 1) % g_MaxFramesInFlight;
 	}
 
 private:
 	GLFWwindow* m_Window;
 	const uint32_t m_WindowWidth = 1280;
 	const uint32_t m_WindowHeight = 720;
+	bool m_FramebufferResized = false;
 
 	VkInstance m_VulkanInstance;
 	VkSurfaceKHR m_Surface;
@@ -1486,8 +1662,10 @@ private:
 	std::vector<VkFramebuffer> m_SwapChainFramebuffers; 
 	VkCommandPool m_CommandPool;
 	std::vector<VkCommandBuffer> m_CommandBuffers;
-	VkSemaphore m_ImageAvaliableSemaphore;
-	VkSemaphore m_RenderFinishedSemaphore;
+	std::vector<VkSemaphore> m_ImageAvaliableSemaphores; //Each frame should have its own set of semaphores.
+	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
+	std::vector<VkFence> m_InFlightFences;
+	std::vector<VkFence> m_ImagesInFlight;
 
 	//Swapchain
 	VkSwapchainKHR m_SwapChain;
