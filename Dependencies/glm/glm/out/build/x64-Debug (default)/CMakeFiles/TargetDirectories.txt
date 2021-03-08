@@ -1,0 +1,2 @@
+C:/Users/Ryan-/source/repos/GraphicsAPIAbstractor/GraphicsAPIAbstractor/Vendor/glm/out/build/x64-Debug (default)/CMakeFiles/edit_cache.dir
+C:/Users/Ryan-/source/repos/GraphicsAPIAbstractor/GraphicsAPIAbstractor/Vendor/glm/out/build/x64-Debug (default)/CMakeFiles/rebuild_cache.dir
