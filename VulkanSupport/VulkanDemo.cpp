@@ -158,6 +158,7 @@ private:
 		CreateFramebuffers();
 		CreateCommandPool();
 		CreateVertexBuffer();
+		CreateIndexBuffer();
 		CreateCommandBuffers();
 		CreateSyncObjects();
 	}
@@ -205,6 +206,9 @@ private:
 		//Every Vulkan object that we create needs to be explicitly destroyed when we no longer need it.
 		//Vulkan's niche is to be explicit about every operation. Thus, its good to be about the lifetime of objects as well.
 		CleanUpSwapChain();
+
+		vkDestroyBuffer(m_Device, m_IndexBuffer, nullptr);
+		vkFreeMemory(m_Device, m_IndexBufferMemory, nullptr);
 
 		vkDestroyBuffer(m_Device, m_VertexBuffer, nullptr);
 		vkFreeMemory(m_Device, m_VertexBufferMemory, nullptr); //Memory should be freed at some point. Memory that is bound to a buffer object may be freed once the buffer is no longer used. We can thus free it after the buffer is destroyed.
@@ -1429,7 +1433,7 @@ private:
 		throw std::runtime_error("Failed to find a suitable memory type.");
 	}
 
-	void CreateVertexBuffer()
+	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
 	{
 		/*
 			Buffers in Vulkan are regions of memory for storing arbitrary data that can be read by the graphics card. They can be used to store vertex data, but also many other purposes.
@@ -1439,15 +1443,15 @@ private:
 
 		VkBufferCreateInfo bufferInfo{};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(m_Vertices[0]) * m_Vertices.size(); //Size of the buffer in bytes. This is straightforward with sizeof().
-		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; //Indicates for which purposes the data in the buffer is going to be used. It is possible to specify multiple purposes using a bitwise or operator.
+		bufferInfo.size = size; //Size of the buffer in bytes. This is straightforward with sizeof().
+		bufferInfo.usage = usage; //Indicates for which purposes the data in the buffer is going to be used. It is possible to specify multiple purposes using a bitwise or operator.
 		//Just like images in the swapchain, buffers can be owned by a specific queue family or be shared between multiple at the same time. As the buffer will only be used from the graphics queue, we can stick with exclusive access.
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; 
 		//There is a flags parameter that is used to configure sparse buffer memory, which is not relevant at the moment. We will leave it at a default value of 0.
 
-		if (vkCreateBuffer(m_Device, &bufferInfo, nullptr, &m_VertexBuffer) != VK_SUCCESS)
+		if (vkCreateBuffer(m_Device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
 		{
-			throw std::runtime_error("Failed to create vertex buffer.");
+			throw std::runtime_error("Failed to create buffer.");
 		}
 		else
 		{
@@ -1457,7 +1461,7 @@ private:
 		//While the buffer has been created, it doesn't actually have any memory assigned to it yet. The first step of allocating memory for the buffer is to query its memory
 		//requirements using the aptly named vkGetBufferMemoryRequirements function. 
 		VkMemoryRequirements memoryRequirements;
-		vkGetBufferMemoryRequirements(m_Device, m_VertexBuffer, &memoryRequirements);
+		vkGetBufferMemoryRequirements(m_Device, buffer, &memoryRequirements);
 		/*
 			The VkMemoryRequirements struct has 3 fields:
 			- size: The size of the required amount of memory in bytes, may differ from bufferInfo.size().
@@ -1465,13 +1469,20 @@ private:
 			- memoryTypeBits: Bit field of the memory types that are suitable for the buffer.
 		*/
 
-		//Memoiry allocate is now as simply as specifying the size and type, both which are derived from the memory requirements of the vertex buffer and the desired property.
+		/*
+			Memory allocation is now as simply as specifying the size and type, both which are derived from the memory requirements of the vertex buffer and the desired property.
+			It should be noted that in a real world application, you're not supposed to actually call vkAllocateMemory for every individual buffer. The maximum number of
+			simultaneous memory allocations is limited by the maxMemoryAllocationCount physical device limit, which may be as low as 4096 even on high end hardware like an
+			NVIDEA GTX 1080. The right way to allocate memory for a large number of objects at the same time is to create a custom allocator that splits up a single allocation
+			among many different objects using the offset parameters that we have seen in many functions. We can either implement such an allocator ourselves, or use the 
+			VulkanMemoryAllocator library. However, its okay for us to use a seperate allocation for every resource as we won't come close to hitting any of those limits for now.
+		*/
 		VkMemoryAllocateInfo allocateInfo{};
 		allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocateInfo.allocationSize = memoryRequirements.size;
-		allocateInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		allocateInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, properties);
 
-		if (vkAllocateMemory(m_Device, &allocateInfo, nullptr, &m_VertexBufferMemory) != VK_SUCCESS)
+		if (vkAllocateMemory(m_Device, &allocateInfo, nullptr, &bufferMemory) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Failed to allocate vertex buffer memory.");
 		}
@@ -1479,32 +1490,139 @@ private:
 		//Once successful, we can associate this memory with the buffer directly.
 		//The first three parameters are straightforward and the fourth parameter is the offset within the region of memory. Since this memory is allocated
 		//specifically for this: the vertex buffer, the offset is simply 0. If the offset is non-zero, then it is required to be divisible by memoryRequirements.alignment.
-		vkBindBufferMemory(m_Device, m_VertexBuffer, m_VertexBufferMemory, 0);
+		vkBindBufferMemory(m_Device, buffer, bufferMemory, 0);
+	}
+
+	void CopyBuffer(VkBuffer sourceBuffer, VkBuffer destinationBuffer, VkDeviceSize size)
+	{
+		/*
+			Memory transfer operations are executed using command buffers, just like drawing commands. Therefore, we must allocate a temporary command buffer. You may
+			wish to create a seperate command pool for these kinds of short-lived buffers, because the implementation may be able to apply memory allocation optimizations.
+			You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case. This indicates that the command buffers allocated from said pool will have short lived (reset/freed in a short timeframe).
+		*/
+		VkCommandBufferAllocateInfo allocationInfo{};
+		allocationInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocationInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocationInfo.commandPool = m_CommandPool;
+		allocationInfo.commandBufferCount = 1;
+		
+		VkCommandBuffer commandBuffer;
+		vkAllocateCommandBuffers(m_Device, &allocationInfo, &commandBuffer);
+		
+		//We're only going to use the command buffer once and wait with returning from the function until the copy operation has finished executing. Thus, its good practice
+		//to tell the driver about our intent using VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT.
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+		//Content of buffers are transferred using the vkCmdCopyBuffer command. It takes the source and destination buffers as arguments, and an array of regions to copy.
+		//The regions are defined in VkBufferCopy structs and consist of a source buffer offset, destination buffer offset and size. It is not possible to specify VK_WHOLE_SIZE
+		//here, unlike the vkMapMemory command.
+		VkBufferCopy copyRegion{};
+		copyRegion.srcOffset = 0; //Optional
+		copyRegion.dstOffset = 0;
+		copyRegion.size = size;
+		vkCmdCopyBuffer(commandBuffer, sourceBuffer, destinationBuffer, 1, &copyRegion);
+		//As the command buffer only contains the copy command, we can stop recording after that.
+		vkEndCommandBuffer(commandBuffer);
+		//Now, execute thhe command buffer to complete the transfer.
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+
+		/*
+			Unlike the draw commands, there are no events we need to wait on this time. We just want to execute the transfer on the buffers immediately. There are again two
+			possible ways to wait on this transfer to complete. We could use a fence and wait with vkWaitForFences, or simply wait for the transfer queue to become idle with vkQueueWaitIdle.
+			A fence would allow you to schedule multiple transfers simultaneously and wait for all of them to complete, instead of executing one at a time. That may give the driver more opportunities to optimize.
+		*/
+		vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(m_GraphicsQueue);
+
+		//Don't forget to clean up the command buffer used for the transfer operation.
+		vkFreeCommandBuffers(m_Device, m_CommandPool, 1, &commandBuffer);
+	}
+
+	void CreateVertexBuffer()
+	{
+		/*
+			While using the vertex buffer directly works just fine, the memory type that allows us to access it from the CPU may not be the most optimal memory type
+			for the graphics carsd itself to read from. The most optimal memory has the VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT flag and is usually not accessible by the CPU
+			on dedicated graphics cards. We will thus create 2 vertex buffers. One staging buffer in CPU accessible memory to upload the data from the vertex array to, and
+			the final vertex buffer in device local memory. We will then use a buffer copy command to move the data from the staging buffer to the actual vertex buffer.
+		
+			We will now be using a stagingBuffer with stagingBufferMemory for mapping and copying the vertex data. We have two new buffer flags here to use:
+
+			- VK_BUFFER_USAGE_TRANSFER_SRC_BIT: Buffer can be used as source in a memory transfer operation.
+			- VK_BUFFER_USAGE_TRANSFER_DST_BIT: Buffer can be used as destination in a memory transfer operation.
+
+			With this, the vertexBuffer is now allocated from a memory type that is device local, which generally means that we're not able to use vkMapMemory. However,
+			we can copy data from the stagingBuffer to our vertexBuffer. We have to indicate that we intend to do that by specifying the transfer source flag for the stagingBuffer
+			and the destination flag for the vertexBuffer, along with the vertex buffer usage flag. 
+		*/
+		VkDeviceSize bufferSize = sizeof(m_Vertices[0]) * m_Vertices.size();
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
 		//It is now time to copy the vertex data to the buffer. This is done by mapping the buffer memory into CPU accessible memory with VkMapMemory.
 		void* data; //Pointer to the mapped memory. 
 		/*
 			This function allows us to access a region of the specified memory resource defined by an offset and size. The offset and size here are 0 and bufferInfo.size respectively.
 			It is also possible to specify the special value VK_WHOLE_SIZE to map all of the memory. The second to large parameter can be used to specify flags, but there aren't any
-			yet avaliable in the current API. It must be set to the value 0. The last parameter specifies the output for the pointer to the mapped memory. 
+			yet avaliable in the current API. It must be set to the value 0. The last parameter specifies the output for the pointer to the mapped memory.
 		*/
-		vkMapMemory(m_Device, m_VertexBufferMemory, 0, bufferInfo.size, 0, &data);
-		
-		/*
-		We can now simply memcpy the vertex data to the mapped memory and unmap it again using vkUnmapMemory. Unfortunately, the driver may not immediately copy the data into
-		the buffer memory, for example because of caching. It is also possible that writes to the buffer are not visible in the mapped memory yet. There are two ways to deal with that problem:
-		
-		- Use a memory heap that is coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT.
-		- Call vkFlushMappedMemoryRanges after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading to the mapped memory. 
-		
-		We went for the first approach, which ensures that the mapped memory always matches the contents of the allocated memory. Do keep in mind that this may lead to slightly
-		worse performance than explicit flushing, but we will see why that doesn't matter eventually. 
+		vkMapMemory(m_Device, stagingBufferMemory, 0, bufferSize, 0, &data);
 
-		Flushing memory ranges or using a coherent memory heap means that the driver will be aware of our writes to the buffer, but it doesn't mean that they are actually visible to the GPU yet.
-		The transfer of data to the GPU is an operation that happens in the background and the specification simply tells us that it is guarenteed to be complete as of the next call to vkQueueSubmit.			
+		/*
+			We can now simply memcpy the vertex data to the mapped memory and unmap it again using vkUnmapMemory. Unfortunately, the driver may not immediately copy the data into
+			the buffer memory, for example because of caching. It is also possible that writes to the buffer are not visible in the mapped memory yet. There are two ways to deal with that problem:
+
+			- Use a memory heap that is coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT.
+			- Call vkFlushMappedMemoryRanges after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading to the mapped memory.
+
+			We went for the first approach, which ensures that the mapped memory always matches the contents of the allocated memory. Do keep in mind that this may lead to slightly
+			worse performance than explicit flushing, but we will see why that doesn't matter eventually.
+
+			Flushing memory ranges or using a coherent memory heap means that the driver will be aware of our writes to the buffer, but it doesn't mean that they are actually visible to the GPU yet.
+			The transfer of data to the GPU is an operation that happens in the background and the specification simply tells us that it is guarenteed to be complete as of the next call to vkQueueSubmit.
 		*/
-		memcpy(data, m_Vertices.data(), (size_t)bufferInfo.size);
-		vkUnmapMemory(m_Device, m_VertexBufferMemory);
+
+		memcpy(data, m_Vertices.data(), (size_t)bufferSize);
+		vkUnmapMemory(m_Device, stagingBufferMemory);
+
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_VertexBuffer, m_VertexBufferMemory);
+		CopyBuffer(stagingBuffer, m_VertexBuffer, bufferSize);
+	}
+
+	void CreateIndexBuffer()
+	{
+		/*
+			There are only two notable differences between the creation of the Index and Vertex buffer. The bufferSize is now equal to the number of indices times the size of
+			the index type. either uint16_t or uint32_t. The usage of the indexBuffer should be VK_BUFFER_USAGE_INDEX_BUFFER_BIT instead of VK_BUFFER_USAGE_VERTEX_BUFFER_BIT.
+			We will create a staging buffer to copy the contents of indices to and then copy it to the final device local index buffer.
+		*/
+
+		VkDeviceSize bufferSize = sizeof(m_Indices[0]) * m_Indices.size();
+
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		//Note that VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT specifies that memory allocated with this type can be mapped for host access using vkMapMemory. 
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+		
+		void* data;
+		vkMapMemory(m_Device, stagingBufferMemory, 0, bufferSize, 0, &data);
+		memcpy(data, m_Indices.data(), (size_t)bufferSize);
+		vkUnmapMemory(m_Device, stagingBufferMemory);
+
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_IndexBuffer, m_IndexBufferMemory);
+		CopyBuffer(stagingBuffer, m_IndexBuffer, bufferSize);
+
+		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
+		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
 	}
 
 	void CreateCommandBuffers()
@@ -1589,7 +1707,18 @@ private:
 			//The vkCmdBindVertexBuffers function is used to bind vertex buffers to bindings. The first two parameters, besides the command buffer, specify the offset and the number of bindings
 			//we're going to specify vertex buffers for. The last two parameters specify the array of vertex buffers to bind and the byte offsets to start reading the vertex data from. 
 			vkCmdBindVertexBuffers(m_CommandBuffers[i], 0, 1, vertexBuffers, offsets);
-			vkCmdDraw(m_CommandBuffers[i], static_cast<uint32_t>(m_Vertices.size()), 1, 0, 0);
+
+			/*
+				Using an index buffer requires us to first bind it, just like we did for the vertex buffer. The difference is that we can only have a single index buffer. Its unfortunately
+			    not possible to use different indices for each vertex attribute, so we do still have to completely duplicate vertex data even if just one attribute varies.
+				An index buffer is bound with vkCmdBindIndexBuffer, which has the index buffer, a byte offset into it and type of index data as parameters. As mentioned before,
+				the possible types are VK_INDEX_TYPE_UINT16 and VK_INDEX_TYPE_UINT32.  
+			 */	
+			vkCmdBindIndexBuffer(m_CommandBuffers[i], m_IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+			//We now need to tell Vulkan to change the drawing command to tell Vulkan to use the index buffer.
+			//vkCmdDraw(m_CommandBuffers[i], static_cast<uint32_t>(m_Vertices.size()), 1, 0, 0);
+			vkCmdDrawIndexed(m_CommandBuffers[i], static_cast<uint32_t>(m_Indices.size()), 1, 0, 0, 0);
 
 			//The render pass can now be ended.
 			vkCmdEndRenderPass(m_CommandBuffers[i]);
@@ -1862,8 +1991,12 @@ private:
 	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
 	std::vector<VkFence> m_InFlightFences;
 	std::vector<VkFence> m_ImagesInFlight;
+
+	//Buffers
 	VkBuffer m_VertexBuffer;
 	VkDeviceMemory m_VertexBufferMemory;
+	VkBuffer m_IndexBuffer;
+	VkDeviceMemory m_IndexBufferMemory;
 
 	//Swapchain
 	VkSwapchainKHR m_SwapChain;
@@ -1884,9 +2017,17 @@ private:
 	//Data
 	const std::vector<Vertex> m_Vertices =
 	{
-		{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-		{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+	};
+
+	//It is possible to use either uint16_t or uint32_t for your index buffer depending on the number of entries in m_Vertices. We can stick to uint16_t for now as we
+	//are using less than 65535 unique vertices. Just like the vertex data, the indices need to be uploaded into a VkBuffer for the GPU to be able to access them.
+	const std::vector<uint16_t> m_Indices =
+	{
+		0, 1, 2, 2, 3, 0
 	};
 };
 
