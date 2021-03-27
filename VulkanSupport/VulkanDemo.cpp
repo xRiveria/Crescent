@@ -172,6 +172,8 @@ private:
 		CreateFramebuffers();
 		CreateCommandPool();
 		CreateTextureImage();
+		CreateTextureImageView();
+		CreateTextureSampler();
 		CreateVertexBuffer();
 		CreateIndexBuffer();
 		CreateUniformBuffers();
@@ -233,6 +235,8 @@ private:
 		//Vulkan's niche is to be explicit about every operation. Thus, its good to be about the lifetime of objects as well.
 		CleanUpSwapChain();
 
+		vkDestroySampler(m_Device, m_TextureSampler, nullptr);
+		vkDestroyImageView(m_Device, m_TextureImageView, nullptr);
 		vkDestroyImage(m_Device, m_TextureImage, nullptr);
 		vkFreeMemory(m_Device, m_TextureImageMemory, nullptr);
 
@@ -724,7 +728,7 @@ private:
 		}
 
 		//We will accept it if all requirements were fulfilled.
-		return indices.IsComplete() && extensionsSupported && swapChainAdequete;
+		return indices.IsComplete() && extensionsSupported && swapChainAdequete && deviceFeatures.samplerAnisotropy;
 	}
 
 	void PickPhysicalDevice()
@@ -778,9 +782,9 @@ private:
 			queueCreationInfos.push_back(queueCreationInfo);
 		}
 			
-
 		//Specifies the set of device features that we will be using. These are the features that we queried support for with vkGetPhysicalDeviceFeatures.
 		VkPhysicalDeviceFeatures deviceFeatures{};
+		deviceFeatures.samplerAnisotropy = VK_TRUE; //Enables anisotrpy. 
 
 		//Main device creation info struct.
 		VkDeviceCreateInfo creationInfo{};
@@ -911,45 +915,53 @@ private:
 		m_SwapChainExtent = swapExtent;
 	}
 
-	void CreateImageViews()
+	VkImageView CreateImageView(VkImage image, VkFormat format)
 	{
 		//An image view is literally a view into image and is required to use any vkImage. It describes how to access the image and which part of the image to access.
 		//For example, if it should be treated as a 2D texture depth texture without any mipmapping levels. 
+		VkImageViewCreateInfo viewInfo{};
+		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewInfo.image = image;
+		//The viewType and format fields specifies how the image data should be intepreted. The viewType parameter allows you to treat images as 1D textures, 2D textures, 3D textures and cubemaps.
+		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		viewInfo.format = format;
+		//The components field allow you to swizzle the color channels around. For example, you can map all of the channels to the red channel for a monochrome texture.
+		//You can also map constant values of 0 and 1 to a channel. In this case, we will stick to default mapping.
+		viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		//The subresourceRange fields describes what the image's purpose is and which part of the image should be accessed. Our images will be used as color targets
+		//without any mipmapping levels or multiple layers.
+		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.levelCount = 1;
+		viewInfo.subresourceRange.baseArrayLayer = 0;
+		//If this was a stereographic 3D application, we would create a swapchain with multiple layers. We can then create multiple image views for each image representing the views for the
+		//left and right eyes by accessing different layers. 
+		viewInfo.subresourceRange.layerCount = 1;
+
+		VkImageView imageView;
+		if (vkCreateImageView(m_Device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create texture image view.");
+		}
+		else
+		{
+			std::cout << "Successfully create image view." << "\n";
+		}
+
+		return imageView;
+	}
+
+	void CreateImageViews()
+	{
 		//An image view is sufficient to start using an image as a texture, but its not quite ready to be used as a render target just yet. We need just one more step of indirection, known as a framebuffer.
 		m_SwapChainImageViews.resize(m_SwapChainImages.size());
 
 		for (size_t i = 0; i < m_SwapChainImages.size(); i++)
 		{
-			VkImageViewCreateInfo creationInfo{};
-			creationInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			creationInfo.image = m_SwapChainImages[i];
-			//The viewType and format fields specifies how the image data should be intepreted. The viewType parameter allows you to treat images as 1D textures, 2D textures, 3D textures and cubemaps.
-			creationInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			creationInfo.format = m_SwapChainImageFormat;
-			//The components field allow you to swizzle the color channels around. For example, you can map all of the channels to the red channel for a monochrome texture.
-			//You can also map constant values of 0 and 1 to a channel. In this case, we will stick to default mapping.
-			creationInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-			creationInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-			creationInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-			creationInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-			//The subresourceRange fields describes what the image's purpose is and which part of the image should be accessed. Our images will be used as color targets
-			//without any mipmapping levels or multiple layers.
-			creationInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			creationInfo.subresourceRange.baseMipLevel = 0;
-			creationInfo.subresourceRange.levelCount = 1;
-			creationInfo.subresourceRange.baseArrayLayer = 0;
-			//If this was a stereographic 3D application, we would create a swapchain with multiple layers. We can then create multiple image views for each image representing the views for the
-			//left and right eyes by accessing different layers. 
-			creationInfo.subresourceRange.layerCount = 1; 
-
-			if (vkCreateImageView(m_Device, &creationInfo, nullptr, &m_SwapChainImageViews[i]) != VK_SUCCESS)
-			{
-				throw std::runtime_error("Failed to create image views.");
-			}
-			else
-			{
-				std::cout << "Successfully create image view." << "\n";
-			}
+			m_SwapChainImageViews[i] = CreateImageView(m_SwapChainImages[i], m_SwapChainImageFormat);
 		}
 	}
 
@@ -1009,12 +1021,28 @@ private:
 		//The pImmutableSamplers field is only relevant for image sampling related descriptors, which we will look at later. You can leave this to its default value.
 		uboLayoutBinding.pImmutableSamplers = nullptr; //Optional
 
+		/*
+			We looked at UBO descriptors above, but we will now look at a new type of descriptor: combined image sampler. This descriptor makes it possible for shaders
+			to access an image resource through a sampler object like the one we created for textures.
+
+			We will now add a VkDescriptorSetLayoutBinding for a combined image sampler descriptor.
+		*/
+		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+		samplerLayoutBinding.binding = 1;
+		samplerLayoutBinding.descriptorCount = 1;
+		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerLayoutBinding.pImmutableSamplers = nullptr;
+		//Make sure to set the stageFlags flag to indicate that we intend to use the combined image sampler descriptor in the fragment shader. That's where the color of the fragment
+		//is going to be determined. It is possible to use texture sampling in the vertex shader, for example to dynamically deform a grid of vertices by a heightmap. 
+		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
+
+		std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
 		//All of the descriptor bindings are combined into a single VkDescriptorSetLayout object. We can then create it using vkCreateDescriptorSetLayout. This function accepts
 		//a simple VkDescriptorSetLayoutCreateInfo with the array of bindings. 
 		VkDescriptorSetLayoutCreateInfo layoutInfo{};
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = 1;
-		layoutInfo.pBindings = &uboLayoutBinding;
+		layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+		layoutInfo.pBindings = bindings.data();
 
 		if (vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS)
 		{
@@ -1025,16 +1053,29 @@ private:
 	void CreateDescriptorPool()
 	{
 		//We will create a descriptor set for each VkBuffer resource to bind it to the uniform buffer descriptor. Now, descriptor sets cannot be created directly but rather
-		//must be allocated from a pool like command buffers. The equivalent for descriptor sets is unsurprisngly called a descriptor pool. First, we will need to describe which
-		//descriptor types our desciptor sets are going to contain and how many of them.
-		VkDescriptorPoolSize poolSize{};
-		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize.descriptorCount = static_cast<uint32_t>(m_SwapChainImages.size());
+		//must be allocated from a pool like command buffers. The equivalent for descriptor sets is unsurprisingly called a descriptor pool. First, we will need to describe which
+		//descriptor types our descriptor sets are going to contain and how many of them.
+		std::array<VkDescriptorPoolSize, 2> poolSizes{};
+		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSizes[0].descriptorCount = static_cast<uint32_t>(m_SwapChainImages.size());
+
+		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSizes[1].descriptorCount = static_cast<uint32_t>(m_SwapChainImages.size());
+
+		/*
+			Inadequete descriptor pools are a good example of a problem that the validation layers will not catch: As of Vulkan 1.1, vkAllocateDescriptorSets may fail with the error code 
+			VK_ERROR_POOL_OUT_OF_MEMORY if the pool is not sufficiently large, but the driver may also try solve the problem internally. This means that sometimes
+			(depending on hardware, pool size and allocation size) the driver will let us get away with an allocation that exceeds the limits of our descriptor pool.
+
+			Other times, vkAllocateDescriptorSets will fail and return VK_ERROR_POOL_OUT_OF_MEMORY. This can be particularly frustrating if the allocation succeeds on some machines,
+			but fails on others.
+		*/
+
 		//We will allocate one of these descriptors for every frame. This pool size structure is referenced by the main VkDescriptorPoolCreateInfo.
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = 1;
-		poolInfo.pPoolSizes = &poolSize;
+		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+		poolInfo.pPoolSizes = poolSizes.data();
 		//Aside from the maximum number of individual descriptors that are avaliable, we also need to specify the maximum number of descriptor sets that may be allocated.
 		poolInfo.maxSets = static_cast<uint32_t>(m_SwapChainImages.size());
 		//The structure has an optional flag similar to command pools that determines if individual descriptor sets can be freed or not: VK_DESCRIPTOR_CREATE_FREE_DESCRIPTOR_SET_BIT.
@@ -1700,6 +1741,109 @@ private:
 
 		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
 		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
+	}
+
+	void CreateTextureImageView()
+	{
+		//Remember as seen with swapchain images and the framebuffer, images are accessed through image views rather than directly. We will also need to create such an image view for the texture image.
+		m_TextureImageView = CreateImageView(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB);
+	}
+
+	void CreateTextureSampler()
+	{
+		/*
+			It is possible for shaders to read texels directly from images, but it is not very common when they are used as textures. Textures are usually accessed through
+			samplers, which will apply filtering and transformations to compute the final color that is retrieved. These filters are helpful to deal with problems like
+			oversampling. Consider a texture that is mapped to geometry with more fragments than texels. If you simply took the closest texel for the texture coordinate in each
+			fragment, you would get quite a Minecraft styled pixelized image.
+
+			However, if you combine the 4 closest texels through linear interpolation, then you would get a smoother result. Of course, your application may have art style
+			requirements that fit the pixelized style more, the clearer one is more preferred in conventional graphics application. 
+
+			Undersampling is the opposite problem, where you have more texels than fragments. This will lead to artifacts when sampling high frequency patterns like a checkerboard
+			texture at a sharp angle. Without anisotropic filtering, the textures turns into a blurry mess in the distance. With anisotropic filtering, however, it is applied
+			automatically by a sampler. 
+
+			Aside from these filters, a sampler can also take care of transformations. It determines what happens when you try to read texels outside the image through
+			its addressing mode: Repeat, Mirrored Repeat, Clamp to Edge and Clamp to Border.
+
+			Samplers are configured through a VkSamplerCreateInfo structure, which specifies all filters and transformations that is should apply. 
+		*/
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		/*
+			The magFilter and minFilter field specify how to interpolate texels that are magnified or minified. Magnification concerns the oversampling problems
+			described above, minification concerns undersampling. The choices are VK_FILTER_NEAREST and VK_FILTER_LINEAR, corresponding to the modes demonstrated in the images above. 
+		*/
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		/*
+			The addressing mode can be specified per axis using the addressMode fields. The avaliable values are listed below. Note that the axes are called U, V and W
+			instead of X, Y and Z. This is a convention for textgure space coordinates:
+			
+			- VK_SAMPLER_ADDRESS_MODE_REPEAT: Repeat the texture when going beyond the image dimensions.
+			- VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT: Like repeat, but inverts the coordinates to mirror the image when going beyond the dimensions.
+			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE: Take the color of the edge closest to the coordinate beyond the image dimensions. 
+			- VK_SAMPLER_ADDRESS_MIRROR_CLAMP_TO_EDGE: Like clamp to edge, but instead uses the edge opposite to the closest edge.
+			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER: Return a solid color when sampling beyond the dimensions of the image.
+
+			It doesn't really matter which addressing mode we use here, because we're not going to sample outside the image in their tutorial. However, the repeat mode
+			is probably the most common mode, because it can be used to tile textures like floors and walls. 
+		*/
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		/*
+			These two fields specify if anisotropic filtering should be used. There is no reason not to use this unless performance is a concern. The maxAnisotropy field
+			limits the amount of texel samples that can be used to calculate the final color. A lower value results in better performance, but lower quality results. To figure out
+			which value we can use, we need to retrieve the properties of the physical device like so:
+		*/
+		samplerInfo.anisotropyEnable = VK_TRUE; //We can enforce the avaliability of anisotropic filtering, its also possible to simply not use it by conditionally setting anistropyEnable = VK_FALSE.
+		samplerInfo.maxAnisotropy = 5;
+
+		VkPhysicalDeviceProperties properties{};
+		vkGetPhysicalDeviceProperties(m_PhysicalDevice, &properties);	
+		/*
+			If you look at the documentation for the VkPhysicalDeviceProperties struct, you will see that it contains a VkPhysicalDeviceLimits member named limits. This 
+			struct in turn has a member called maxSamplerAnisotropy and this is the maximum value we can samplke for maxAnisotropy. If we want to go for maximum quality,
+			we can simply use that value directly.
+
+			You can either query the properties at the beginning of your program and pass them around to the functions that need them, or query them in the CreateTextureSampler
+			function itself.
+		*/
+		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+		/*
+			The borderColor field specifies which color is returned when sampling beyond the image with clamp to border addressing mode. It is possible to return black, white
+			or transparent in either float or int formats. You cannot specify an arbitrary color.
+		*/
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		/*
+			The unnormalizedCoordinates field specifies which coordinate system you want to use to address texels in an image. If this field is VK_TRUE, then you can
+			simply use coordinates within the [0, textureWidth] and [0, textureHeight] range. If it is VK_FALSE, then the texels are addressed using the [0, 1] range on
+			all axes. Real-world applications almost always use normalized coordinates, because then its possible to use textures of varying resolutions wuith the exact
+			same coordinates. 
+		*/
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		/*
+			If a comparison function is enabled, then texels will first be compared to a value, and the result of that comparison is used in filtering operations. This is mainly used for
+			percentage closer filtering on shadow maps. We will look at this in a future chapter.
+		*/
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+		//All of these fields apply to mipmapping. We will look at mipmapping in a later chapter, but basically its another type of filter that can be applied. 
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+
+		//The functioning of the sampler is now fully defined. Add a class member to hold the handle of the sampler object and create the sampler with vkCreateSampler.
+		//Note that the sampler does not reference a VkImage anywhere. The sampler is a distinct object that provides an interface to extract colors from a texture.
+		//It can be applied to any image you want, whether it is 1D, 2D or 3D. This is different from many older APIs, which combineds texture images and filtering into a single state.
+		if (vkCreateSampler(m_Device, &samplerInfo, nullptr, &m_TextureSampler) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create texture sampler.");
+		}
 	}
 
 	uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
@@ -2532,6 +2676,8 @@ private:
 	//Texture
 	VkImage m_TextureImage;
 	VkDeviceMemory m_TextureImageMemory;
+	VkImageView m_TextureImageView;
+	VkSampler m_TextureSampler;
 
 	//Swapchain
 	VkSwapchainKHR m_SwapChain;
