@@ -33,6 +33,7 @@ struct Vertex
 {
 	glm::vec2 m_Position;
 	glm::vec3 m_Color;
+	glm::vec2 m_TexCoord;
 
 	static VkVertexInputBindingDescription RetrieveBindingDescription()
 	{
@@ -57,11 +58,14 @@ struct Vertex
 	}
 
 	//The second structure that describes how to handle vertex input is VkVertexInputAttributeDescription. We will use a helper function to help populate the struct.
-	static std::array<VkVertexInputAttributeDescription, 2> RetrieveAttributeDescriptions()
+	//We will add a VkVertexInputAttributeDescription struct here for our texture coordinates. This is so we can use it to access texture coordinates as input in the vertex shader.
+	//This is necessary to pass them to the fragment shader for interpolation across the surface of the square.
+	static std::array<VkVertexInputAttributeDescription, 3> RetrieveAttributeDescriptions()
 	{
 		//An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data originating from a binding description. We have
 		//two attributes, a position and a color, so we need two attribute description structs. 
-		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+		std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+
 		attributeDescriptions[0].binding = 0; //Tells Vulkan from which binding the per-vertex data comes from.
 		attributeDescriptions[0].location = 0; //References the location directive of the input in the vertex shader. The input in the vertex shader with location 0 is the position, which has two 32-bit float components. 
 		/*
@@ -93,6 +97,11 @@ struct Vertex
 		attributeDescriptions[1].location = 1;
 		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[1].offset = offsetof(Vertex, m_Color);
+
+		attributeDescriptions[2].binding = 0;
+		attributeDescriptions[2].location = 2;
+		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[2].offset = offsetof(Vertex, m_TexCoord);
 
 		return attributeDescriptions;
 	}
@@ -1069,8 +1078,11 @@ private:
 
 			Other times, vkAllocateDescriptorSets will fail and return VK_ERROR_POOL_OUT_OF_MEMORY. This can be particularly frustrating if the allocation succeeds on some machines,
 			but fails on others.
-		*/
 
+			Since Vulkan shifts the responsiblity for the allocation to the driver, it is no longer a strict requirement to only allocate as many descriptors of a certain type
+			(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, etc) as specified by the corresponding descriptorCount members for the creation of the descriptor pool. However, it remains
+			best practice to do so and in the future, VK_LAYER_KHRONOS_validation will warn about this type of problem if you enable Best Practice Validation. 
+		*/
 		//We will allocate one of these descriptors for every frame. This pool size structure is referenced by the main VkDescriptorPoolCreateInfo.
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1120,6 +1132,12 @@ private:
 			bufferInfo.offset = 0;
 			bufferInfo.range = sizeof(UniformBufferObject); //If we are overwriting the whole buffer, it is possible to use VK_WHOLE_SIZE for the range. 
 
+			//The final step is to bind the actual image and sampler resources to the descriptors in the descriptor set.
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = m_TextureImageView;
+			imageInfo.sampler = m_TextureSampler;
+
 			//The configuration of the descriptors is updated using the vkUpdateDescriptorSets function, which takes an array of VkWriteDescriptorSet structs as parameter.
 			/*
 				The first two fields specify the descriptor set to update and the binding. We gave our uniform buffer binding index 0. Remember that descriptors can be arrays,
@@ -1128,24 +1146,35 @@ private:
 				We also need to specify the type of descriptor again. Its possible to update multiple descriptors at once in an array, starting at index dstArrayElement. The descriptorCount
 				field specifies how many array elements you wish to update. 
 
-				The last field references an array with descriptorCount structs that actually configure the descriptors. It depends on the type of descriptors whixch one of the three you
+				The last field references an array with descriptorCount structs that actually configure the descriptors. It depends on the type of descriptors which one of the three you
 				actually need to use. The pBufferInfo field is used for descriptors that refer to buffer data, pImageInfo is used for descriptors that refer to image data and
 				pTexelBufferView is used for descriptors that refer to buffer views. Our descriptor is based on buffers, so we're using pBufferInfo.
 			*/
-			VkWriteDescriptorSet descriptorWrite{};
-			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = m_DescriptorSets[i];
-			descriptorWrite.dstBinding = 0;
-			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = &bufferInfo;
-			descriptorWrite.pImageInfo = nullptr; //Optional
-			descriptorWrite.pTexelBufferView = nullptr; //Optional
+
+			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[0].dstSet = m_DescriptorSets[i];
+			descriptorWrites[0].dstBinding = 0;
+			descriptorWrites[0].dstArrayElement = 0;
+			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrites[0].descriptorCount = 1;
+			descriptorWrites[0].pBufferInfo = &bufferInfo;
+			descriptorWrites[0].pImageInfo = nullptr; //Optional as we are using a buffer data here.
+			descriptorWrites[0].pTexelBufferView = nullptr; //Optional as we are using buffer data here.
+
+			//The descriptors must be updated with the imageinfo descriptor info struct. Once done, they are finally ready to be used by the shaders. 
+			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[1].dstSet = m_DescriptorSets[i];
+			descriptorWrites[1].dstBinding = 1;
+			descriptorWrites[1].dstArrayElement = 0;
+			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrites[1].descriptorCount = 1;
+			descriptorWrites[1].pImageInfo = &imageInfo;
 
 			//The updates are applied with vkUpdateDescriptorSets. It accepts two kinds of arrays as parameters: an array of VkWriteDescriptorSet and an array of VkCopyDescriptorSet.
 			//The latter can be used to copy descriptors to each other as its name implies.
-			vkUpdateDescriptorSets(m_Device, 1, &descriptorWrite, 0, nullptr);
+			vkUpdateDescriptorSets(m_Device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 		}
 	}
 
@@ -1699,7 +1728,7 @@ private:
 			with 4 bytes per pixel in the case of STBI_rgb_alpha for a total of textureWidth * textureHeight * 4 values. 
 		*/
 		int textureWidth, textureHeight, textureChannels;
-		stbi_uc* pixels = stbi_load("Textures/texture.jpg", &textureWidth, &textureHeight, &textureChannels, STBI_rgb_alpha);
+		stbi_uc* pixels = stbi_load("Textures/texture.png", &textureWidth, &textureHeight, &textureChannels, STBI_rgb_alpha);
 		VkDeviceSize imageSize = textureWidth * textureHeight * 4;
 
 		if (!pixels)
@@ -2698,10 +2727,10 @@ private:
 	//Data
 	const std::vector<Vertex> m_Vertices =
 	{
-		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 	};
 
 	//It is possible to use either uint16_t or uint32_t for your index buffer depending on the number of entries in m_Vertices. We can stick to uint16_t for now as we
