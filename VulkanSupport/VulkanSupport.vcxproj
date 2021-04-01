@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -97,7 +97,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Models/;$(SolutionDir)Source/;$(SolutionDir)Dependencies/glm/;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;$(SolutionDir)Dependencies/GLEW/include/;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vendor/;$(SolutionDir)Resources/;$(SolutionDir)Source/;$(SolutionDir)Dependencies/glm/;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;$(SolutionDir)Dependencies/GLEW/include/;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -115,7 +115,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Models/;$(SolutionDir)Source/;$(SolutionDir)Dependencies/glm/;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;$(SolutionDir)Dependencies/GLEW/include/;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vendor/;$(SolutionDir)Resources/;$(SolutionDir)Source/;$(SolutionDir)Dependencies/glm/;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;$(SolutionDir)Dependencies/GLEW/include/;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,7 +133,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Models/;$(SolutionDir)Source/;$(SolutionDir)Dependencies/glm/;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;$(SolutionDir)Dependencies/GLEW/include/;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vendor/;$(SolutionDir)Resources/;$(SolutionDir)Source/;$(SolutionDir)Dependencies/glm/;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;$(SolutionDir)Dependencies/GLEW/include/;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -151,7 +151,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Models/;$(SolutionDir)Source/;$(SolutionDir)Dependencies/glm/;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;$(SolutionDir)Dependencies/GLEW/include/;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vendor/;$(SolutionDir)Resources/;$(SolutionDir)Source/;$(SolutionDir)Dependencies/glm/;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;$(SolutionDir)Dependencies/GLEW/include/;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -163,11 +163,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Core\Application.cpp" />
+    <ClCompile Include="EntryPoint.cpp" />
+    <ClCompile Include="Source\VulkanRenderer.cpp" />
+    <ClCompile Include="Source\Vulkan\VulkanDebug.cpp" />
     <ClCompile Include="VulkanDemo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Fragment.shader" />
     <None Include="Shaders\Vertex.shader" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Core\Application.h" />
+    <ClInclude Include="Core\Utility.h" />
+    <ClInclude Include="Source\VulkanRenderer.h" />
+    <ClInclude Include="Source\Vulkan\VulkanDebug.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

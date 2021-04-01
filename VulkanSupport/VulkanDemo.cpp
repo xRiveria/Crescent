@@ -26,9 +26,9 @@
 #include <array>
 #include <chrono>
 #define STB_IMAGE_IMPLEMENTATION
-#include "Source/stb_image/stb_image.h"
+#include "Vendor/stb_image/stb_image.h"
 #define TINYOBJLOADER_IMPLEMENTATION
-#include "Source/tinyobjloader/tiny_obj_loader.h"
+#include "Vendor/tinyobjloader/tiny_obj_loader.h"
 #include <memory>
 #include <unordered_map>
 
@@ -146,8 +146,8 @@ struct UniformBufferObject
 //Our Model
 const uint32_t m_ModelTextureWidth = 800;
 const uint32_t m_ModelTextureHeight = 600;
-const std::string m_ModelPath = "Models/viking_room.obj";
-const std::string m_ModelTexturePath = "Textures/viking_room.png";
+const std::string m_ModelPath = "Resources/Models/viking_room.obj";
+const std::string m_ModelTexturePath = "Resources/Textures/viking_room.png";
 
 //As this is an extension function, it is not automatically loaded. We will thus look up its address ourselves by using vkGetInstanceProcAddr.
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator,
@@ -502,6 +502,9 @@ private:
 			throw std::runtime_error("Failed to setup debug messenger.");
 		}
 	}
+
+
+
 
 	void CreateSurface()
 	{
@@ -1478,8 +1481,8 @@ private:
 
 	void CreateGraphicsPipeline()
 	{
-		std::vector<char> vertexShaderCode = ReadFile("Shaders/vertex.spv");
-		std::vector<char> fragmentShaderCode = ReadFile("Shaders/fragment.spv");
+		std::vector<char> vertexShaderCode = ReadFile("Resources/Shaders/vertex.spv");
+		std::vector<char> fragmentShaderCode = ReadFile("Resources/Shaders/fragment.spv");
 
 		//Shader modules are just a thin wrapper around the shader bytecode that we previously loaded from a file and the functions defined in it. The compilation and
 		//linking of the SPIR-V bytecode to machine code for execution by the GPU doesn't happen until the graphics pipeline is created. That means that we are allowed
@@ -3049,7 +3052,7 @@ private:
 	};
 };
 
-int main(int argc, int argv[])
+int mainDefunct(int argc, int argv[])
 {
 	VulkanApplication application;
 
@@ -3064,4 +3067,5 @@ int main(int argc, int argv[])
 	}
 
 	return EXIT_SUCCESS; //Successful program execution.
+	return 0;
 }
