@@ -191,7 +191,7 @@ private:
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); //GLFW was originally designed to create an OpenGL context. We need to tell it to not create an OpenGL context.
 		m_Window = glfwCreateWindow(m_WindowWidth, m_WindowHeight, "Crescent Engine", nullptr, nullptr);
 		glfwSetWindowUserPointer(m_Window, this); //Sets a user-defined pointer of the specified window that can be retrieved. 
-		glfwSetFramebufferSizeCallback(m_Window, FramebufferResizeCallback);
+		glfwSetFramebufferSizeCallback(m_Window, FramebufferResizeCallback); ///
 	}
 
 	static void FramebufferResizeCallback(GLFWwindow* window, int width, int height)
@@ -328,7 +328,7 @@ private:
 		const char** glfwExtensions;
 		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount); //Returns an array of Vulkan instance extensions and stores the count in a provided buffer.
 
-		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount); 
 		for (const auto& extension : extensions)
 		{
 			std::cout << "GLFW Extension Required: " << extension << "\n";

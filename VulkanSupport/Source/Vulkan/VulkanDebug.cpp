@@ -25,7 +25,16 @@ namespace Crescent
 		{
 			func(instance, debugMessenger, pAllocator);
 		}
+	}
 
+	VulkanDebug::VulkanDebug()
+	{
+
+	}
+
+	void VulkanDebug::DestroyDebugInstance()
+	{
+		DestroyDebugUtilsMessengerEXT(*m_VulkanInstance, m_DebugMessenger, nullptr);
 	}
 
 	//Our debug function itself. The VKAPI_ATTR and VKAPI_CALL ensures that the function has the right signature for Vulkan to call it.
@@ -61,7 +70,7 @@ namespace Crescent
 		return VK_FALSE;
 	}
 
-	bool VulkanDebug::QueryValidationLayersSupport(const std::vector<const char*> validationLayers)
+	bool VulkanDebug::QueryValidationLayersSupport()
 	{
 		uint32_t layerCount = 0;
 		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -69,7 +78,7 @@ namespace Crescent
 		vkEnumerateInstanceLayerProperties(&layerCount, avaliableLayers.data());
 
 		//Check if the validation layers we want are supported.
-		for (const char* layerName : validationLayers)
+		for (const char* layerName : m_ValidationLayers)
 		{
 			bool layerFound = false;
 			for (const VkLayerProperties& layerProperties : avaliableLayers)
@@ -111,14 +120,14 @@ namespace Crescent
 		debugMessengerInfo.pUserData = nullptr; //You may pass a pointer to your own data here that will be passed to the debug function.
 	}
 
-	VkDebugUtilsMessengerEXT VulkanDebug::SetupDebugMessenger(const VkInstance& vulkanInstance)
+	void VulkanDebug::SetupDebugMessenger(VkInstance* vulkanInstance)
 	{
-		VkDebugUtilsMessengerEXT debugMessenger;
+		m_VulkanInstance = vulkanInstance;
 
 		VkDebugUtilsMessengerCreateInfoEXT creationInfo;
 		PopulateDebugMessengerCreationInfo(creationInfo);
 
-		if (CreateDebugUtilsMessengerEXT(vulkanInstance, &creationInfo, nullptr, &debugMessenger))
+		if (CreateDebugUtilsMessengerEXT(*m_VulkanInstance, &creationInfo, nullptr, &m_DebugMessenger))
 		{
 			throw std::runtime_error("Failed to setup debug messenger.");
 		}
@@ -126,7 +135,5 @@ namespace Crescent
 		{
 			std::cout << "Successfully created Debug Messenger.\n";
 		}
-
-		return debugMessenger;
 	}
 }

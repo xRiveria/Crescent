@@ -1,29 +1,43 @@
 #include "VulkanRenderer.h"
 #include <stdexcept>
 #include <iostream>
-#include "../Source/Vulkan/VulkanDebug.h"
+#include <vector>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 
 namespace Crescent
 {
 	VulkanRenderer::VulkanRenderer(const std::string& applicationName, const std::string& engineName, const int& applicationMainVersion, const int& applicationSubVersion, const bool& validationLayersEnabled)
 		: m_ValidationLayersEnabled(validationLayersEnabled)
 	{
+		m_Window = std::make_shared<Window>(1280, 1080, "Vulkan Demo");
+		m_DebugMessenger = std::make_shared<VulkanDebug>();
+
 		CreateVulkanInstance(applicationName, engineName, applicationMainVersion, applicationSubVersion);
 		if (validationLayersEnabled)
 		{
-			m_DebugMessenger = VulkanDebug::SetupDebugMessenger(m_VulkanInstance);
+			m_DebugMessenger->SetupDebugMessenger(&m_VulkanInstance);
 		}
+	}
+
+	VulkanRenderer::~VulkanRenderer()
+	{
+
 	}
 
 	//Retrieves the names of extensions required by our Vulkan application.
 	std::vector<const char*> RetrieveRequiredVulkanExtensions(const bool& validationLayersEnabled)
 	{
 		//Vulkan is platform agnostic. Thus, extensions are needed to interface with the window system. GLFW has a handy function that returns the extension(s) it needs to do that.
-		std::vector<const char*> extensions;
-		
 		uint32_t glfwExtensionsCount = 0;
 		const char** glfwExtensions;
-		//Retrieve GLFW stuff. How do we do it nicely?
+		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount); //Returns an array of Vulkan instance extensions and stores the count in a provided buffer. 
+		
+		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionsCount); //Creates a vector with data of first parameter to the end of length in second parameter.
+		for (const auto& extension : extensions)
+		{
+			std::cout << "GLFW Extension Required: " << extension << "\n";
+		}
 
 		if (validationLayersEnabled)
 		{
@@ -43,7 +57,7 @@ namespace Crescent
 	void VulkanRenderer::CreateVulkanInstance(const std::string& applicationName, const std::string& engineName, const int& applicationMainVersion, const int& applicationSubVersion)
 	{
 		//Validation layers are optional components that hook into Vulkan function calls to apply operations such as parameter checking, Vulkan object tracking, call logging etc.
-		if (m_ValidationLayersEnabled && !VulkanDebug::QueryValidationLayersSupport(m_ValidationLayers))
+		if (m_ValidationLayersEnabled && !m_DebugMessenger->QueryValidationLayersSupport())
 		{
 			throw::std::runtime_error("Validation Layers Requested, but not avaliable!");
 		}
@@ -70,13 +84,13 @@ namespace Crescent
 		VkDebugUtilsMessengerCreateInfoEXT debugCreationInfo; //This is placed outside the if statement so that it is not destroyed before the vkCreateInstance call below.
 		if (m_ValidationLayersEnabled)
 		{
-			creationInfo.enabledLayerCount = static_cast<uint32_t>(m_ValidationLayers.size());
-			creationInfo.ppEnabledLayerNames = m_ValidationLayers.data(); //Determines the global validation layers based on our specifications.
+			creationInfo.enabledLayerCount = static_cast<uint32_t>(m_DebugMessenger->m_ValidationLayers.size());
+			creationInfo.ppEnabledLayerNames = m_DebugMessenger->m_ValidationLayers.data(); //Determines the global validation layers based on our specifications.
 			/*
 				Our debugger is usually created after the instance is created. Thus, we populate the pNext struct member with our debug messenger creation so it will be used 
 				automatically during vkCreateInstance and cleaned up after vkDestroyInstance.
 			*/
-			VulkanDebug::PopulateDebugMessengerCreationInfo(debugCreationInfo);
+			m_DebugMessenger->PopulateDebugMessengerCreationInfo(debugCreationInfo);
 			creationInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreationInfo;
 		}
 		else
@@ -97,6 +111,13 @@ namespace Crescent
 
 	void VulkanRenderer::DrawFrames()
 	{
+		while (!glfwWindowShouldClose(m_Window->RetrieveWindow()))
+		{
+			glfwPollEvents();
+		}
 
+		//This is where we destroy the Vulkan instance.
+		m_DebugMessenger->DestroyDebugInstance();
+		vkDestroyInstance(m_VulkanInstance, nullptr);
 	}
 }

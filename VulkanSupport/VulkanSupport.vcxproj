@@ -167,6 +167,7 @@
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Source\VulkanRenderer.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanDebug.cpp" />
+    <ClCompile Include="Source\Window.cpp" />
     <ClCompile Include="VulkanDemo.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -178,6 +179,7 @@
     <ClInclude Include="Core\Utility.h" />
     <ClInclude Include="Source\VulkanRenderer.h" />
     <ClInclude Include="Source\Vulkan\VulkanDebug.h" />
+    <ClInclude Include="Source\Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
