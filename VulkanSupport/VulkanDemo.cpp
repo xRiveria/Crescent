@@ -503,9 +503,6 @@ private:
 		}
 	}
 
-
-
-
 	void CreateSurface()
 	{
 		/*
@@ -632,100 +629,6 @@ private:
 		return details;
 	}
 
-	//If the swapChainAdequete conditions were met, then the support is definitely sufficient. However, there may still be many modes with varying optimality.
-	//We will now try to determine for the best possible swapchain based on 3 types of settings:
-	//- Surface Format (Color Depth)
-	//- Presentation Mode (Conditions for "swapping" images to the screen)
-	//- Swap Extent (Resolution of images in the swapchain)
-	VkSurfaceFormatKHR ChooseSwapchainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& avaliableFormats)
-	{
-		/*
-			Each VkSurfaceFormatKHR entry contains a format and a colorspace member. The format member specifies color channels and types. For example, VK_FORMAT_B8G8R8A8_SRGB means
-			that we store the B, R, G and Alpha channels in that order with an 8 bit unsigned integer for a total of 32 bits per pixel. The colorSpace member indicates if the SRGB color
-			space is supported or not using the VK_COLOR_SPACE_SRGB_NONLINEAR_KHR flag. For the color space, we will use SRGB if it is avaliable, because it results in more accurately
-			perceived colors. It is also pretty much the standard color space for images, like the textures we will use later on. Because of that, we should also use an SRGB color format, a common
-			one being VK_FORMAT_B8G8R8A8_SRGB. 
-		*/
-
-		for (const VkSurfaceFormatKHR& avaliableFormat : avaliableFormats)
-		{
-			if (avaliableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && avaliableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-			{
-				return avaliableFormat;
-			}
-		}
-		//If the above fails, we could start ranking the avaliable formats based on how good they are. But in most cases, it is okay to settle with the first format specified.
-		return avaliableFormats[0];
-	}
-
-	VkPresentModeKHR ChooseSwapchainPresentationMode(const std::vector<VkPresentModeKHR>& avaliablePresentationModes)
-	{
-		/*
-			The presentation mode is arguably the most important setting for the swapchain, because it represents the actual conditions for showing images to the screen.
-			There are 4 possible modes avaliable in Vulkan:
-
-			- VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted by your application are transferred to the screen right away which made result in tearing.
-			- VK_PRESENT_MODE_FIFO_KHR: The swapchain is a queue where the display takes an image from the front of the queue when the display is refreshed and the program inserts rendered
-			images at the back of the queue. If the queue is full, then the program has to wait. This is most similar to vertical sync (VSync) as found in modern games. The moment that the display is refreshed is known as "vertical blank".
-			- VK_PRESENT_MODE_FIFO_RELAXED_KHR: This mode only differs from the previous one if the application is late and the queue was empty at the last vertical blank. Instead of
-			waiting for the next vertical blank, the image is transferred right away when it finally arrives. This may result in visible tearing.
-			- VK_PRESENT_MODE_MAILBOX_KHR: This is another variation of the second mode. Instead of blocking the application when the queue is full, the images that are already
-			queued are simply replaced with the newer ones. This mode can be used to implement triple buffering, which allows you to avoid tearing with significantly less latency issues than standard vertical
-			sync that uses double buffering. 
-
-			VSync is a graphics technology that synchronizes the frame rate of a game and the fresh rate of a gaming monitor. This tech was a way to deal with screen tearing,
-			which is when your screen displays portions of multiple frames at one go, resulting in a display that appears split along a line, usually horizontally. 
-			Tearing occurs when the refresh rate of the monitor (how many times it updates per second) is not in sync with the frames per second. 
-
-			Only the VK_PRESENT_MODE_FIFO_KHR mode is guarenteed to be avaliable, so we will again have to write a function that looks for the best mode avaliable. 
-		*/
-
-		for (const VkPresentModeKHR& avaliablePresentationMode : avaliablePresentationModes)
-		{
-			//Triple buffering is a very nice tradeoff as it allow us to prevent tearing whilst still maintaining a fairly low latency by rendering new images that are as up-to-date as possible right until the vertical blank.
-			if (avaliablePresentationMode == VK_PRESENT_MODE_MAILBOX_KHR)
-			{
-				return avaliablePresentationMode;
-			}
-		}
-
-		//If our preferred option isn't avaliable, just return the default one. 
-		return VK_PRESENT_MODE_FIFO_KHR;
-	}
-
-	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
-	{
-		/*
-			The swap extent is the resolution of the swapchain images and its almost always exactly equal to the resolution of the window that we're drawing to in pixels. The range
-			of the possible resolutions is defined in the VkSurfaceCapabiltiesKHR structure. Vulkan tells us to match the resolution of the window by setting the
-			width and height in the currentExtent member. However, some window managers do allow us to differ here and this is indicated by setting the width and height in
-			currentExtent to a special value: the maximum value of uint32_t. In that case, we will pick the resolution that best matches the window within the minImageExtent and
-			maxImageExtent bounds. We must specify the resolution in the correct unit.
-
-			GLFW uses 2 units when measuring sizes: pixels and screen coordinates. For example, the resolution (width/height) that we specified earlier when creating the window
-			is measured in screen coordinates. However, Vulkan works with pixels, so the swapchain extent must be specified in pixels as well. Unfortunately, if you are using
-			a high DPI display (like Apple's Retina display), screen coordinates don't correspond to pixels. Instead, due to the higher pixel density, the resolution of the window
-			in pixel will be larger than the resolution in screen coordinates. Thus, if Vulkan doesn't fix the swap extent for us, we can't just use the original width and height.
-			Instead, we must use glfwGetFramebufferSize to query the resolution of the window in pixel before matching it against the minimum and maximum image extent. 
-		*/
-
-		if (capabilities.currentExtent.width != UINT32_MAX) //The maximum number that we can store with an unsigned 32bit integer.
-		{
-			return capabilities.currentExtent;
-		}
-		else //We pick the resolution that best matches the window.
-		{
-			int windowWidth, windowHeight;
-			glfwGetFramebufferSize(m_Window, &windowWidth, &windowHeight);
-			VkExtent2D actualExtent = { static_cast<uint32_t>(windowWidth), static_cast<uint32_t>(windowHeight) };
-
-			//The max and min functions are used here to clamp the value of WIDTH and HEIGHT between the allowed minimum and maximum extents that are supported by the implementation.
-			actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
-			actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
-
-			return actualExtent;
-		}
-	}
 
 	bool CheckDeviceExtensionSupport(VkPhysicalDevice device)
 	{
@@ -740,7 +643,7 @@ private:
 		std::set<std::string> requiredExtensions(m_DeviceExtensions.begin(), m_DeviceExtensions.end()); //Constructs a container with as many elements as the range.
 		for (const VkExtensionProperties& extension : avaliableExtensions)
 		{
-			requiredExtensions.erase(extension.extensionName); 
+			requiredExtensions.erase(extension.extensionName);
 		}
 
 		if (requiredExtensions.empty()) //If empty, all extensions are supported. Else, return false indicating an extension is not supported.
@@ -798,6 +701,8 @@ private:
 		std::vector<VkPhysicalDevice> devices(deviceCount);
 		vkEnumeratePhysicalDevices(m_VulkanInstance, &deviceCount, devices.data());
 
+		//==================================================================================================
+
 		for (const VkPhysicalDevice& device : devices)
 		{
 			if (IsPhysicalDeviceSuitable(device)) 
@@ -825,7 +730,7 @@ private:
 		//That's because you can create all of the command buffers on multiple threads and then submit them all at once on the main thread with a single low-overhead call.
 		//Vulkan allows you to assign priorities to queues to influence the scheduling of command buffer execution using floating point numbers between 0.0 and 1.0. This is required even if there is only a single queue.
 		float queuePriority = 1.0f;
-		
+
 		for (uint32_t queueFamily : uniqueQueueFamilies)
 		{
 			VkDeviceQueueCreateInfo queueCreationInfo{};
@@ -835,7 +740,7 @@ private:
 			queueCreationInfo.pQueuePriorities = &queuePriority;
 			queueCreationInfos.push_back(queueCreationInfo);
 		}
-			
+
 		//Specifies the set of device features that we will be using. These are the features that we queried support for with vkGetPhysicalDeviceFeatures.
 		VkPhysicalDeviceFeatures deviceFeatures{};
 		deviceFeatures.samplerAnisotropy = VK_TRUE; //Enables anisotrpy. 
@@ -875,6 +780,112 @@ private:
 		vkGetDeviceQueue(m_Device, indices.m_GraphicsFamily.value(), 0, &m_GraphicsQueue);
 		vkGetDeviceQueue(m_Device, indices.m_PresentationFamily.value(), 0, &m_PresentationQueue);
 	}
+
+
+
+
+
+
+
+
+
+	//If the swapChainAdequete conditions were met, then the support is definitely sufficient. However, there may still be many modes with varying optimality.
+	//We will now try to determine for the best possible swapchain based on 3 types of settings:
+	//- Surface Format (Color Depth)
+	//- Presentation Mode (Conditions for "swapping" images to the screen)
+	//- Swap Extent (Resolution of images in the swapchain)
+	VkSurfaceFormatKHR ChooseSwapchainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& avaliableFormats)
+	{
+		/*
+			Each VkSurfaceFormatKHR entry contains a format and a colorspace member. The format member specifies color channels and types. For example, VK_FORMAT_B8G8R8A8_SRGB means
+			that we store the B, R, G and Alpha channels in that order with an 8 bit unsigned integer for a total of 32 bits per pixel. The colorSpace member indicates if the SRGB color
+			space is supported or not using the VK_COLOR_SPACE_SRGB_NONLINEAR_KHR flag. For the color space, we will use SRGB if it is avaliable, because it results in more accurately
+			perceived colors. It is also pretty much the standard color space for images, like the textures we will use later on. Because of that, we should also use an SRGB color format, a common
+			one being VK_FORMAT_B8G8R8A8_SRGB.
+		*/
+
+		for (const VkSurfaceFormatKHR& avaliableFormat : avaliableFormats)
+		{
+			if (avaliableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && avaliableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			{
+				return avaliableFormat;
+			}
+		}
+		//If the above fails, we could start ranking the avaliable formats based on how good they are. But in most cases, it is okay to settle with the first format specified.
+		return avaliableFormats[0];
+	}
+
+	VkPresentModeKHR ChooseSwapchainPresentationMode(const std::vector<VkPresentModeKHR>& avaliablePresentationModes)
+	{
+		/*
+			The presentation mode is arguably the most important setting for the swapchain, because it represents the actual conditions for showing images to the screen.
+			There are 4 possible modes avaliable in Vulkan:
+
+			- VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted by your application are transferred to the screen right away which made result in tearing.
+			- VK_PRESENT_MODE_FIFO_KHR: The swapchain is a queue where the display takes an image from the front of the queue when the display is refreshed and the program inserts rendered
+			images at the back of the queue. If the queue is full, then the program has to wait. This is most similar to vertical sync (VSync) as found in modern games. The moment that the display is refreshed is known as "vertical blank".
+			- VK_PRESENT_MODE_FIFO_RELAXED_KHR: This mode only differs from the previous one if the application is late and the queue was empty at the last vertical blank. Instead of
+			waiting for the next vertical blank, the image is transferred right away when it finally arrives. This may result in visible tearing.
+			- VK_PRESENT_MODE_MAILBOX_KHR: This is another variation of the second mode. Instead of blocking the application when the queue is full, the images that are already
+			queued are simply replaced with the newer ones. This mode can be used to implement triple buffering, which allows you to avoid tearing with significantly less latency issues than standard vertical
+			sync that uses double buffering.
+
+			VSync is a graphics technology that synchronizes the frame rate of a game and the fresh rate of a gaming monitor. This tech was a way to deal with screen tearing,
+			which is when your screen displays portions of multiple frames at one go, resulting in a display that appears split along a line, usually horizontally.
+			Tearing occurs when the refresh rate of the monitor (how many times it updates per second) is not in sync with the frames per second.
+
+			Only the VK_PRESENT_MODE_FIFO_KHR mode is guarenteed to be avaliable, so we will again have to write a function that looks for the best mode avaliable.
+		*/
+
+		for (const VkPresentModeKHR& avaliablePresentationMode : avaliablePresentationModes)
+		{
+			//Triple buffering is a very nice tradeoff as it allow us to prevent tearing whilst still maintaining a fairly low latency by rendering new images that are as up-to-date as possible right until the vertical blank.
+			if (avaliablePresentationMode == VK_PRESENT_MODE_MAILBOX_KHR)
+			{
+				return avaliablePresentationMode;
+			}
+		}
+
+		//If our preferred option isn't avaliable, just return the default one. 
+		return VK_PRESENT_MODE_FIFO_KHR;
+	}
+
+	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+	{
+		/*
+			The swap extent is the resolution of the swapchain images and its almost always exactly equal to the resolution of the window that we're drawing to in pixels. The range
+			of the possible resolutions is defined in the VkSurfaceCapabiltiesKHR structure. Vulkan tells us to match the resolution of the window by setting the
+			width and height in the currentExtent member. However, some window managers do allow us to differ here and this is indicated by setting the width and height in
+			currentExtent to a special value: the maximum value of uint32_t. In that case, we will pick the resolution that best matches the window within the minImageExtent and
+			maxImageExtent bounds. We must specify the resolution in the correct unit.
+
+			GLFW uses 2 units when measuring sizes: pixels and screen coordinates. For example, the resolution (width/height) that we specified earlier when creating the window
+			is measured in screen coordinates. However, Vulkan works with pixels, so the swapchain extent must be specified in pixels as well. Unfortunately, if you are using
+			a high DPI display (like Apple's Retina display), screen coordinates don't correspond to pixels. Instead, due to the higher pixel density, the resolution of the window
+			in pixel will be larger than the resolution in screen coordinates. Thus, if Vulkan doesn't fix the swap extent for us, we can't just use the original width and height.
+			Instead, we must use glfwGetFramebufferSize to query the resolution of the window in pixel before matching it against the minimum and maximum image extent.
+		*/
+
+		if (capabilities.currentExtent.width != UINT32_MAX) //The maximum number that we can store with an unsigned 32bit integer.
+		{
+			return capabilities.currentExtent;
+		}
+		else //We pick the resolution that best matches the window.
+		{
+			int windowWidth, windowHeight;
+			glfwGetFramebufferSize(m_Window, &windowWidth, &windowHeight);
+			VkExtent2D actualExtent = { static_cast<uint32_t>(windowWidth), static_cast<uint32_t>(windowHeight) };
+
+			//The max and min functions are used here to clamp the value of WIDTH and HEIGHT between the allowed minimum and maximum extents that are supported by the implementation.
+			actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
+			actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
+
+			return actualExtent;
+		}
+	}
+
+
+	
 
 	void CreateSwapChain()
 	{

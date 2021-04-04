@@ -11,13 +11,15 @@ namespace Crescent
 		: m_ValidationLayersEnabled(validationLayersEnabled)
 	{
 		m_Window = std::make_shared<Window>(1280, 1080, "Vulkan Demo");
-		m_DebugMessenger = std::make_shared<VulkanDebug>();
+		m_DebugMessenger = std::make_shared<VulkanDebug>(); //To be created first before the instance so as to allow for callbacks during instance creation.
 
 		CreateVulkanInstance(applicationName, engineName, applicationMainVersion, applicationSubVersion);
 		if (validationLayersEnabled)
 		{
 			m_DebugMessenger->SetupDebugMessenger(&m_VulkanInstance);
 		}
+		CreatePresentationSurface();
+		m_Devices = std::make_shared<VulkanDevice>(&m_VulkanInstance, &m_Surface);
 	}
 
 	VulkanRenderer::~VulkanRenderer()
@@ -86,10 +88,15 @@ namespace Crescent
 		{
 			creationInfo.enabledLayerCount = static_cast<uint32_t>(m_DebugMessenger->m_ValidationLayers.size());
 			creationInfo.ppEnabledLayerNames = m_DebugMessenger->m_ValidationLayers.data(); //Determines the global validation layers based on our specifications.
-			/*
-				Our debugger is usually created after the instance is created. Thus, we populate the pNext struct member with our debug messenger creation so it will be used 
-				automatically during vkCreateInstance and cleaned up after vkDestroyInstance.
-			*/
+		/*
+			Even though we may have added debugging with validation layers, we're not quite convering everything. The vkCreateDebugUtilsMessengerEXT call requires a valid
+			instance to have been created and vkDestroyDebugUtilsMessengerEXT must be called before the instance is destroyed. This leaves us unable to debug
+			issues with the vkCreateInstance and vkDestroyInstance calls.
+
+			However, you will see in the extension documentation that there is a way to create seperate debug utils messenger specifically for those 2 function calls. It
+			requires you to simply pass a pointer to a VkDebugUtilsMessengerCreateInfoEXT struct in the pNext extension field of VkInstanceCreateInfo. By creating an
+			additional debug messenger this way, it will automatically be used during vkCreateInstance and vkDestroyInstance and cleaned up after that.
+		*/
 			m_DebugMessenger->PopulateDebugMessengerCreationInfo(debugCreationInfo);
 			creationInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreationInfo;
 		}
@@ -109,6 +116,44 @@ namespace Crescent
 		}
 	}
 
+	void VulkanRenderer::CreatePresentationSurface()
+	{
+		/*
+			The window surface needs to be created after instance creation as it can actually influence the physical device selection. As Vulkan is a platform agnostic API,
+			it cannot interface directly with the windowing system on its own. Thus, we need to establish this connection to present results to the screen. We will thus be
+			using the WSI (Window System Integration) extensions. The first one is VK_KHR_surface. It exposes a VkSurfaceKHR object that represents an abstract type of surface
+			to present rendered images to. The surface in our program will be backed by the window that we have already opened with GLFW. 
+
+			Note that the VK_KHR_surface extension is returned by glfwGetRequiredInstanceExtensions (thus instance level) that we have already enabled alongsided some other WSI
+			extensions. Note that window surfaces are entirely optional in Vulkan. If you just need off-screen rendering, Vulkan allows you to do that unlike OpenGL where a window is at least needed.
+		
+			Although the VkSurfaceKHR object and its usage is platform agnostic, its creation isn't as it depends on window system details. For example, it requires the HWND
+			and HMODULES handles on Windows. There is also a platform-specific addition to the extension, which on Windows is called VK_KHR_win32_surface, once again included in
+			the list from glfwGetRequiredInstanceExtensions. Lets demonstrate how this platform specific extension can be used to create a surface on Windows. However, we won't
+			be using its method. GLFW has a method for us which does this automatically instead.
+
+			VkWin32SurfaceCreateInfoKHR creationInfo{};
+			creationInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+			creationInfo.hwnd = glfwGetWin32Window(m_Window); //Retrieves the raw HWND from the GLFW window object.
+			creationInfo.hinstance = GetModuleHandle(nullptr); //Returns the HINSTANCE handles of the current process.
+
+			if (vkCreateWin32SurfaceKHR(m_VulkanInstance, &creationInfo, nullptr, &m_Surface) != VK_SUCCESS)
+			{
+				throw std::runtime_error("Failed to create Window Surface.");
+			}
+		*/
+
+		//GLFW provides us with an implementation that does all of the above, with a different implementation avaliable for each platform.
+		if (glfwCreateWindowSurface(m_VulkanInstance, m_Window->RetrieveWindow(), nullptr, &m_Surface) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create Window Surface.");
+		}
+		else
+		{
+			std::cout << "Successfully created Vulkan Window surface.\n";
+		}
+	}
+
 	void VulkanRenderer::DrawFrames()
 	{
 		while (!glfwWindowShouldClose(m_Window->RetrieveWindow()))
@@ -116,7 +161,9 @@ namespace Crescent
 			glfwPollEvents();
 		}
 
-		//This is where we destroy the Vulkan instance.
+		//This is where we destroy the Vulkan instance. For now, rather then leaving them to the destructors, we will do them manually.
+		m_Devices->DestroyDeviceInstances();
+		vkDestroySurfaceKHR(m_VulkanInstance, m_Surface, nullptr);
 		m_DebugMessenger->DestroyDebugInstance();
 		vkDestroyInstance(m_VulkanInstance, nullptr);
 	}

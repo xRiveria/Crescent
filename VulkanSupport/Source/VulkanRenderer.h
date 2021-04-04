@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include "../Source/Vulkan/VulkanDebug.h"
+#include "../Source/Vulkan/VulkanDevice.h"
 #include "Window.h"
 
 namespace Crescent
@@ -16,12 +17,17 @@ namespace Crescent
 		void DrawFrames();
 
 	private:
+		void CreatePresentationSurface();
 		void CreateVulkanInstance(const std::string& applicationName, const std::string& engineName, const int& applicationMainVersion, const int& applicationSubVersion);
 
 	private:
-		std::shared_ptr<Window> m_Window = nullptr;
 		VkInstance m_VulkanInstance;
 		std::shared_ptr<VulkanDebug> m_DebugMessenger = nullptr;
+		std::shared_ptr<VulkanDevice> m_Devices = nullptr;
+
+		//Presentation
+		std::shared_ptr<Window> m_Window = nullptr;
+		VkSurfaceKHR m_Surface;
 
 		//Validation
 		bool m_ValidationLayersEnabled = false;
