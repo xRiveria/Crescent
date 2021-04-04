@@ -29,7 +29,7 @@ namespace Crescent
 		}
 	};
 
-	QueueFamilyIndices QueryQueueFamilySupport(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentationSurface)
+	inline QueueFamilyIndices QueryQueueFamilySupport(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentationSurface)
 	{
 		/*
 			Almost every operation in Vulkan from drawing to texture uploads require commands to be submitted to a queue. Thre are different queues that a device may support,
@@ -72,7 +72,7 @@ namespace Crescent
 		return indices;
 	}
 
-	SwapchainSupportDetails QuerySwapchainSupport(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentationSurface)
+	inline SwapchainSupportDetails QuerySwapchainSupport(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& presentationSurface)
 	{
 		/*
 			Vulkan does not have the concept of a default framebuffer. Hence, it requires an infrastructure that will own the buffers we will render to before we visualize

@@ -4,6 +4,7 @@
 #include <memory>
 #include "../Source/Vulkan/VulkanDebug.h"
 #include "../Source/Vulkan/VulkanDevice.h"
+#include "../Source/Vulkan/VulkanSwapchain.h"
 #include "Window.h"
 
 namespace Crescent
@@ -24,6 +25,7 @@ namespace Crescent
 		VkInstance m_VulkanInstance;
 		std::shared_ptr<VulkanDebug> m_DebugMessenger = nullptr;
 		std::shared_ptr<VulkanDevice> m_Devices = nullptr;
+		std::shared_ptr<VulkanSwapchain> m_Swapchain = nullptr;
 
 		//Presentation
 		std::shared_ptr<Window> m_Window = nullptr;

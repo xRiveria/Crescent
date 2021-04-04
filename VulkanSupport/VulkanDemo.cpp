@@ -781,14 +781,6 @@ private:
 		vkGetDeviceQueue(m_Device, indices.m_PresentationFamily.value(), 0, &m_PresentationQueue);
 	}
 
-
-
-
-
-
-
-
-
 	//If the swapChainAdequete conditions were met, then the support is definitely sufficient. However, there may still be many modes with varying optimality.
 	//We will now try to determine for the best possible swapchain based on 3 types of settings:
 	//- Surface Format (Color Depth)
@@ -884,9 +876,6 @@ private:
 		}
 	}
 
-
-	
-
 	void CreateSwapChain()
 	{
 		SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(m_PhysicalDevice);
@@ -979,6 +968,14 @@ private:
 		m_SwapChainImageFormat = surfaceFormat.format;
 		m_SwapChainExtent = swapExtent;
 	}
+
+
+
+
+
+
+
+
 
 	VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
 	{

@@ -28,6 +28,7 @@ namespace Crescent
 		void DestroyDeviceInstances();
 
 		VkDevice* RetrieveLogicalDevice() { return &m_LogicalDevice; }
+		VkPhysicalDevice* RetrievePhysicalDevice() { return &m_PhysicalDevice; }
 
 	private:
 		std::vector<VkPhysicalDevice> GatherPhysicalDevices();

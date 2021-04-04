@@ -20,6 +20,7 @@ namespace Crescent
 		}
 		CreatePresentationSurface();
 		m_Devices = std::make_shared<VulkanDevice>(&m_VulkanInstance, &m_Surface);
+		m_Swapchain = std::make_shared<VulkanSwapchain>(m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), &m_Surface, m_Window->RetrieveWindow());
 	}
 
 	VulkanRenderer::~VulkanRenderer()
