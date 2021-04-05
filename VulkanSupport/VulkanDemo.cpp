@@ -210,6 +210,8 @@ private:
 		CreateLogicalDevice();
 		CreateSwapChain();
 		CreateImageViews();
+
+
 		CreateRenderPass();
 		CreateDescriptorSetLayout();
 		CreateGraphicsPipeline();
@@ -969,14 +971,6 @@ private:
 		m_SwapChainExtent = swapExtent;
 	}
 
-
-
-
-
-
-
-
-
 	VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
 	{
 		//An image view is literally a view into image and is required to use any vkImage. It describes how to access the image and which part of the image to access.
@@ -1051,6 +1045,12 @@ private:
 		std::cout << buffer.size() << "\n";
 		return buffer;
 	}
+
+
+
+
+
+
 
 	void CreateDescriptorSetLayout()
 	{

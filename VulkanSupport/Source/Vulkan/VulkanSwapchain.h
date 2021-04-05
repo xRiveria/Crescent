@@ -2,6 +2,8 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <GLFW/glfw3.h>
+#include <memory>
+#include "VulkanTexture.h"
 
 namespace Crescent
 {
@@ -19,6 +21,9 @@ namespace Crescent
 
 	private:
 		VkSwapchainKHR m_Swapchain;
+		VkFormat m_SwapchainFormat;
+		VkExtent2D m_SwapchainExtent;
+		std::vector<std::shared_ptr<VulkanTexture>> m_SwapchainTextures;
 		
 		GLFWwindow* m_Window;
 		VkSurfaceKHR* m_Surface;

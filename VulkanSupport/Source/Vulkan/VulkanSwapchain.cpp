@@ -129,7 +129,7 @@ namespace Crescent
 
 		/*
 			Aside from these properties, we also have to decide how many images we would like to have in the swapchain. The implementation specifies the minimum number
-			that is requires to function. However, simply sticking to this minimum means thatr we may sometimes have to wait on the driver to complete internal operations
+			that is requires to function. However, simply sticking to this minimum means that we may sometimes have to wait on the driver to complete internal operations
 			before we can acquire another image to render to. Therefore, it is recommended to request at least 1 more image than the minimum.
 		*/
 		uint32_t imageCount = swapchainSupport.m_Capabilities.minImageCount + 1;
@@ -221,11 +221,25 @@ namespace Crescent
 		}
 
 		/*
-			Remember thatr we only specified a minimum number of images in the swapchain, so the implementation is allowed to create a swapchain with more.
+			Remember that we only specified a minimum number of images in the swapchain, so the implementation is allowed to create a swapchain with more.
 			Thus, we will first query the final number of images with vkGetSwapchainImagesKHR, then resize the container and finally call it again to retrieve the handles.
 		*/
 		vkGetSwapchainImagesKHR(*m_LogicalDevice, m_Swapchain, &imageCount, nullptr);
-		
-		//SwapchainImages stuff.
+
+		//Temporary buffer to store the image handles.
+		std::vector<VkImage> swapchainImages;
+		swapchainImages.resize(imageCount);
+		vkGetSwapchainImagesKHR(*m_LogicalDevice, m_Swapchain, &imageCount, swapchainImages.data());
+
+		//Create our custom class and store the image handles within.
+		for (int i = 0; i < swapchainImages.size(); i++)
+		{
+			//Our swapchain textures will be used as color attachments.
+			m_SwapchainTextures.push_back(std::make_shared<VulkanTexture>(m_LogicalDevice, swapchainImages[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT));
+		}
+
+		//Store the format and swap extent for future uses.
+		m_SwapchainFormat = surfaceFormat.format;
+		m_SwapchainExtent = swapExtent;
 	}
 }
