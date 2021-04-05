@@ -1,11 +1,16 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <string>
 
 namespace Crescent
 {
 	class VulkanTexture
 	{
 	public:
+		//For textures uploaded by the user.
+		VulkanTexture(const std::string& filePath, VkDevice* logicalDevice, VkFormat imageFormat, VkImageUsageFlags imageUsage, VkMemoryPropertyFlags imageProperties, VkImage& image, VkDeviceMemory& imageMemory, const VkImageAspectFlags& imageAspectFlags);
+
+		//For textures whose data are populated by the implementation, such as those used by the swapchain.
 		VulkanTexture(VkDevice* logicalDevice, const VkImage& image, const VkFormat& imageFormat, const VkImageAspectFlags& imageAspectFlags);
 
 		VkImage* RetrieveTexture() { return &m_Texture; }

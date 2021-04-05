@@ -1,9 +1,50 @@
 #include "VulkanTexture.h"
 #include <stdexcept>
 #include <iostream>
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../Vendor/stb_image/stb_image.h"
 
 namespace Crescent
 {
+	VulkanTexture::VulkanTexture(const std::string& filePath, VkDevice* logicalDevice,            VkFormat imageFormat, VkImageUsageFlags imageUsage, VkMemoryPropertyFlags imageProperties,
+		VkImage& image, VkDeviceMemory& imageMemory, const VkImageAspectFlags& imageAspectFlags) : m_LogicalDevice(logicalDevice), m_Texture(image), m_TextureFormat(imageFormat), m_TextureTypeFlag(imageAspectFlags)
+	{
+		/*
+			The stbi_load function takes the file path and number of channels to load as arguments. The STBI_rgb_alpha value forces the the image to be loaded with an alpha channel,
+			even if it doesn't have one, which is nice for consistency with other textures in the future. The middle three parameters are output for width, height and actual
+			number of channels in the image. The pointer that is returned is the first element in an array of pixel values. The pixels are load out row by row with 4 bytes
+			per pixel in the case of STBI_rgb_alpha for a total of textureWidth * textureHeight * 4 values.
+		*/
+		int textureWidth, textureHeight, textureChannels;
+		stbi_uc* pixels = stbi_load(filePath.c_str(), &textureWidth, &textureHeight, &textureChannels, STBI_rgb_alpha);
+		VkDeviceSize imageSize = textureWidth * textureHeight * 4; //VkDeviceSize represents device memory size and offset values. It is internally a uint64_t.
+
+		if (!pixels)
+		{
+			throw std::runtime_error("Failed to load texture image with path: " + filePath);
+		}
+
+		//We're going to create a buffer in host visible memory so that we can use vkMapMemory and copy the pixels loaded from our image library to it. 
+		//This buffer should not only be in host visible memory but also be able to be used as a transfer source so we can copy it to an image eventually.
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+
+		//Create Buffer.
+
+		//We can then directly copy the pixel values that we got from the image loading library to the buffer.
+		void* dataBuffer;
+		vkMapMemory(*m_LogicalDevice, stagingBufferMemory, 0, imageSize, 0, &dataBuffer); //After a successful call to vkMapMemory, the memory object is considered to be currently host mapped.
+		memcpy(dataBuffer, pixels, static_cast<uint32_t>(imageSize));
+		vkUnmapMemory(*m_LogicalDevice, stagingBufferMemory);
+
+		//Clean up the original pixel array once mapped.
+		stbi_image_free(pixels);
+
+		//Create Image.
+
+		CreateTextureView();
+	}
+
 	VulkanTexture::VulkanTexture(VkDevice* logicalDevice, const VkImage& image, const VkFormat& imageFormat, const VkImageAspectFlags& imageAspectFlags)
 		: m_LogicalDevice(logicalDevice), m_Texture(image), m_TextureFormat(imageFormat), m_TextureTypeFlag(imageAspectFlags)
 	{
