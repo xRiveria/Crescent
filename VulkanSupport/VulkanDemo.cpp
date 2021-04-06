@@ -1046,8 +1046,106 @@ private:
 		return buffer;
 	}
 
+	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+	{
+		/*
+			Buffers in Vulkan are regions of memory for storing arbitrary data that can be read by the graphics card. They can be used to store vertex data, but also many other purposes.
+			Unlike the Vulkan object that we have been dealing with so far, buffers do not automatically allocate memory for themselves. Like many things in Vulkan, the API puts the
+			programmer in control of almost everything and memory management is one of those things.
+		*/
 
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = size; //Size of the buffer in bytes. This is straightforward with sizeof().
+		bufferInfo.usage = usage; //Indicates for which purposes the data in the buffer is going to be used. It is possible to specify multiple purposes using a bitwise or operator.
+		//Just like images in the swapchain, buffers can be owned by a specific queue family or be shared between multiple at the same time. As the buffer will only be used from the graphics queue, we can stick with exclusive access.
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		//There is a flags parameter that is used to configure sparse buffer memory, which is not relevant at the moment. We will leave it at a default value of 0.
 
+		if (vkCreateBuffer(m_Device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create buffer.");
+		}
+		else
+		{
+			std::cout << "Successfully created Vertex Buffer." << "\n";
+		}
+
+		//While the buffer has been created, it doesn't actually have any memory assigned to it yet. The first step of allocating memory for the buffer is to query its memory
+		//requirements using the aptly named vkGetBufferMemoryRequirements function. 
+		VkMemoryRequirements memoryRequirements;
+		vkGetBufferMemoryRequirements(m_Device, buffer, &memoryRequirements);
+		/*
+			The VkMemoryRequirements struct has 3 fields:
+			- size: The size of the required amount of memory in bytes, may differ from bufferInfo.size().
+			- alignment: The offset in bytes where the buffer begins in the allocated region of memory. This depends on bufferInfo.usage and bufferInfo.flags.
+			- memoryTypeBits: Bit field of the memory types that are suitable for the buffer.
+		*/
+
+		/*
+			Memory allocation is now as simply as specifying the size and type, both which are derived from the memory requirements of the vertex buffer and the desired property.
+			It should be noted that in a real world application, you're not supposed to actually call vkAllocateMemory for every individual buffer. The maximum number of
+			simultaneous memory allocations is limited by the maxMemoryAllocationCount physical device limit, which may be as low as 4096 even on high end hardware like an
+			NVIDEA GTX 1080. The right way to allocate memory for a large number of objects at the same time is to create a custom allocator that splits up a single allocation
+			among many different objects using the offset parameters that we have seen in many functions. We can either implement such an allocator ourselves, or use the
+			VulkanMemoryAllocator library. However, its okay for us to use a seperate allocation for every resource as we won't come close to hitting any of those limits for now.
+		*/
+		VkMemoryAllocateInfo allocateInfo{};
+		allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocateInfo.allocationSize = memoryRequirements.size;
+		allocateInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, properties);
+
+		if (vkAllocateMemory(m_Device, &allocateInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to allocate vertex buffer memory.");
+		}
+
+		//Once successful, we can associate this memory with the buffer directly.
+		//The first three parameters are straightforward and the fourth parameter is the offset within the region of memory. Since this memory is allocated
+		//specifically for this: the vertex buffer, the offset is simply 0. If the offset is non-zero, then it is required to be divisible by memoryRequirements.alignment.
+		vkBindBufferMemory(m_Device, buffer, bufferMemory, 0);
+	}
+
+	uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+	{
+		/*
+			Graphics cards can offer different types of memory to allocate from. Each type of memory varies in terms of allowed operations and performance characteristics.
+			We need to combine the requirements of the buffer and our own application requirements to find the right type of memory to use.
+		*/
+		VkPhysicalDeviceMemoryProperties memoryProperties;
+		/*
+			The VkPhysicalDeviceMemoryProperties structure has 2 arrays memoryTypes and memoryHeaps. Memory heaps are distinct memory resources like dedicated VRAM and swap space
+			in RAM for when VRAM runs out. The different types of memory exist within these heaps. Right now, we will only concern ourselves with the type of memory and not the heap
+			it comes from, but you can imagine that this can affect performance.
+		*/
+		vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &memoryProperties);
+		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+		{
+			/*
+				The typeFilter parameter will be used to specify the bit field of memory types that are suitable. That means that we can find the index of a suitable memory
+				type by simply iterating over them and checking if the corresponding bit is set to 1. However, we're not just interested in a memory type that is suitable for
+				the vertex buffer. We also need to be able to write our vertex data to that memory. The memoryTypes array consists of VkMemoryType structs that specify the
+				heap and properties of each type of memory. The properties define special features of the memory, like being able to map it so we can write to it from the CPU.
+				This property is indicated with VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, but we also need to use the VK_MEMORY_PROPERTY_HOST_COHERENT_BIT property. We will see why when we map the memory.
+
+				We may have more than one desirable property, so we should check if the result of the bitwise AND is not just non-zero, but equal to the desired properties bit field.
+				If there is a memory type suitable for the buffer that also has all of the properties we need, then we return its index. Otherwise, we throw an exception.
+			*/
+
+			if ((typeFilter & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			{
+				return i;
+			}
+		}
+
+		throw std::runtime_error("Failed to find a suitable memory type.");
+	}
+
+	void CreateTextureImageView()
+	{
+		//Remember as seen with swapchain images and the framebuffer, images are accessed through image views rather than directly. We will also need to create such an image view for the texture image.
+		m_TextureImageView = CreateImageView(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+	}
 
 	//Abstract image creation function. The width, height, format, tiling mode, usage anf memory properties parameters are different as they vary between images.
 	void CreateImage(uint32_t imageWidth, uint32_t imageHeight, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
@@ -1140,6 +1238,407 @@ private:
 		vkBindImageMemory(m_Device, image, imageMemory, 0);
 	}
 
+
+
+
+
+
+
+
+
+
+
+	void CreateRenderPass()
+	{
+		//We need to tell Vulkan about the framebuffer attachments that will be used while rendering. We need to specify how many color and depth buffers there will be,
+		//how many samples to use for each of them and how their contents should be handled throughout the rendering operations. All of this is information is wrapped in a 
+		//render pass object, for while we'll create a new CreateRenderPass function. Call this function from InitializedVulkan before CreateGraphicsPipeline.
+		//In our case, we will only need to have a single color buffer attachment represented by one of the images from the swapchain.
+		VkAttachmentDescription colorAttachmentInfo{};
+		colorAttachmentInfo.format = m_SwapChainImageFormat; //The format of the color attachment should match the format of the swapchain images, and we're not doing anything with multisampling yet, so we will stick with 1 sample.
+		colorAttachmentInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		/*
+			The loadOp and storeOp determine what to do with the data in the attachment before rendering and after rendering. We have the following choices for loadOp:
+			- VK_ATTACHMENT_LOAD_OP_LOAD: Preserve the existing contents of the attachment.
+			- VK_ATTACHMENT_LOAD_OP_CLEAR: Clear the values to a constant at the start.
+			- VK_ATTACHMENT_LOAD_OP_DONT_CARE: Existing contents are undefined; we don't care about them.
+			In our case, we're going to use the clear operation to clear the framebuffer to black before drawing a new frame.  There are only two possibilities for storeOp:
+
+			- VK_ATTACHMENT_STORE_OP_STORE: Rendered contents will be stored in memory and can be read later.
+			- VK_ATTACHMENT_STORE_OP_DONT_CARE: Contents of the framebuffer will be undefined after the rendering operation.
+			As we're only interested in seeing the rendered triangle on the screen, we're going with the store operation.
+		*/
+		colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		//The loadOp and storeOp apply to color and depth data, and stencilLoadOp/stencilStoreOp apply to stencil data. For now, we won't be doing anything with the stencil buffer, so they are irrelevant for now.
+		colorAttachmentInfo.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachmentInfo.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+		/*
+			Textures and framebuffers in Vulkan are represented by VkImage objects with a certain pixel format, however the layout of the pixels in memory can change based
+			on what you're trying to do with an image. The most important thing to know right now is that images need to be transitioned to certain layouts that are suitable for
+			the operation they're going to be involved in next. Some of the most common layouts are:
+			- VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: Images used as color attachment.
+			- VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: Images to be presented in the swapchain.
+			- VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: Images to be used as destination for a memory copy operation.
+			The initialLayout specifies which layout the image will have before the render pass begins. THe finalLayout specifies the layout to automatically transition to
+			when the render pass finishes. Using VK_IMAGE_LAYOUT_UNDEFINED for initialLayout means that we don't care what previous layout the image was in. The caveat of this
+			special value is that the contents of the image are not guarenteed to be preserved, but that doesn't matter since we're going to clear it anyway. We want the image
+			to be ready for presentation using the swapchain after rendering, which is why we use the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR as finalLayout.
+		*/
+		colorAttachmentInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachmentInfo.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		VkAttachmentDescription depthAttachment{};
+		depthAttachment.format = FindDepthFormat(); //The format should be the same as the depth image itsel0f. 
+		depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; //Clear the values to a constant at the start.
+		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; //Undefined after rendering operation.
+		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; //Existing contents are undefined, we don't care about them.
+		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		VkAttachmentReference depthAttachmentReference{};
+		depthAttachmentReference.attachment = 1;
+		depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		/*
+			A single renderpass can consist of multiple subpasses. Subpasses are subsequent rendering operations that depend on the contents of framebuffers in previous
+			passes, for example a sequence of post-processing effects that are applied one after another. If you group these rendering operations into one render pass, then
+			Vulkan is able to reorder the operations and conserve memory bandwidth for possibly better performance. For our very first triangle, however, we will stick to a
+			single subpass. Every subpass references one or more of the attachments that we've described using the structure in the previous sections. These references are
+			themselves VkAttachmentReference structs that look like this:
+		*/
+		VkAttachmentReference colorAttachmentReference{};
+		colorAttachmentReference.attachment = 0; //This parameter specifies which attachment to reference by its index in the attachment descriptions array. Our array consists of a single VkAttachmentDescription, so its index is 0.
+		//The layout parameter specifies which layout we would like the attachment to have during a subpass that uses this reference. Vulkan will automatically transition the
+		//attachment to the layout when the subpass is started. We intend to use the attachment to function as a color buffer and the VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL layout will give us the best performance as the name implies. 
+		colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		//The subpass is described using a VkSubpassDescriptionStructure.
+		VkSubpassDescription subpassInfo{};
+		subpassInfo.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; //As compute subpasses may become avaliable, we have to be explict about this being a graphics subpass.
+		//The index of the attachment in this array is directly referenced from the fragment shader with the "layout(location = 0) out vec4 outColor" directive. The
+		//following other types of attachments can be refered by a subpass:
+		//- pInputAttachments: Attachments that are read from a shader.
+		//- pResolveAttachments: Attachments used for multisampling color attachments.
+		//- pDepthStencilAttachment: Attachment for depth and stencil data.
+		//- pPreserveAttachments: Attachments that are not used by this subpass, but for which the data must be preserved. 
+		subpassInfo.colorAttachmentCount = 1;
+		subpassInfo.pColorAttachments = &colorAttachmentReference;
+		subpassInfo.pDepthStencilAttachment = &depthAttachmentReference;
+
+		/*
+			Remember that the subpasses in a render pass automatically take care of image layout transitions. These transitions are controlled by subpass dependencies,
+			which specify memory and execution dependencies between subpasses. We have only a single subpass right now, but the operations right before and right after
+			this subpass also count as implicit "subpasses". There are two built-in dependencies that take care of the transition at the start of the render pass and
+			at the end of the render pass, but the former does not occur at the right time. It assumes that the transition occurs at the start of the pipeline,
+			but we haven't acquired the image yet at that point. There are two ways to deal with this problem.
+			We could change the waitStages for the m_ImageAvaliableSemaphore to VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT to ensure that the render passes don't begin until the
+			image is avaliable, or we can make the render pass wait for the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage.
+			Lets go wih the second option here as it is a good excuse to have a look at subpass dependencies and how they work.
+
+			Subpass dependencies are specified in VkSubpassDependency structs.
+		*/
+
+		//The first two fields specify the indices of the dependency and the dependent subpass. The special value VK_SUBPASS_EXTERNAL refers to the implicit subpass before
+		//or after the render pass on n
+
+		VkSubpassDependency dependency{};
+		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		//We need to extend our subpass dependencies to make sure that there is no conflict between the transitioning of the depth image and it being cleared as part of its load operation.
+		//The depth image is first accessed in the early fragment test pipeline stage and because we have a load operation that clears, we should specify the access mask for writes. 
+		dependency.dstSubpass = 0;
+		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.srcAccessMask = 0;
+		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+		//Now that the attachment and a basic subpass referencing it have been described, we can create the render pass itself. The render pass object can be created
+		//by filling in the VkRenderPassCreateInfo structure with an array of attachments and subpasses. The VkAttachmentReference objects reference attachments using the indices of this array.
+		std::array<VkAttachmentDescription, 2> attachments = { colorAttachmentInfo, depthAttachment };
+
+		VkRenderPassCreateInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+		renderPassInfo.pAttachments = attachments.data();
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpassInfo;
+		renderPassInfo.dependencyCount = 1;
+		renderPassInfo.pDependencies = &dependency;
+
+		if (vkCreateRenderPass(m_Device, &renderPassInfo, nullptr, &m_RenderPass) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create render pass.");
+		}
+		else
+		{
+			std::cout << "Successfully created Render Pass." << "\n";
+		}
+
+
+	}
+
+	void CreateGraphicsPipeline()
+	{
+		std::vector<char> vertexShaderCode = ReadFile("Resources/Shaders/vertex.spv");
+		std::vector<char> fragmentShaderCode = ReadFile("Resources/Shaders/fragment.spv");
+
+		//Shader modules are just a thin wrapper around the shader bytecode that we previously loaded from a file and the functions defined in it. The compilation and
+		//linking of the SPIR-V bytecode to machine code for execution by the GPU doesn't happen until the graphics pipeline is created. That means that we are allowed
+		//to destroy the shader modules again as soon as the pipeline creation is finished, which is why we will make them local variables in the CreateGraphicsPipeline function instead of class members. 
+		VkShaderModule vertexShaderModule = CreateShaderModule(vertexShaderCode);
+		VkShaderModule fragmentShaderModule = CreateShaderModule(fragmentShaderCode);
+
+		VkPipelineShaderStageCreateInfo vertexShaderStageInfo{};
+		//The first step besides the obligatory stype member is telling Vulkan in which pipeline stage the shader is going to be used. There is an enum value for each of the programmable shader stages.
+		vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertexShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+
+		//The next two members specify the shader module containing the code, and the function to invoke known as the entry point. 
+		//That means that its possible to combine multiple fragment shaders into a single shader module, and use different entry points to differentiate between
+		//their behaviors. In this case, we will stick to the standard "main", however. There is one more optional member, pSpecializationInfo, which we won't be using here.
+		//It allows you to specify values for shader constants. You can use a single shader module where its behavior can be configured at pipeline creation by specifying
+		//different values for the constants used in it. This is more efficient than confugirng the shader using variables at render time, because the compiler can do
+		//optimizations like eliminating if statements that depend on these values. If you do not have any constants like this, then you can set the member to nullptr, which our struct initialization does automatically.
+		vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertexShaderStageInfo.module = vertexShaderModule;
+		vertexShaderStageInfo.pName = "main";
+
+		//Modifying the structure to suit the fragment shader is easy.
+		VkPipelineShaderStageCreateInfo fragmentShaderStageInfo{};
+		fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		fragmentShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		fragmentShaderStageInfo.module = fragmentShaderModule;
+		fragmentShaderStageInfo.pName = "main";
+
+		VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderStageInfo, fragmentShaderStageInfo };
+
+		/*
+			The older graphics APIs provided default state for most of the stages of the graphics pipeline. In Vulkan, you will have to be explicit about everything,
+			from viewport size to color blending functions. We will thus have to create each of these ourselves.
+			The VkPipelineVertexInputStateCreateInfo structure describes the format of the vertex data that will be passed to the vertex shader. It describes this in roughly two ways:
+				- Bindings: Spacing between data and whether the data is per-vertex or per-instance (Geometry Instancing, where multiple copies of the same mesh are rendered at once in a scene).
+				- Attribute Descriptions: Type of the attributes passed to the vertex shader, which binding to load them from and at which offset.
+		*/
+
+		VkVertexInputBindingDescription bindingDescription = Vertex::RetrieveBindingDescription();
+		auto attributeDescription = Vertex::RetrieveAttributeDescriptions();
+
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription; //This points to an array of structs that describe the aforementioned details for loading vertex data.
+
+		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescription.size());
+		vertexInputInfo.pVertexAttributeDescriptions = attributeDescription.data(); //Optional. This points to an array of structs that describe the aforementioned details for loading vertex data.
+
+		/*
+			The VkPipelineInputAssemblyStateCreateInfo struct describes two things: what kind of geometry will be drawn from the vertices and if primitive restart should be enabled.
+			The former is specified in to the "topology" member and can have values like:
+			- VK_PRIMITIVE_TOPOLOGY_POINT_LIST: Points from vertices.
+			- VK_PRIMITIVE_TOPOLOGY_LINE_LIST: Line from every 2 vertices without reuse.
+			- VK_PRIMITIVE_TOPOLOGY_LINE_STRIP: The end vertex of every line is used as start vertex for the next line.
+			- VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST: Triangle from every 3 vertices without reuse.
+			- VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP: The second and third vertex of every triangle are used as first two vertices of the next triangle.
+
+			Normally, the vertices are loaded from the vertex buffer by index in sequential order, but with an element buffer, you can specify the indices to use yourself.
+			This allows you to perform optimizations like reusing vertices. If you set the primitiveRestartEnable to VK_TRUE, then its possible to break up lines and triangles in the
+			_STRIP topology modes by using a special index of 0xFFFF or 0xFFFFFFFF.
+		*/
+
+		//As we intend to draw triangles throughout this tutorial, we will stick to the following data for the structure.
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+		//A viewport basically describes the region of the framebuffer than the output will be rendered to. This will almost always be (0, 0) to (wdith, height).
+		//Remember that the size of the swapchain and its images may differ from the WIDTH/HEIGHT of the window. The swapchain images will be used as framebuffers later on,
+		//so we should stick to their size. 
+
+		VkViewport viewportInfo{};
+		viewportInfo.x = 0.0f;
+		viewportInfo.y = 0.0f;
+		viewportInfo.width = (float)m_SwapChainExtent.width;
+		viewportInfo.height = (float)m_SwapChainExtent.height;
+		viewportInfo.minDepth = 0.0f; //The minDepthand maxDepth values specify the range of depth values to use for the framebuffer.
+		viewportInfo.maxDepth = 1.0f; //These values must be within the [0.0f, 1.0f] range, but minDepth may be higer than maxDepth. If you aren't doing anything special, then you should stick to the standard values of 0.0f and 1.0f.
+
+		//While viewports define the transformation from the image to the framebuffer, scissor rectangles define in which regions pixels will actually be stored.
+		//Any pixels outside the scissor rectangles will be discarded by the rasterizer  They function like a filter rather than a transformation. 
+		//In this tutorial, we simply want to draw to the entire framebuffer, so we will specify a scissor rectangle that covers it entirely.
+		VkRect2D scissorInfo{};
+		scissorInfo.offset = { 0, 0 };
+		scissorInfo.extent = m_SwapChainExtent;
+
+		//Now, this viewport and scissor rectangle need to be combined into a viewport state using the VkPipelineViewportStateCreateInfo struct. 
+		//It is possible to use multiple viewports and scissor rectangles on some graphics cards, so its members reference an array of them. Using multiple requires enabling a GPU feature.
+		VkPipelineViewportStateCreateInfo viewportState{};
+		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewportState.viewportCount = 1;
+		viewportState.pViewports = &viewportInfo;
+		viewportState.scissorCount = 1;
+		viewportState.pScissors = &scissorInfo;
+
+		//The rasterizer takes the geometry that is shaped by the vertices from the vertex shader and turns it into fragments to be colored by the fragment shader. 
+		//It also performs depth testing, face culling and the scissor test, and it can be configured to output fragments that fill entire polygons or just the edges (wireframe rendering).
+		//All this is configuring using the VkPipelineRasterizationStateCreateInfo structure. 
+		VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
+		rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		rasterizerInfo.depthClampEnable = VK_FALSE; //If this is true, then fragments that are beyond the near and far planes are clamped to them as opposed to discarding them.  This is useful in special cases like shadow maps. This requires a GPU feature as well.
+		//The polygonMode determines how fragments are generated for geometry. The following modes are avaliable and using any other mode other than fill requires enabling a GPU feature.
+		//- VK_POLYGON_MODE_FILL: Fills the area of the polygon with fragments.
+		//- VK_POLYGON_MODE_LINE: Polygon edges are drawn as lines.
+		//- VK_POLYGON_MODE_POINT: Polygon vertices are drawn as points.
+		rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
+		//The lineWidth member is straightforward. It describes the thickness of lines in terms of number of fragments. The maximum line width that is supported depends on the hardware
+		//and any line thicker than 1.0f requires you to enable the wideLines GPU feature.
+		rasterizerInfo.lineWidth = 1.0f;
+		//The cullMode variable determines the type of face culling to use. You can disable culling, cull the front faces, cull the back faces or both. The frontFace variable describes the
+		//vertex order for faces to be considered front-facing and can be clockwise or counter-clockwise.
+		rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		//The rasterizer can alter the depth values by adding a constant value or biasing them based on a fragment's slope. This is sometimes used for shadow mapping, but we won't be using it.
+		rasterizerInfo.depthBiasEnable = VK_FALSE;
+		rasterizerInfo.depthBiasConstantFactor = 0.0f; // Optional
+		rasterizerInfo.depthBiasClamp = 0.0f; // Optional
+		rasterizerInfo.depthBiasSlopeFactor = 0.0f; // Optional
+
+		//The VkPipelineMultisampleStateCreateInfo struct configures multisampling, which is one of the ways to perform anti-aliasing. It works by combining the fragment
+		//shader results of multiple polygons that rasterize to the same pixel. This mainly occurs along edges, which is also where the most noticeable aliasing artifacts occur.
+		//Because it doesn't need to run the fragment shader multiple times if only one polygon maps to a pixel, it is signicantly less expensive than simply rendering to a higher resolution and then downscaling.
+		//Enabling it requires enabling a GPU feature. 
+		VkPipelineMultisampleStateCreateInfo multisampleInfo{};
+		multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisampleInfo.sampleShadingEnable = VK_FALSE;
+		multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		multisampleInfo.minSampleShading = 1.0f; //Optional;
+		multisampleInfo.pSampleMask = nullptr; //Optional
+		multisampleInfo.alphaToCoverageEnable = VK_FALSE; //Optional
+		multisampleInfo.alphaToOneEnable = VK_FALSE; //Optional
+
+		//If you are using a depth/stencil buffer, then you also need to configure the depth and stencil tests using VkPipelineDepthStencilStateCreateInfo. As we don't have
+		//one right now, so we can simply pass a nullptr instead of a pointer to such a struct. 
+
+		/*
+			After a fragment shader has returned a color, its needs to be combined with the color that is already in the framebuffer. This transformation is known as color
+			blending and there are two ways to do it:
+			- Mix the old and new value to produce a final colkor.
+			- Combine the old and new value using a bitwise operation.
+			There are two types of structs to configure color blending. The first struct, VkPipelineColorBlendAttachmentState contains the configuration per attached framebuffer
+			and the second struct VkPipelineColorBlendStateCreateInfo contains the global color blending settings. In our case, we only have 1 framebuffer.
+		*/
+		VkPipelineColorBlendAttachmentState colorBlendAttachmentInfo{};
+		colorBlendAttachmentInfo.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachmentInfo.blendEnable = VK_FALSE;
+		colorBlendAttachmentInfo.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; //Optional
+		colorBlendAttachmentInfo.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; //Optional
+		colorBlendAttachmentInfo.colorBlendOp = VK_BLEND_OP_ADD; //Optional
+		colorBlendAttachmentInfo.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; //Optional
+		colorBlendAttachmentInfo.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; //Optional
+		colorBlendAttachmentInfo.alphaBlendOp = VK_BLEND_OP_ADD; //Optional
+
+		//The second struct references an array of structures for all of the framebuffers and allows you to set blend constants that you can use as blend factors in the aforementioned calculations.
+		VkPipelineColorBlendStateCreateInfo colorBlending{};
+		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		//Set this to true if you wish to use the second method of blending (bitwise combination). This will automatically disable the first method, as if you have set blendEnable to VK_FALSE for every attached framebuffer.
+		//Of course, it is possible to disable both modes as we've done here, in which case the fragment colors will be written tot he framebuffer unmodified.
+		colorBlending.logicOpEnable = VK_FALSE;
+		colorBlending.logicOp = VK_LOGIC_OP_COPY; //This is where the bitwise operation can be specified. 
+		colorBlending.attachmentCount = 1;
+		colorBlending.pAttachments = &colorBlendAttachmentInfo;
+		colorBlending.blendConstants[0] = 0.0f; //Optional
+		colorBlending.blendConstants[1] = 0.0f;
+		colorBlending.blendConstants[2] = 0.0f;
+		colorBlending.blendConstants[3] = 0.0f;
+
+		/*
+			You can use uniform values in shaders, which are globals similar to dynamic state variables that can be changed at drawing time to alter the behavior of your shaders
+			without having to recreate them. They are commonly used to pass the transformation matrix to the vertex shader, or to create texture samplers in the fragment shader.
+			These uniform values need to be specified during pipeline creation by creating a vkPipelineLayout object. Even though we won't be using them, we are still required
+			to create an empty pipeline layout.
+		*/
+
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 1;
+		pipelineLayoutInfo.pSetLayouts = &m_DescriptorSetLayout; //We need to specify the descriptor set layout during pipeline creation to tell Vulkan which descriptors the shaders will be using.
+		pipelineLayoutInfo.pushConstantRangeCount = 0; //Optional
+		pipelineLayoutInfo.pPushConstantRanges = nullptr; //Optional. Push Constants are another way of passing dynamic values to shaders. 
+
+		if (vkCreatePipelineLayout(m_Device, &pipelineLayoutInfo, nullptr, &m_PipelineLayout))
+		{
+			throw std::runtime_error("Failed to create pipeline layout.");
+		}
+
+		VkPipelineDepthStencilStateCreateInfo depthStencil{};
+		depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		depthStencil.depthTestEnable = VK_TRUE; //Specifies if the depth of new fragments should be compared to the depth buffer to see if they should be discarded.
+		depthStencil.depthWriteEnable = VK_TRUE; //Specifies if the new depth of fragments that pass the depth test should actually be written to the depth buffer.
+		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS; //Specifies the comparison that is performed to keep or discard fragments. We're sticking to the convention of lower depth = closer, so the depth of new fragments should be less.
+		depthStencil.depthBoundsTestEnable = VK_FALSE; //These are used for optional depth bound test. This allows you to only keep fragments that fall within the specified depth range.
+		depthStencil.minDepthBounds = 0.0f;
+		depthStencil.maxDepthBounds = 1.0f;
+		depthStencil.stencilTestEnable = VK_FALSE; //For stencil buffer operations. If we want to use these, ensure that the format of the depth/stencil image contains a stencil component.
+		depthStencil.front = {}; //Optional
+		depthStencil.back = {}; //Optional
+
+		//Finally, we can create our graphics pipeline.
+		VkGraphicsPipelineCreateInfo pipelineCreationInfo{};
+		pipelineCreationInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		//We start by referencing the array of VkPipelineShaderStageCreateInfo structs.
+		pipelineCreationInfo.stageCount = 2;
+		pipelineCreationInfo.pStages = shaderStages;
+		//Then, we reference all of the structures describing the fixed-function stage.
+		pipelineCreationInfo.pVertexInputState = &vertexInputInfo;
+		pipelineCreationInfo.pInputAssemblyState = &inputAssembly;
+		pipelineCreationInfo.pViewportState = &viewportState;
+		pipelineCreationInfo.pRasterizationState = &rasterizerInfo;
+		pipelineCreationInfo.pMultisampleState = &multisampleInfo;
+		pipelineCreationInfo.pDepthStencilState = &depthStencil;
+		pipelineCreationInfo.pColorBlendState = &colorBlending;
+		pipelineCreationInfo.pDynamicState = nullptr;
+		//After that comes the pipeline layout, which is a Vulkan handle rather than a struct pointer.
+		pipelineCreationInfo.layout = m_PipelineLayout;
+		//And finally, we have a reference to the render pass and the index of the subpass where this graphics pipeline will be used. It is also possible to use other render passes
+		//with this pipeline instead of this specific instance, but they have to be compatible with the renderPass parameter. The requirements for compatibility are described in the specification, but we won't be using that feature.
+		pipelineCreationInfo.renderPass = m_RenderPass;
+		pipelineCreationInfo.subpass = 0;
+		/*
+			There are two more parameters: basedPipelineHandle and basePipelineIndex. Vulkan allows you to create a new graphics pipeline by deriving from an existing pipeline.
+			The idea of pipeline derivatives is that it is less expensive to set up pipelines when they have much functionality in common with an existing pipeline and switching
+			between pipelines from the same parent can also be done much quicker. You can either specify the handle of an existing pipeline with basePipelineHandle or reference another
+			pipeline that is about to be created by index with basePipelineIndex. Right now, there is only a single pipeline, so we will simply specify a null handle and an invalid index.
+			These values are only used if the VK_PIPELINE_CREATE_DERIVATIVE_BIT flag is also specified in the flags field of VkGraphicsPipelineCreateInfo.
+		*/
+
+		//The vkCreateGraphicsPipelines function actually has more parameters than the usual object creation functions in Vulkan. It is designed to take multiple VkGraphicsPipelineCreateInfo objects and
+		//and create multiple VkPipeline objects in a single call. The second parameter, in which we've passed VK_NULL_HANDLE as argument, references an optional VkPipelineCache object.
+		//A pipeline cache can be used to store and reuse data relevant to pipeline creation across multiple calls to VkCreateGraphicsPipelines and even across program executions if the cache is stored to a file.
+		//This makes it possible to significantly speed up pipeline creation at a later time. We will get into this eventually. 
+		if (vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineCreationInfo, nullptr, &m_GraphicsPipeline) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create graphics pipeline.");
+		}
+		else
+		{
+			std::cout << "Successfully created Graphics Pipeline.";
+		}
+
+		vkDestroyShaderModule(m_Device, fragmentShaderModule, nullptr);
+		vkDestroyShaderModule(m_Device, vertexShaderModule, nullptr);
+	}
+
+
+
+
+
+
+
+
+
 	void CreateTextureImage()
 	{
 		/*
@@ -1193,13 +1692,104 @@ private:
 		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
 	}
 
-	void CreateTextureImageView()
+
+
+	void CreateTextureSampler()
 	{
-		//Remember as seen with swapchain images and the framebuffer, images are accessed through image views rather than directly. We will also need to create such an image view for the texture image.
-		m_TextureImageView = CreateImageView(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+		/*
+			It is possible for shaders to read texels directly from images, but it is not very common when they are used as textures. Textures are usually accessed through
+			samplers, which will apply filtering and transformations to compute the final color that is retrieved. These filters are helpful to deal with problems like
+			oversampling. Consider a texture that is mapped to geometry with more fragments than texels. If you simply took the closest texel for the texture coordinate in each
+			fragment, you would get quite a Minecraft styled pixelized image.
+
+			However, if you combine the 4 closest texels through linear interpolation, then you would get a smoother result. Of course, your application may have art style
+			requirements that fit the pixelized style more, the clearer one is more preferred in conventional graphics application.
+
+			Undersampling is the opposite problem, where you have more texels than fragments. This will lead to artifacts when sampling high frequency patterns like a checkerboard
+			texture at a sharp angle. Without anisotropic filtering, the textures turns into a blurry mess in the distance. With anisotropic filtering, however, it is applied
+			automatically by a sampler.
+
+			Aside from these filters, a sampler can also take care of transformations. It determines what happens when you try to read texels outside the image through
+			its addressing mode: Repeat, Mirrored Repeat, Clamp to Edge and Clamp to Border.
+
+			Samplers are configured through a VkSamplerCreateInfo structure, which specifies all filters and transformations that is should apply.
+		*/
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		/*
+			The magFilter and minFilter field specify how to interpolate texels that are magnified or minified. Magnification concerns the oversampling problems
+			described above, minification concerns undersampling. The choices are VK_FILTER_NEAREST and VK_FILTER_LINEAR, corresponding to the modes demonstrated in the images above.
+		*/
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		/*
+			The addressing mode can be specified per axis using the addressMode fields. The avaliable values are listed below. Note that the axes are called U, V and W
+			instead of X, Y and Z. This is a convention for textgure space coordinates:
+
+			- VK_SAMPLER_ADDRESS_MODE_REPEAT: Repeat the texture when going beyond the image dimensions.
+			- VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT: Like repeat, but inverts the coordinates to mirror the image when going beyond the dimensions.
+			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE: Take the color of the edge closest to the coordinate beyond the image dimensions.
+			- VK_SAMPLER_ADDRESS_MIRROR_CLAMP_TO_EDGE: Like clamp to edge, but instead uses the edge opposite to the closest edge.
+			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER: Return a solid color when sampling beyond the dimensions of the image.
+
+			It doesn't really matter which addressing mode we use here, because we're not going to sample outside the image in their tutorial. However, the repeat mode
+			is probably the most common mode, because it can be used to tile textures like floors and walls.
+		*/
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		/*
+			These two fields specify if anisotropic filtering should be used. There is no reason not to use this unless performance is a concern. The maxAnisotropy field
+			limits the amount of texel samples that can be used to calculate the final color. A lower value results in better performance, but lower quality results. To figure out
+			which value we can use, we need to retrieve the properties of the physical device like so:
+		*/
+		samplerInfo.anisotropyEnable = VK_TRUE; //We can enforce the avaliability of anisotropic filtering, its also possible to simply not use it by conditionally setting anistropyEnable = VK_FALSE.
+		samplerInfo.maxAnisotropy = 5;
+
+		VkPhysicalDeviceProperties properties{};
+		vkGetPhysicalDeviceProperties(m_PhysicalDevice, &properties);
+		/*
+			If you look at the documentation for the VkPhysicalDeviceProperties struct, you will see that it contains a VkPhysicalDeviceLimits member named limits. This
+			struct in turn has a member called maxSamplerAnisotropy and this is the maximum value we can samplke for maxAnisotropy. If we want to go for maximum quality,
+			we can simply use that value directly.
+
+			You can either query the properties at the beginning of your program and pass them around to the functions that need them, or query them in the CreateTextureSampler
+			function itself.
+		*/
+		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+		/*
+			The borderColor field specifies which color is returned when sampling beyond the image with clamp to border addressing mode. It is possible to return black, white
+			or transparent in either float or int formats. You cannot specify an arbitrary color.
+		*/
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		/*
+			The unnormalizedCoordinates field specifies which coordinate system you want to use to address texels in an image. If this field is VK_TRUE, then you can
+			simply use coordinates within the [0, textureWidth] and [0, textureHeight] range. If it is VK_FALSE, then the texels are addressed using the [0, 1] range on
+			all axes. Real-world applications almost always use normalized coordinates, because then its possible to use textures of varying resolutions wuith the exact
+			same coordinates.
+		*/
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		/*
+			If a comparison function is enabled, then texels will first be compared to a value, and the result of that comparison is used in filtering operations. This is mainly used for
+			percentage closer filtering on shadow maps. We will look at this in a future chapter.
+		*/
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+		//All of these fields apply to mipmapping. We will look at mipmapping in a later chapter, but basically its another type of filter that can be applied. 
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+
+		//The functioning of the sampler is now fully defined. Add a class member to hold the handle of the sampler object and create the sampler with vkCreateSampler.
+		//Note that the sampler does not reference a VkImage anywhere. The sampler is a distinct object that provides an interface to extract colors from a texture.
+		//It can be applied to any image you want, whether it is 1D, 2D or 3D. This is different from many older APIs, which combineds texture images and filtering into a single state.
+		if (vkCreateSampler(m_Device, &samplerInfo, nullptr, &m_TextureSampler) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create texture sampler.");
+		}
 	}
-
-
 
 
 
@@ -1506,388 +2096,7 @@ private:
 		return shaderModule;
 	}
 
-	void CreateRenderPass()
-	{
-		//We need to tell Vulkan about the framebuffer attachments that will be used while rendering. We need to specify how many color and depth buffers there will be,
-		//how many samples to use for each of them and how their contents should be handled throughout the rendering operations. All of this is information is wrapped in a 
-		//render pass object, for while we'll create a new CreateRenderPass function. Call this function from InitializedVulkan before CreateGraphicsPipeline.
-		//In our case, we will only need to have a single color buffer attachment represented by one of the images from the swapchain.
-		VkAttachmentDescription colorAttachmentInfo{};
-		colorAttachmentInfo.format = m_SwapChainImageFormat; //The format of the color attachment should match the format of the swapchain images, and we're not doing anything with multisampling yet, so we will stick with 1 sample.
-		colorAttachmentInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-		/*
-			The loadOp and storeOp determine what to do with the data in the attachment before rendering and after rendering. We have the following choices for loadOp:
-			- VK_ATTACHMENT_LOAD_OP_LOAD: Preserve the existing contents of the attachment.
-			- VK_ATTACHMENT_LOAD_OP_CLEAR: Clear the values to a constant at the start.
-			- VK_ATTACHMENT_LOAD_OP_DONT_CARE: Existing contents are undefined; we don't care about them.
-			In our case, we're going to use the clear operation to clear the framebuffer to black before drawing a new frame.  There are only two possibilities for storeOp:
-
-			- VK_ATTACHMENT_STORE_OP_STORE: Rendered contents will be stored in memory and can be read later.
-			- VK_ATTACHMENT_STORE_OP_DONT_CARE: Contents of the framebuffer will be undefined after the rendering operation.
-			As we're only interested in seeing the rendered triangle on the screen, we're going with the store operation.
-		*/
-		colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		//The loadOp and storeOp apply to color and depth data, and stencilLoadOp/stencilStoreOp apply to stencil data. For now, we won't be doing anything with the stencil buffer, so they are irrelevant for now.
-		colorAttachmentInfo.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachmentInfo.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-		/*
-			Textures and framebuffers in Vulkan are represented by VkImage objects with a certain pixel format, however the layout of the pixels in memory can change based
-			on what you're trying to do with an image. The most important thing to know right now is that images need to be transitioned to certain layouts that are suitable for
-			the operation they're going to be involved in next. Some of the most common layouts are:
-			- VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: Images used as color attachment.
-			- VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: Images to be presented in the swapchain.
-			- VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: Images to be used as destination for a memory copy operation.
-			The initialLayout specifies which layout the image will have before the render pass begins. THe finalLayout specifies the layout to automatically transition to
-			when the render pass finishes. Using VK_IMAGE_LAYOUT_UNDEFINED for initialLayout means that we don't care what previous layout the image was in. The caveat of this
-			special value is that the contents of the image are not guarenteed to be preserved, but that doesn't matter since we're going to clear it anyway. We want the image
-			to be ready for presentation using the swapchain after rendering, which is why we use the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR as finalLayout.
-		*/
-		colorAttachmentInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachmentInfo.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-		VkAttachmentDescription depthAttachment{};
-		depthAttachment.format = FindDepthFormat(); //The format should be the same as the depth image itsel0f. 
-		depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; //Clear the values to a constant at the start.
-		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; //Undefined after rendering operation.
-		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; //Existing contents are undefined, we don't care about them.
-		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-		VkAttachmentReference depthAttachmentReference{};
-		depthAttachmentReference.attachment = 1;
-		depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-		/*
-			A single renderpass can consist of multiple subpasses. Subpasses are subsequent rendering operations that depend on the contents of framebuffers in previous
-			passes, for example a sequence of post-processing effects that are applied one after another. If you group these rendering operations into one render pass, then
-			Vulkan is able to reorder the operations and conserve memory bandwidth for possibly better performance. For our very first triangle, however, we will stick to a
-			single subpass. Every subpass references one or more of the attachments that we've described using the structure in the previous sections. These references are
-			themselves VkAttachmentReference structs that look like this:
-		*/
-		VkAttachmentReference colorAttachmentReference{};
-		colorAttachmentReference.attachment = 0; //This parameter specifies which attachment to reference by its index in the attachment descriptions array. Our array consists of a single VkAttachmentDescription, so its index is 0.
-		//The layout parameter specifies which layout we would like the attachment to have during a subpass that uses this reference. Vulkan will automatically transition the
-		//attachment to the layout when the subpass is started. We intend to use the attachment to function as a color buffer and the VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL layout will give us the best performance as the name implies. 
-		colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		//The subpass is described using a VkSubpassDescriptionStructure.
-		VkSubpassDescription subpassInfo{};
-		subpassInfo.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; //As compute subpasses may become avaliable, we have to be explict about this being a graphics subpass.
-		//The index of the attachment in this array is directly referenced from the fragment shader with the "layout(location = 0) out vec4 outColor" directive. The
-		//following other types of attachments can be refered by a subpass:
-		//- pInputAttachments: Attachments that are read from a shader.
-		//- pResolveAttachments: Attachments used for multisampling color attachments.
-		//- pDepthStencilAttachment: Attachment for depth and stencil data.
-		//- pPreserveAttachments: Attachments that are not used by this subpass, but for which the data must be preserved. 
-		subpassInfo.colorAttachmentCount = 1;
-		subpassInfo.pColorAttachments = &colorAttachmentReference;
-		subpassInfo.pDepthStencilAttachment = &depthAttachmentReference;
-
-		/*
-			Remember that the subpasses in a render pass automatically take care of image layout transitions. These transitions are controlled by subpass dependencies,
-			which specify memory and execution dependencies between subpasses. We have only a single subpass right now, but the operations right before and right after
-			this subpass also count as implicit "subpasses". There are two built-in dependencies that take care of the transition at the start of the render pass and
-			at the end of the render pass, but the former does not occur at the right time. It assumes that the transition occurs at the start of the pipeline,
-			but we haven't acquired the image yet at that point. There are two ways to deal with this problem.
-			We could change the waitStages for the m_ImageAvaliableSemaphore to VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT to ensure that the render passes don't begin until the
-			image is avaliable, or we can make the render pass wait for the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage.
-			Lets go wih the second option here as it is a good excuse to have a look at subpass dependencies and how they work.
-
-			Subpass dependencies are specified in VkSubpassDependency structs.
-		*/
-
-		//The first two fields specify the indices of the dependency and the dependent subpass. The special value VK_SUBPASS_EXTERNAL refers to the implicit subpass before
-		//or after the render pass on n
-
-		VkSubpassDependency dependency{};
-		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		//We need to extend our subpass dependencies to make sure that there is no conflict between the transitioning of the depth image and it being cleared as part of its load operation.
-		//The depth image is first accessed in the early fragment test pipeline stage and because we have a load operation that clears, we should specify the access mask for writes. 
-		dependency.dstSubpass = 0;
-		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-		dependency.srcAccessMask = 0;
-		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-		//Now that the attachment and a basic subpass referencing it have been described, we can create the render pass itself. The render pass object can be created
-		//by filling in the VkRenderPassCreateInfo structure with an array of attachments and subpasses. The VkAttachmentReference objects reference attachments using the indices of this array.
-		std::array<VkAttachmentDescription, 2> attachments = { colorAttachmentInfo, depthAttachment };
-
-		VkRenderPassCreateInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-		renderPassInfo.pAttachments = attachments.data();
-		renderPassInfo.subpassCount = 1;
-		renderPassInfo.pSubpasses = &subpassInfo;
-		renderPassInfo.dependencyCount = 1;
-		renderPassInfo.pDependencies = &dependency;
-
-		if (vkCreateRenderPass(m_Device, &renderPassInfo, nullptr, &m_RenderPass) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create render pass.");
-		}
-		else
-		{
-			std::cout << "Successfully created Render Pass." << "\n";
-		}
-
-
-	}
-
-	void CreateGraphicsPipeline()
-	{
-		std::vector<char> vertexShaderCode = ReadFile("Resources/Shaders/vertex.spv");
-		std::vector<char> fragmentShaderCode = ReadFile("Resources/Shaders/fragment.spv");
-
-		//Shader modules are just a thin wrapper around the shader bytecode that we previously loaded from a file and the functions defined in it. The compilation and
-		//linking of the SPIR-V bytecode to machine code for execution by the GPU doesn't happen until the graphics pipeline is created. That means that we are allowed
-		//to destroy the shader modules again as soon as the pipeline creation is finished, which is why we will make them local variables in the CreateGraphicsPipeline function instead of class members. 
-		VkShaderModule vertexShaderModule = CreateShaderModule(vertexShaderCode);
-		VkShaderModule fragmentShaderModule = CreateShaderModule(fragmentShaderCode);
-
-		VkPipelineShaderStageCreateInfo vertexShaderStageInfo{};
-		//The first step besides the obligatory stype member is telling Vulkan in which pipeline stage the shader is going to be used. There is an enum value for each of the programmable shader stages.
-		vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		vertexShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-
-		//The next two members specify the shader module containing the code, and the function to invoke known as the entry point. 
-		//That means that its possible to combine multiple fragment shaders into a single shader module, and use different entry points to differentiate between
-		//their behaviors. In this case, we will stick to the standard "main", however. There is one more optional member, pSpecializationInfo, which we won't be using here.
-		//It allows you to specify values for shader constants. You can use a single shader module where its behavior can be configured at pipeline creation by specifying
-		//different values for the constants used in it. This is more efficient than confugirng the shader using variables at render time, because the compiler can do
-		//optimizations like eliminating if statements that depend on these values. If you do not have any constants like this, then you can set the member to nullptr, which our struct initialization does automatically.
-		vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		vertexShaderStageInfo.module = vertexShaderModule;
-		vertexShaderStageInfo.pName = "main";
-		
-		//Modifying the structure to suit the fragment shader is easy.
-		VkPipelineShaderStageCreateInfo fragmentShaderStageInfo{};
-		fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		fragmentShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-		fragmentShaderStageInfo.module = fragmentShaderModule;
-		fragmentShaderStageInfo.pName = "main";
-
-		VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderStageInfo, fragmentShaderStageInfo };
-
-		/*
-			The older graphics APIs provided default state for most of the stages of the graphics pipeline. In Vulkan, you will have to be explicit about everything,
-			from viewport size to color blending functions. We will thus have to create each of these ourselves.
-			The VkPipelineVertexInputStateCreateInfo structure describes the format of the vertex data that will be passed to the vertex shader. It describes this in roughly two ways:
-				- Bindings: Spacing between data and whether the data is per-vertex or per-instance (Geometry Instancing, where multiple copies of the same mesh are rendered at once in a scene).
-				- Attribute Descriptions: Type of the attributes passed to the vertex shader, which binding to load them from and at which offset.
-		*/
-
-		VkVertexInputBindingDescription bindingDescription = Vertex::RetrieveBindingDescription();
-		auto attributeDescription = Vertex::RetrieveAttributeDescriptions();
-
-		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputInfo.vertexBindingDescriptionCount = 1;
-		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription; //This points to an array of structs that describe the aforementioned details for loading vertex data.
-		
-		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescription.size());
-		vertexInputInfo.pVertexAttributeDescriptions = attributeDescription.data(); //Optional. This points to an array of structs that describe the aforementioned details for loading vertex data.
-
-		/*
-			The VkPipelineInputAssemblyStateCreateInfo struct describes two things: what kind of geometry will be drawn from the vertices and if primitive restart should be enabled.
-			The former is specified in to the "topology" member and can have values like:
-			- VK_PRIMITIVE_TOPOLOGY_POINT_LIST: Points from vertices.
-			- VK_PRIMITIVE_TOPOLOGY_LINE_LIST: Line from every 2 vertices without reuse.
-			- VK_PRIMITIVE_TOPOLOGY_LINE_STRIP: The end vertex of every line is used as start vertex for the next line.
-			- VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST: Triangle from every 3 vertices without reuse.
-			- VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP: The second and third vertex of every triangle are used as first two vertices of the next triangle.
-
-			Normally, the vertices are loaded from the vertex buffer by index in sequential order, but with an element buffer, you can specify the indices to use yourself.
-			This allows you to perform optimizations like reusing vertices. If you set the primitiveRestartEnable to VK_TRUE, then its possible to break up lines and triangles in the
-			_STRIP topology modes by using a special index of 0xFFFF or 0xFFFFFFFF. 
-		*/
-
-		//As we intend to draw triangles throughout this tutorial, we will stick to the following data for the structure.
-		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-		//A viewport basically describes the region of the framebuffer than the output will be rendered to. This will almost always be (0, 0) to (wdith, height).
-		//Remember that the size of the swapchain and its images may differ from the WIDTH/HEIGHT of the window. The swapchain images will be used as framebuffers later on,
-		//so we should stick to their size. 
-
-		VkViewport viewportInfo{};
-		viewportInfo.x = 0.0f;
-		viewportInfo.y = 0.0f;
-		viewportInfo.width = (float)m_SwapChainExtent.width;
-		viewportInfo.height = (float)m_SwapChainExtent.height;
-		viewportInfo.minDepth = 0.0f; //The minDepthand maxDepth values specify the range of depth values to use for the framebuffer.
-		viewportInfo.maxDepth = 1.0f; //These values must be within the [0.0f, 1.0f] range, but minDepth may be higer than maxDepth. If you aren't doing anything special, then you should stick to the standard values of 0.0f and 1.0f.
-
-		//While viewports define the transformation from the image to the framebuffer, scissor rectangles define in which regions pixels will actually be stored.
-		//Any pixels outside the scissor rectangles will be discarded by the rasterizer  They function like a filter rather than a transformation. 
-		//In this tutorial, we simply want to draw to the entire framebuffer, so we will specify a scissor rectangle that covers it entirely.
-		VkRect2D scissorInfo{};
-		scissorInfo.offset = { 0, 0 };
-		scissorInfo.extent = m_SwapChainExtent;
-
-		//Now, this viewport and scissor rectangle need to be combined into a viewport state using the VkPipelineViewportStateCreateInfo struct. 
-		//It is possible to use multiple viewports and scissor rectangles on some graphics cards, so its members reference an array of them. Using multiple requires enabling a GPU feature.
-		VkPipelineViewportStateCreateInfo viewportState{};
-		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-		viewportState.viewportCount = 1;
-		viewportState.pViewports = &viewportInfo;
-		viewportState.scissorCount = 1;
-		viewportState.pScissors = &scissorInfo;
-		 
-		//The rasterizer takes the geometry that is shaped by the vertices from the vertex shader and turns it into fragments to be colored by the fragment shader. 
-		//It also performs depth testing, face culling and the scissor test, and it can be configured to output fragments that fill entire polygons or just the edges (wireframe rendering).
-		//All this is configuring using the VkPipelineRasterizationStateCreateInfo structure. 
-		VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
-		rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		rasterizerInfo.depthClampEnable = VK_FALSE; //If this is true, then fragments that are beyond the near and far planes are clamped to them as opposed to discarding them.  This is useful in special cases like shadow maps. This requires a GPU feature as well.
-		//The polygonMode determines how fragments are generated for geometry. The following modes are avaliable and using any other mode other than fill requires enabling a GPU feature.
-		//- VK_POLYGON_MODE_FILL: Fills the area of the polygon with fragments.
-		//- VK_POLYGON_MODE_LINE: Polygon edges are drawn as lines.
-		//- VK_POLYGON_MODE_POINT: Polygon vertices are drawn as points.
-		rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL; 
-		//The lineWidth member is straightforward. It describes the thickness of lines in terms of number of fragments. The maximum line width that is supported depends on the hardware
-		//and any line thicker than 1.0f requires you to enable the wideLines GPU feature.
-		rasterizerInfo.lineWidth = 1.0f;
-		//The cullMode variable determines the type of face culling to use. You can disable culling, cull the front faces, cull the back faces or both. The frontFace variable describes the
-		//vertex order for faces to be considered front-facing and can be clockwise or counter-clockwise.
-		rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-		//The rasterizer can alter the depth values by adding a constant value or biasing them based on a fragment's slope. This is sometimes used for shadow mapping, but we won't be using it.
-		rasterizerInfo.depthBiasEnable = VK_FALSE;
-		rasterizerInfo.depthBiasConstantFactor = 0.0f; // Optional
-		rasterizerInfo.depthBiasClamp = 0.0f; // Optional
-		rasterizerInfo.depthBiasSlopeFactor = 0.0f; // Optional
-
-		//The VkPipelineMultisampleStateCreateInfo struct configures multisampling, which is one of the ways to perform anti-aliasing. It works by combining the fragment
-		//shader results of multiple polygons that rasterize to the same pixel. This mainly occurs along edges, which is also where the most noticeable aliasing artifacts occur.
-		//Because it doesn't need to run the fragment shader multiple times if only one polygon maps to a pixel, it is signicantly less expensive than simply rendering to a higher resolution and then downscaling.
-		//Enabling it requires enabling a GPU feature. 
-		VkPipelineMultisampleStateCreateInfo multisampleInfo{};
-		multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-		multisampleInfo.sampleShadingEnable = VK_FALSE;
-		multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-		multisampleInfo.minSampleShading = 1.0f; //Optional;
-		multisampleInfo.pSampleMask = nullptr; //Optional
-		multisampleInfo.alphaToCoverageEnable = VK_FALSE; //Optional
-		multisampleInfo.alphaToOneEnable = VK_FALSE; //Optional
-
-		//If you are using a depth/stencil buffer, then you also need to configure the depth and stencil tests using VkPipelineDepthStencilStateCreateInfo. As we don't have
-		//one right now, so we can simply pass a nullptr instead of a pointer to such a struct. 
-
-		/*
-			After a fragment shader has returned a color, its needs to be combined with the color that is already in the framebuffer. This transformation is known as color
-			blending and there are two ways to do it:
-			- Mix the old and new value to produce a final colkor.
-			- Combine the old and new value using a bitwise operation.
-			There are two types of structs to configure color blending. The first struct, VkPipelineColorBlendAttachmentState contains the configuration per attached framebuffer
-			and the second struct VkPipelineColorBlendStateCreateInfo contains the global color blending settings. In our case, we only have 1 framebuffer. 
-		*/
-		VkPipelineColorBlendAttachmentState colorBlendAttachmentInfo{};
-		colorBlendAttachmentInfo.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		colorBlendAttachmentInfo.blendEnable = VK_FALSE;
-		colorBlendAttachmentInfo.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; //Optional
-		colorBlendAttachmentInfo.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; //Optional
-		colorBlendAttachmentInfo.colorBlendOp = VK_BLEND_OP_ADD; //Optional
-		colorBlendAttachmentInfo.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; //Optional
-		colorBlendAttachmentInfo.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; //Optional
-		colorBlendAttachmentInfo.alphaBlendOp = VK_BLEND_OP_ADD; //Optional
-
-		//The second struct references an array of structures for all of the framebuffers and allows you to set blend constants that you can use as blend factors in the aforementioned calculations.
-		VkPipelineColorBlendStateCreateInfo colorBlending{};
-		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		//Set this to true if you wish to use the second method of blending (bitwise combination). This will automatically disable the first method, as if you have set blendEnable to VK_FALSE for every attached framebuffer.
-		//Of course, it is possible to disable both modes as we've done here, in which case the fragment colors will be written tot he framebuffer unmodified.
-		colorBlending.logicOpEnable = VK_FALSE; 
-		colorBlending.logicOp = VK_LOGIC_OP_COPY; //This is where the bitwise operation can be specified. 
-		colorBlending.attachmentCount = 1;
-		colorBlending.pAttachments = &colorBlendAttachmentInfo;
-		colorBlending.blendConstants[0] = 0.0f; //Optional
-		colorBlending.blendConstants[1] = 0.0f;
-		colorBlending.blendConstants[2] = 0.0f;
-		colorBlending.blendConstants[3] = 0.0f;
-
-		/*
-			You can use uniform values in shaders, which are globals similar to dynamic state variables that can be changed at drawing time to alter the behavior of your shaders
-			without having to recreate them. They are commonly used to pass the transformation matrix to the vertex shader, or to create texture samplers in the fragment shader.
-			These uniform values need to be specified during pipeline creation by creating a vkPipelineLayout object. Even though we won't be using them, we are still required
-			to create an empty pipeline layout. 
-		*/
-
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 1; 
-		pipelineLayoutInfo.pSetLayouts = &m_DescriptorSetLayout; //We need to specify the descriptor set layout during pipeline creation to tell Vulkan which descriptors the shaders will be using.
-		pipelineLayoutInfo.pushConstantRangeCount = 0; //Optional
-		pipelineLayoutInfo.pPushConstantRanges = nullptr; //Optional. Push Constants are another way of passing dynamic values to shaders. 
-
-		if (vkCreatePipelineLayout(m_Device, &pipelineLayoutInfo, nullptr, &m_PipelineLayout))
-		{
-			throw std::runtime_error("Failed to create pipeline layout.");
-		}
-
-		VkPipelineDepthStencilStateCreateInfo depthStencil{};
-		depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		depthStencil.depthTestEnable = VK_TRUE; //Specifies if the depth of new fragments should be compared to the depth buffer to see if they should be discarded.
-		depthStencil.depthWriteEnable = VK_TRUE; //Specifies if the new depth of fragments that pass the depth test should actually be written to the depth buffer.
-		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS; //Specifies the comparison that is performed to keep or discard fragments. We're sticking to the convention of lower depth = closer, so the depth of new fragments should be less.
-		depthStencil.depthBoundsTestEnable = VK_FALSE; //These are used for optional depth bound test. This allows you to only keep fragments that fall within the specified depth range.
-		depthStencil.minDepthBounds = 0.0f;
-		depthStencil.maxDepthBounds = 1.0f;
-		depthStencil.stencilTestEnable = VK_FALSE; //For stencil buffer operations. If we want to use these, ensure that the format of the depth/stencil image contains a stencil component.
-		depthStencil.front = {}; //Optional
-		depthStencil.back = {}; //Optional
-
-		//Finally, we can create our graphics pipeline.
-		VkGraphicsPipelineCreateInfo pipelineCreationInfo{};
-		pipelineCreationInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		//We start by referencing the array of VkPipelineShaderStageCreateInfo structs.
-		pipelineCreationInfo.stageCount = 2; 
-		pipelineCreationInfo.pStages = shaderStages;
-		//Then, we reference all of the structures describing the fixed-function stage.
-		pipelineCreationInfo.pVertexInputState = &vertexInputInfo;
-		pipelineCreationInfo.pInputAssemblyState = &inputAssembly;
-		pipelineCreationInfo.pViewportState = &viewportState;
-		pipelineCreationInfo.pRasterizationState = &rasterizerInfo;
-		pipelineCreationInfo.pMultisampleState = &multisampleInfo;
-		pipelineCreationInfo.pDepthStencilState = &depthStencil;
-		pipelineCreationInfo.pColorBlendState = &colorBlending;
-		pipelineCreationInfo.pDynamicState = nullptr;
-		//After that comes the pipeline layout, which is a Vulkan handle rather than a struct pointer.
-		pipelineCreationInfo.layout = m_PipelineLayout;
-		//And finally, we have a reference to the render pass and the index of the subpass where this graphics pipeline will be used. It is also possible to use other render passes
-		//with this pipeline instead of this specific instance, but they have to be compatible with the renderPass parameter. The requirements for compatibility are described in the specification, but we won't be using that feature.
-		pipelineCreationInfo.renderPass = m_RenderPass;
-		pipelineCreationInfo.subpass = 0;
-		/*
-			There are two more parameters: basedPipelineHandle and basePipelineIndex. Vulkan allows you to create a new graphics pipeline by deriving from an existing pipeline.
-			The idea of pipeline derivatives is that it is less expensive to set up pipelines when they have much functionality in common with an existing pipeline and switching
-			between pipelines from the same parent can also be done much quicker. You can either specify the handle of an existing pipeline with basePipelineHandle or reference another
-			pipeline that is about to be created by index with basePipelineIndex. Right now, there is only a single pipeline, so we will simply specify a null handle and an invalid index.
-			These values are only used if the VK_PIPELINE_CREATE_DERIVATIVE_BIT flag is also specified in the flags field of VkGraphicsPipelineCreateInfo.
-		*/
-
-		//The vkCreateGraphicsPipelines function actually has more parameters than the usual object creation functions in Vulkan. It is designed to take multiple VkGraphicsPipelineCreateInfo objects and
-		//and create multiple VkPipeline objects in a single call. The second parameter, in which we've passed VK_NULL_HANDLE as argument, references an optional VkPipelineCache object.
-		//A pipeline cache can be used to store and reuse data relevant to pipeline creation across multiple calls to VkCreateGraphicsPipelines and even across program executions if the cache is stored to a file.
-		//This makes it possible to significantly speed up pipeline creation at a later time. We will get into this eventually. 
-		if (vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineCreationInfo, nullptr, &m_GraphicsPipeline) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create graphics pipeline.");
-		}
-		else
-		{
-			std::cout << "Successfully created Graphics Pipeline.";
-		}
-
-		vkDestroyShaderModule(m_Device, fragmentShaderModule, nullptr);
-		vkDestroyShaderModule(m_Device, vertexShaderModule, nullptr);
-	}
+	
 
 	void CreateFramebuffers()
 	{
@@ -1961,197 +2170,6 @@ private:
 		}
 	}
 
-	void CreateTextureSampler()
-	{
-		/*
-			It is possible for shaders to read texels directly from images, but it is not very common when they are used as textures. Textures are usually accessed through
-			samplers, which will apply filtering and transformations to compute the final color that is retrieved. These filters are helpful to deal with problems like
-			oversampling. Consider a texture that is mapped to geometry with more fragments than texels. If you simply took the closest texel for the texture coordinate in each
-			fragment, you would get quite a Minecraft styled pixelized image.
-
-			However, if you combine the 4 closest texels through linear interpolation, then you would get a smoother result. Of course, your application may have art style
-			requirements that fit the pixelized style more, the clearer one is more preferred in conventional graphics application. 
-
-			Undersampling is the opposite problem, where you have more texels than fragments. This will lead to artifacts when sampling high frequency patterns like a checkerboard
-			texture at a sharp angle. Without anisotropic filtering, the textures turns into a blurry mess in the distance. With anisotropic filtering, however, it is applied
-			automatically by a sampler. 
-
-			Aside from these filters, a sampler can also take care of transformations. It determines what happens when you try to read texels outside the image through
-			its addressing mode: Repeat, Mirrored Repeat, Clamp to Edge and Clamp to Border.
-
-			Samplers are configured through a VkSamplerCreateInfo structure, which specifies all filters and transformations that is should apply. 
-		*/
-		VkSamplerCreateInfo samplerInfo{};
-		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		/*
-			The magFilter and minFilter field specify how to interpolate texels that are magnified or minified. Magnification concerns the oversampling problems
-			described above, minification concerns undersampling. The choices are VK_FILTER_NEAREST and VK_FILTER_LINEAR, corresponding to the modes demonstrated in the images above. 
-		*/
-		samplerInfo.magFilter = VK_FILTER_LINEAR;
-		samplerInfo.minFilter = VK_FILTER_LINEAR;
-		/*
-			The addressing mode can be specified per axis using the addressMode fields. The avaliable values are listed below. Note that the axes are called U, V and W
-			instead of X, Y and Z. This is a convention for textgure space coordinates:
-			
-			- VK_SAMPLER_ADDRESS_MODE_REPEAT: Repeat the texture when going beyond the image dimensions.
-			- VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT: Like repeat, but inverts the coordinates to mirror the image when going beyond the dimensions.
-			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE: Take the color of the edge closest to the coordinate beyond the image dimensions. 
-			- VK_SAMPLER_ADDRESS_MIRROR_CLAMP_TO_EDGE: Like clamp to edge, but instead uses the edge opposite to the closest edge.
-			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER: Return a solid color when sampling beyond the dimensions of the image.
-
-			It doesn't really matter which addressing mode we use here, because we're not going to sample outside the image in their tutorial. However, the repeat mode
-			is probably the most common mode, because it can be used to tile textures like floors and walls. 
-		*/
-		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		/*
-			These two fields specify if anisotropic filtering should be used. There is no reason not to use this unless performance is a concern. The maxAnisotropy field
-			limits the amount of texel samples that can be used to calculate the final color. A lower value results in better performance, but lower quality results. To figure out
-			which value we can use, we need to retrieve the properties of the physical device like so:
-		*/
-		samplerInfo.anisotropyEnable = VK_TRUE; //We can enforce the avaliability of anisotropic filtering, its also possible to simply not use it by conditionally setting anistropyEnable = VK_FALSE.
-		samplerInfo.maxAnisotropy = 5;
-
-		VkPhysicalDeviceProperties properties{};
-		vkGetPhysicalDeviceProperties(m_PhysicalDevice, &properties);	
-		/*
-			If you look at the documentation for the VkPhysicalDeviceProperties struct, you will see that it contains a VkPhysicalDeviceLimits member named limits. This 
-			struct in turn has a member called maxSamplerAnisotropy and this is the maximum value we can samplke for maxAnisotropy. If we want to go for maximum quality,
-			we can simply use that value directly.
-
-			You can either query the properties at the beginning of your program and pass them around to the functions that need them, or query them in the CreateTextureSampler
-			function itself.
-		*/
-		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-		/*
-			The borderColor field specifies which color is returned when sampling beyond the image with clamp to border addressing mode. It is possible to return black, white
-			or transparent in either float or int formats. You cannot specify an arbitrary color.
-		*/
-		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-		/*
-			The unnormalizedCoordinates field specifies which coordinate system you want to use to address texels in an image. If this field is VK_TRUE, then you can
-			simply use coordinates within the [0, textureWidth] and [0, textureHeight] range. If it is VK_FALSE, then the texels are addressed using the [0, 1] range on
-			all axes. Real-world applications almost always use normalized coordinates, because then its possible to use textures of varying resolutions wuith the exact
-			same coordinates. 
-		*/
-		samplerInfo.unnormalizedCoordinates = VK_FALSE;
-		/*
-			If a comparison function is enabled, then texels will first be compared to a value, and the result of that comparison is used in filtering operations. This is mainly used for
-			percentage closer filtering on shadow maps. We will look at this in a future chapter.
-		*/
-		samplerInfo.compareEnable = VK_FALSE;
-		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-		//All of these fields apply to mipmapping. We will look at mipmapping in a later chapter, but basically its another type of filter that can be applied. 
-		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerInfo.mipLodBias = 0.0f;
-		samplerInfo.minLod = 0.0f;
-		samplerInfo.maxLod = 0.0f;
-
-		//The functioning of the sampler is now fully defined. Add a class member to hold the handle of the sampler object and create the sampler with vkCreateSampler.
-		//Note that the sampler does not reference a VkImage anywhere. The sampler is a distinct object that provides an interface to extract colors from a texture.
-		//It can be applied to any image you want, whether it is 1D, 2D or 3D. This is different from many older APIs, which combineds texture images and filtering into a single state.
-		if (vkCreateSampler(m_Device, &samplerInfo, nullptr, &m_TextureSampler) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create texture sampler.");
-		}
-	}
-
-	uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
-	{
-		/*
-			Graphics cards can offer different types of memory to allocate from. Each type of memory varies in terms of allowed operations and performance characteristics.
-			We need to combine the requirements of the buffer and our own application requirements to find the right type of memory to use. 
-		*/
-		VkPhysicalDeviceMemoryProperties memoryProperties;
-		/*
-			The VkPhysicalDeviceMemoryProperties structure has 2 arrays memoryTypes and memoryHeaps. Memory heaps are distinct memory resources like dedicated VRAM and swap space
-			in RAM for when VRAM runs out. The different types of memory exist within these heaps. Right now, we will only concern ourselves with the type of memory and not the heap
-			it comes from, but you can imagine that this can affect performance. 
-		*/
-		vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &memoryProperties);
-		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
-		{
-			/*
-				The typeFilter parameter will be used to specify the bit field of memory types that are suitable. That means that we can find the index of a suitable memory
-				type by simply iterating over them and checking if the corresponding bit is set to 1. However, we're not just interested in a memory type that is suitable for
-				the vertex buffer. We also need to be able to write our vertex data to that memory. The memoryTypes array consists of VkMemoryType structs that specify the
-				heap and properties of each type of memory. The properties define special features of the memory, like being able to map it so we can write to it from the CPU. 
-				This property is indicated with VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, but we also need to use the VK_MEMORY_PROPERTY_HOST_COHERENT_BIT property. We will see why when we map the memory.
-			
-				We may have more than one desirable property, so we should check if the result of the bitwise AND is not just non-zero, but equal to the desired properties bit field.
-				If there is a memory type suitable for the buffer that also has all of the properties we need, then we return its index. Otherwise, we throw an exception.
-			*/
-
-			if ((typeFilter & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
-			{
-				return i;
-			}
-		}
-
-		throw std::runtime_error("Failed to find a suitable memory type.");
-	}
-
-	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
-	{
-		/*
-			Buffers in Vulkan are regions of memory for storing arbitrary data that can be read by the graphics card. They can be used to store vertex data, but also many other purposes.
-			Unlike the Vulkan object that we have been dealing with so far, buffers do not automatically allocate memory for themselves. Like many things in Vulkan, the API puts the
-			programmer in control of almost everything and memory management is one of those things.
-		*/
-
-		VkBufferCreateInfo bufferInfo{};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = size; //Size of the buffer in bytes. This is straightforward with sizeof().
-		bufferInfo.usage = usage; //Indicates for which purposes the data in the buffer is going to be used. It is possible to specify multiple purposes using a bitwise or operator.
-		//Just like images in the swapchain, buffers can be owned by a specific queue family or be shared between multiple at the same time. As the buffer will only be used from the graphics queue, we can stick with exclusive access.
-		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; 
-		//There is a flags parameter that is used to configure sparse buffer memory, which is not relevant at the moment. We will leave it at a default value of 0.
-
-		if (vkCreateBuffer(m_Device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create buffer.");
-		}
-		else
-		{
-			std::cout << "Successfully created Vertex Buffer." << "\n";
-		}
-
-		//While the buffer has been created, it doesn't actually have any memory assigned to it yet. The first step of allocating memory for the buffer is to query its memory
-		//requirements using the aptly named vkGetBufferMemoryRequirements function. 
-		VkMemoryRequirements memoryRequirements;
-		vkGetBufferMemoryRequirements(m_Device, buffer, &memoryRequirements);
-		/*
-			The VkMemoryRequirements struct has 3 fields:
-			- size: The size of the required amount of memory in bytes, may differ from bufferInfo.size().
-			- alignment: The offset in bytes where the buffer begins in the allocated region of memory. This depends on bufferInfo.usage and bufferInfo.flags.
-			- memoryTypeBits: Bit field of the memory types that are suitable for the buffer.
-		*/
-
-		/*
-			Memory allocation is now as simply as specifying the size and type, both which are derived from the memory requirements of the vertex buffer and the desired property.
-			It should be noted that in a real world application, you're not supposed to actually call vkAllocateMemory for every individual buffer. The maximum number of
-			simultaneous memory allocations is limited by the maxMemoryAllocationCount physical device limit, which may be as low as 4096 even on high end hardware like an
-			NVIDEA GTX 1080. The right way to allocate memory for a large number of objects at the same time is to create a custom allocator that splits up a single allocation
-			among many different objects using the offset parameters that we have seen in many functions. We can either implement such an allocator ourselves, or use the 
-			VulkanMemoryAllocator library. However, its okay for us to use a seperate allocation for every resource as we won't come close to hitting any of those limits for now.
-		*/
-		VkMemoryAllocateInfo allocateInfo{};
-		allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocateInfo.allocationSize = memoryRequirements.size;
-		allocateInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, properties);
-
-		if (vkAllocateMemory(m_Device, &allocateInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to allocate vertex buffer memory.");
-		}
-
-		//Once successful, we can associate this memory with the buffer directly.
-		//The first three parameters are straightforward and the fourth parameter is the offset within the region of memory. Since this memory is allocated
-		//specifically for this: the vertex buffer, the offset is simply 0. If the offset is non-zero, then it is required to be divisible by memoryRequirements.alignment.
-		vkBindBufferMemory(m_Device, buffer, bufferMemory, 0);
-	}
 
 	//Starts a new command buffer.
 	VkCommandBuffer BeginSingleTimeCommands()

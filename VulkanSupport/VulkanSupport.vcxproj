@@ -171,7 +171,6 @@
     <ClCompile Include="Source\Vulkan\VulkanSwapchain.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanTexture.cpp" />
     <ClCompile Include="Source\Window.cpp" />
-    <ClCompile Include="VulkanDemo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Fragment.shader" />
