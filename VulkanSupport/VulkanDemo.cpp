@@ -210,9 +210,9 @@ private:
 		CreateLogicalDevice();
 		CreateSwapChain();
 		CreateImageViews();
-
-
 		CreateRenderPass();
+
+
 		CreateDescriptorSetLayout();
 		CreateGraphicsPipeline();
 		CreateCommandPool();
@@ -1238,15 +1238,47 @@ private:
 		vkBindImageMemory(m_Device, image, imageMemory, 0);
 	}
 
+	//The support of a format depends on the tiling mode and usage, so we must also include these as parameters. The support of a format can be queried using the vkGetPhysicalDeviceFormatProperties function.
+	VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+	{
+		for (VkFormat format : candidates)
+		{
+			/*
+				The VkFormatProperties struct contains 3 fields:
 
+					- linearTilingFeatures: Use cases that are supported with linear tiling.
+					- optimalTilingFeatures: Use cases that are supported with optimal tiling.
+					- bufferFeatures: Use cases that are supported for buffers.
 
+				Only the first two are relevant here, and the one we check depends on the tiling parameter of the function.
+			*/
+			VkFormatProperties properties;
+			vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, format, &properties);
+			if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features)
+			{
+				return format;
+			}
+			else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features)
+			{
+				return format;
+			}
+		}
 
+		throw std::runtime_error("Failed to find supported format."); //If none of the candidate formats support the desired usage, then we can either return a special value or simply throw an exception.
+	}
 
+	VkFormat FindDepthFormat()
+	{
+		/*
+			We will now use the FindSupportedFormat function to help select a format with a depth component that supports usage as depth attachment.
+			Make sure to use the VK_FORMAT_FEATURE_ flag instead of VK_IMAGE_USAGE_ in this case. All of these candidate formats contain a depth component, but the latter
+			two also contain a stencil component. We won't be using that yet, but we do need to take that into account when performing layout transitions on images with these formats.
 
-
-
-
-
+		*/
+		return FindSupportedFormat(
+			{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+			VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	}
 
 	void CreateRenderPass()
 	{
@@ -1376,9 +1408,18 @@ private:
 		{
 			std::cout << "Successfully created Render Pass." << "\n";
 		}
-
-
 	}
+
+
+
+
+
+
+
+
+
+
+
 
 	void CreateGraphicsPipeline()
 	{
@@ -1898,47 +1939,7 @@ private:
 		}
 	}
 
-	//The support of a format depends on the tiling mode and usage, so we must also include these as parameters. The support of a format can be queried using the vkGetPhysicalDeviceFormatProperties function.
-	VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-	{
-		for (VkFormat format : candidates)
-		{
-			/*
-				The VkFormatProperties struct contains 3 fields:
-
-					- linearTilingFeatures: Use cases that are supported with linear tiling.
-					- optimalTilingFeatures: Use cases that are supported with optimal tiling.
-					- bufferFeatures: Use cases that are supported for buffers.
-
-				Only the first two are relevant here, and the one we check depends on the tiling parameter of the function.
-			*/
-			VkFormatProperties properties;
-			vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, format, &properties);
-			if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features)
-			{
-				return format;
-			}
-			else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features)
-			{
-				return format;
-			}
-		}
-
-		throw std::runtime_error("Failed to find supported format."); //If none of the candidate formats support the desired usage, then we can either return a special value or simply throw an exception.
-	}
-
-	VkFormat FindDepthFormat()
-	{
-		/*
-			We will now use the FindSupportedFormat function to help select a format with a depth component that supports usage as depth attachment.
-			Make sure to use the VK_FORMAT_FEATURE_ flag instead of VK_IMAGE_USAGE_ in this case. All of these candidate formats contain a depth component, but the latter
-			two also contain a stencil component. We won't be using that yet, but we do need to take that into account when performing layout transitions on images with these formats.
-		
-		*/
-		return FindSupportedFormat(
-			{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-			VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-	}
+	
 
 	bool HasStencilComponent(VkFormat format)
 	{

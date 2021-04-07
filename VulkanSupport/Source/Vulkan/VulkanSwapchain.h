@@ -11,6 +11,9 @@ namespace Crescent
 	{
 	public:
 		VulkanSwapchain(VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkSurfaceKHR* presentationSurface, GLFWwindow* window);
+		void DestroySwapchainInstance();
+
+		VkFormat RetrieveSwapchainImageFormat() const { return m_SwapchainFormat; }
 
 	private:
 		VkSurfaceFormatKHR SelectSwapchainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& avaliableFormats);

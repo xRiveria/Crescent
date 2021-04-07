@@ -58,6 +58,13 @@ namespace Crescent
 		CreateTextureView();
 	}
 
+	void VulkanTexture::DeleteTextureInstance()
+	{
+		vkDestroyImageView(*m_LogicalDevice, m_TextureView, nullptr);
+		//vkDestroyImage(*m_LogicalDevice, m_Texture, nullptr);
+		//vkFreeMemory(*m_LogicalDevice, m_TextureMemory, nullptr);
+	}
+
 	//Represents an abstract texture creation function. The width, height, format, tiling mode, usage and memory properties parameters are different as they vary between images.
 	void VulkanTexture::CreateTexture(const int& textureWidth, const int& textureHeight, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
 	{

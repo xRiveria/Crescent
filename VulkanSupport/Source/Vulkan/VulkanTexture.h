@@ -12,6 +12,7 @@ namespace Crescent
 
 		//For textures whose data are populated by the implementation, such as those used by the swapchain.
 		VulkanTexture(VkDevice* logicalDevice, const VkImage& image, const VkFormat& imageFormat, const VkImageAspectFlags& imageAspectFlags);
+		void DeleteTextureInstance();
 
 		VkImage* RetrieveTexture() { return &m_Texture; }
 		VkImageView* RetrieveTextureView() { return &m_TextureView; }

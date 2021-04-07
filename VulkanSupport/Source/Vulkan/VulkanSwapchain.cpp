@@ -11,6 +11,16 @@ namespace Crescent
 		CreateSwapchain();
 	}
 
+	void VulkanSwapchain::DestroySwapchainInstance()
+	{
+		for (int i = 0; i < m_SwapchainTextures.size(); i++)
+		{
+			m_SwapchainTextures[i]->DeleteTextureInstance();
+		}
+
+		vkDestroySwapchainKHR(*m_LogicalDevice, m_Swapchain, nullptr);
+	}
+
 	/*
 		We have previously queried for swapchain support. If the conditions were met, then the support is definitely sufficient. However, there may still be many more modes
 		with varying optimality. We will now try to determine for the best possible swapchain based on 3 types of settings:

@@ -21,6 +21,7 @@ namespace Crescent
 		CreatePresentationSurface();
 		m_Devices = std::make_shared<VulkanDevice>(&m_VulkanInstance, &m_Surface);
 		m_Swapchain = std::make_shared<VulkanSwapchain>(m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), &m_Surface, m_Window->RetrieveWindow());
+		m_Pipeline = std::make_shared<VulkanPipeline>(m_Swapchain->RetrieveSwapchainImageFormat(), m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice());
 	}
 
 	VulkanRenderer::~VulkanRenderer()
@@ -163,6 +164,7 @@ namespace Crescent
 		}
 
 		//This is where we destroy the Vulkan instance. For now, rather then leaving them to the destructors, we will do them manually.
+		m_Swapchain->DestroySwapchainInstance();
 		m_Devices->DestroyDeviceInstances();
 		vkDestroySurfaceKHR(m_VulkanInstance, m_Surface, nullptr);
 		m_DebugMessenger->DestroyDebugInstance();
