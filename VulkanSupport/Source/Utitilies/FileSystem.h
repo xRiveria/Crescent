@@ -36,4 +36,6 @@ static std::vector<char> ParseFile(const std::string& fileName)
 		does not need to be null-terminated since its binary code and we will later be explicit about its size. 
 	*/
 	std::cout << "The size of " << fileName << " is " << buffer.size() << " bytes.\n";
+
+	return buffer;
 }

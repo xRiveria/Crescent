@@ -169,6 +169,7 @@
     <ClCompile Include="Source\Vulkan\VulkanDebug.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanDevice.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanPipeline.cpp" />
+    <ClCompile Include="Source\Vulkan\VulkanShader.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanSwapchain.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanTexture.cpp" />
     <ClCompile Include="Source\Window.cpp" />
@@ -185,6 +186,7 @@
     <ClInclude Include="Source\Vulkan\VulkanDebug.h" />
     <ClInclude Include="Source\Vulkan\VulkanDevice.h" />
     <ClInclude Include="Source\Vulkan\VulkanPipeline.h" />
+    <ClInclude Include="Source\Vulkan\VulkanShader.h" />
     <ClInclude Include="Source\Vulkan\VulkanSwapchain.h" />
     <ClInclude Include="Source\Vulkan\VulkanTexture.h" />
     <ClInclude Include="Source\Vulkan\VulkanUtilities.h" />
