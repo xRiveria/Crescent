@@ -1,11 +1,12 @@
 #include "VulkanPipeline.h"
 #include "VulkanUtilities.h"
+#include "VulkanShader.h"
 #include <array>
 
 namespace Crescent
 {
-	VulkanPipeline::VulkanPipeline(const VkFormat& swapchainImageFormat, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice) :
-		m_SwapchainImageFormat(swapchainImageFormat), m_PhysicalDevice(physicalDevice), m_LogicalDevice(logicalDevice)
+	VulkanPipeline::VulkanPipeline(const VkFormat& swapchainImageFormat, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkExtent2D* m_SwapchainExtent) :
+		m_SwapchainImageFormat(swapchainImageFormat), m_PhysicalDevice(physicalDevice), m_LogicalDevice(logicalDevice), m_SwapchainExtent(m_SwapchainExtent)
 	{
 		CreateRenderPass();
 		CreateGraphicsPipeline();
@@ -177,6 +178,62 @@ namespace Crescent
 
 	void VulkanPipeline::CreateGraphicsPipeline()
 	{
+		VulkanShader vertexShader("Resources/Shaders/vertex.spv", VK_SHADER_STAGE_VERTEX_BIT, m_LogicalDevice);
+		VulkanShader fragmentShader("Resources/Shaders/fragment.spv", VK_SHADER_STAGE_FRAGMENT_BIT, m_LogicalDevice);
 
+		VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShader.RetrieveShaderStageInfo(), fragmentShader.RetrieveShaderStageInfo() };
+
+		/*
+			The older graphics APIs provided default state for most of the stages of the graphics pipeline. In Vulkan, you have to be explict about everything, from
+			viewPort size to color blending functions. We will thus have to create each of these ourselves. 
+			
+			The VkPipelineVertexInputStateCreateInfo structure describes the format of the vertex data that will be passed to the vertex shader. It describes this in roughly two ways:
+			- Bindings: Spacing between data and whether data is per-vertex or per-instance (Geometry Instance, where multiple copies of the same mesh are rendered at once in a scene).
+			- Attribute Descriptions: Type of the attributes passed to the vertex shader, which binding to load them from and at which offset. 
+		*/
+		VkVertexInputBindingDescription bindingDescription = Vertex::RetrieveBindingDescription();
+		std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = Vertex::RetrieveAttributeDescriptions();
+
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription; //This points to an array of structs the describe the aforementioned details for loading vertex data.
+		
+		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data(); //This points to an array of structs that describe the aforementioned details for loading vertex data.
+
+		/*
+			The VkPipelineInputAssemblyStateCreateInfo struct describes two things: what kind of geometry will be drawn from the vertices and if primitive restart should be enabled.
+			The format is specified in the "topology" member and can have values like:
+
+			- VK_PRIMITIVE_TOPOLOGY_POINT_LIST: Points from vertices.
+			- VK_PRIMITIVE_TOPOLOGY_LINE_LIST: Line from every 2 vertices without reuse.
+			- VK_PRIMITIVE_TOPOLOGY_LINE_STRIP: The end vertex of every line is used as start vertex for the next line.
+			- VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST: Triangle from every 3 vertices without reuse.
+			- VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP: The second and third vertex of every triangle are used as the first two vertices of the next triangle.
+
+			Normally, the vertices are loaded from the vertex buffer by index in sequential order, but with an element buffer, you can specify the indices to use yourself. This
+			allows you to perform optimizations like reusing vertices. If you set the primitiveRestartEnable to VK_TRUE, then its possible to break up lines and triangles
+			in the _STRIP topology modes by using a special index of 0xFFFF or 0xFFFFFFF.
+		*/
+
+		//As we intend to draw triangles throughout this tutorial, we will stick to the following data for the structure.
+		VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
+		inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+
+		/*
+			A viewport basically describes the region of the framebuffer that the output will be rendered to. This will almost always be (0, 0) to (Width, Height).
+			Remember the size of the swapchain and its images may differ from the width/height of the window. The swapchain images will be used as framebuffers later on,
+			so we should stick to their size.
+		*/
+		VkViewport viewportInfo;
+		viewportInfo.x = 0.0f;
+		viewportInfo.y = 0.0f;
+		viewportInfo.width = (float)m_SwapchainExtent->width;
+		viewportInfo.height = (float)m_SwapchainExtent->height;
+		viewportInfo.minDepth = 0.0f; //The minDepth and maxDepth values specify the range of depth values to use for the framebuffer.
+		viewportInfo.maxDepth = 1.0f; //These values must be within the [0.0f, 1.0f] range, but minDepth may be higher than maxDepth. If you aren't doing anything special, then you should stick to the standard values of 0.0f and 1.0f.
 	}
 }

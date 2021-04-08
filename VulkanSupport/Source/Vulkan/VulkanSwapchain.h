@@ -14,6 +14,7 @@ namespace Crescent
 		void DestroySwapchainInstance();
 
 		VkFormat RetrieveSwapchainImageFormat() const { return m_SwapchainFormat; }
+		VkExtent2D* RetrieveSwapchainExtent() { return &m_SwapchainExtent; }
 
 	private:
 		VkSurfaceFormatKHR SelectSwapchainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& avaliableFormats);

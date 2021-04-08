@@ -4,9 +4,97 @@
 #include <optional>
 #include <stdexcept>
 #include <iostream>
+#include <array>
+#include <glm/glm.hpp>
 
 namespace Crescent
 {
+	struct Vertex
+	{
+		glm::vec3 m_Position;
+		glm::vec3 m_Color;
+		glm::vec2 m_TexCoord;
+
+		//The next step is to tell Vulkan how to pass this data format to the vertex shader once its been uploaded into GPU memory. There are two types of structures
+		//we can use to convey this information. The first one is VkVertexInputBindingDescription.
+		static VkVertexInputBindingDescription RetrieveBindingDescription()
+		{
+			/*
+				A vertex binding describes at which rate to load data from memory throughout the vertices. It specifies the number of bytes between data entries and whether to move
+				to the next data entry after each vertex or after each instance.
+
+				All of our per-vertex data is packed together in one array, so we only have 1 binding. The binding parameter specifies the index of the binding in the array of bindings.
+				The stride parameter specifies the number of bytes from one entry to the next, and the inputRate parameter can have one of the following values:
+				- VK_VERTEX_INPUT_RATE_VERTEX: Move to the next data entry after each vertex.
+				- VK_VERTEX_INPUT_RATE_INSTANCE: Move to the next data entry after each instance.
+			*/
+			VkVertexInputBindingDescription bindingDescription{};
+			bindingDescription.binding = 0;
+			bindingDescription.stride = sizeof(Vertex);
+			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+			return bindingDescription;
+		}
+
+		//Allows us to do comparisons for our user defined type.
+		bool operator==(const Vertex& other) const
+		{
+			return m_Position == other.m_Position && m_Color == other.m_Color && m_TexCoord == other.m_TexCoord;
+		}
+
+		/*
+			The second structure that describes how to handle vertex input is VkVertexInputAttributeDescription. We will use a helper function to help populate the struct.
+			We will add a VkVertexInputAttributeDescription struct here for our texture coordinates. This is so we can use it to access texture coordinates as input in the vertex shader.
+			This is necessary to pass them to the fragment shader for interpolation across the surface of the square.
+		*/
+		static std::array<VkVertexInputAttributeDescription, 3> RetrieveAttributeDescriptions()
+		{
+			/*
+				An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data originating from a binding description. We have three
+				attributes, a position, a color and a tex coord. Thus, we need 3 attribute description structs.
+			*/
+			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions;
+			attributeDescriptions[0].binding = 0; //Tells Vulkan from which binding the per-vertex data comes from.
+			attributeDescriptions[0].location = 0; //References the location directive of the input in the vertex shader. In this case, the input in the vertex shader with location 0 is the position, which has two 32-bit float components.
+			/*
+				Format describes the type of data of the attribute. A bit confusingly, the formats are specified using the same enumeration as the color formats. The following shader
+				types and formats are commonly used together:
+
+				- float: VK_FORMAT_R32_SFLOAT
+				- vec2: VK_FORMAT_R32G32_SFLOAT
+				- vec3: VK_FORMAT_R32G32B32_SFLOAT
+				- vec4: VK_FORMAT_R32G32B32A32_SFLOAT
+
+				As you can see, you should use the format where the amount of color channels matches the number of components in the shader data type. It is allowed to use more
+				channels than the number of components in the shader, but they will be silently discarded. If the number of channels is lower than the number of components, then
+				the BGA components will use the default values of (0, 0, 1). The color type (SFLOAT, UINT, SINT) and bit width should also match the type of the shader input. See
+				the following examples:
+
+				- ivec2: VK_FORMAT_R32G32_SINT, a 2 component vector of 32-bit signed integers.
+				- uvec4: VK_FORMAT_R32G32B32A32_UINT, a 4 component vector of 32-bit unsigned integers.
+				- double: VK_FORMAT_R64_SFLOAT, a double precision (64-bit) float.
+
+				The format parameter implicitly defines the byte size of attribute data and the offset parameter specifies the number of bytes since the start of the per-vertex
+				data to read from. The binding is loading one Vertex (our struct) at a time and the position attribute (m_Position) is at an offset of 0 bytes from the beginning
+				of the struct. This is automatically calculated using the offsetof macro.
+			*/
+			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[0].offset = offsetof(Vertex, m_Position);
+
+			attributeDescriptions[1].binding = 0;
+			attributeDescriptions[1].location = 1;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[1].offset = offsetof(Vertex, m_Color);
+
+			attributeDescriptions[2].binding = 0;
+			attributeDescriptions[2].location = 2;
+			attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[2].offset = offsetof(Vertex, m_TexCoord);
+
+			return attributeDescriptions;
+		}
+	};
+
 	struct SwapchainSupportDetails
 	{
 		VkSurfaceCapabilitiesKHR m_Capabilities; //Minimum or maximum number of images in the swapchain, the minimum/maximum width and height of the images etc.

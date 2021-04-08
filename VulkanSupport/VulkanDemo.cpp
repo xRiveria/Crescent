@@ -1410,13 +1410,33 @@ private:
 		}
 	}
 
+	VkShaderModule CreateShaderModule(const std::vector<char>& code)
+	{
+		//Before we can pass our shader code to the pipeline, we have to wrap it in a VkShaderModule object. This function will take a buffer with the bytecode as parameter and create a VkShaderModule from it. 
+		VkShaderModuleCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = code.size();
+		/*
+			The catch here is that the size of the bytecode is specified in bytes, but the bytecode pointer is a uint32_t pointer rather than a char pointer.
+			Therefore, we will need to cast the pointer with a reintepret cast as shown below. When you a perform a cast like this, you also need to ensure that the data
+			satisfies the alignment requirements of uint32_t. Lucky for us, the data is stored in an std::vector where the default allocator already ensures that the data satisfies
+			the worse case alignment requirements.
+		*/
+		//reinterpret_cast is used to convert one pointer to another pointer of any type, no matter whether the class is related to each other or not.
+		//It does not check if the pointer type and data pointed by the pointer is the same or not.
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
+		VkShaderModule shaderModule;
+		if (vkCreateShaderModule(m_Device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create shader module!");
+		}
+		else
+		{
+			std::cout << "Successfully created Shader Module." << "\n";
+		}
 
-
-
-
-
-
+		return shaderModule;
+	}
 
 
 
@@ -1672,69 +1692,6 @@ private:
 		vkDestroyShaderModule(m_Device, vertexShaderModule, nullptr);
 	}
 
-
-
-
-
-
-
-
-
-	void CreateTextureImage()
-	{
-		/*
-			The stbi_load function takes the file path and number of channels to load as arguments. The STBI_rgb_alpha value forces the image to be loaded with an alpha channel,
-			even if it doesn't have one, which is nice for consistency with other textures in the future. The middle three parameters are outputs for the width, height and
-			actual number of channels in the image. The pointer that is returned is the first element in an array of pixel values. The pixels are laid out row by row
-			with 4 bytes per pixel in the case of STBI_rgb_alpha for a total of textureWidth * textureHeight * 4 values.
-		*/
-		int textureWidth, textureHeight, textureChannels;
-		stbi_uc* pixels = stbi_load(m_ModelTexturePath.c_str(), &textureWidth, &textureHeight, &textureChannels, STBI_rgb_alpha);
-		VkDeviceSize imageSize = textureWidth * textureHeight * 4;
-
-		if (!pixels)
-		{
-			throw std::runtime_error("Failed to load texture image.");
-		}
-
-		//We're going to create a buffer in host visible memory so that we can use vkMapMemory and copy the pixels to it.
-		//This buffer should not only be in host visible memory but also be able to be used as a transfer source so we can copy it to an image eventually.
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-		//We can then directly copy the pixel values that we got from the image loading library to the buffer.
-		void* data;
-		vkMapMemory(m_Device, stagingBufferMemory, 0, imageSize, 0, &data);
-		memcpy(data, pixels, static_cast<size_t>(imageSize));
-		vkUnmapMemory(m_Device, stagingBufferMemory);
-
-		//Clean up the original pixel array once mapped.
-		stbi_image_free(pixels);
-
-		//Creates the texture image here. 4 component, 32-bit unsigned normalized format that has 8 bit per component. 
-		CreateImage(textureWidth, textureHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			m_TextureImage, m_TextureImageMemory);
-
-		/*
-			Now, we are going to copy the staging buffer in host visible memory to the texture image. This involves two steps:
-			1) Transitioning the texture image to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL.
-			2) Execute the buffer to image operation.
-			The image was created with the VK_IMAGE_UNDEFINED layout, so that one should be specified as the old layout when transitioning m_TextureImage. Remember that we can do this because
-			we don't care about its contents perior to the copy operation.
-		*/
-		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		CopyBufferToImage(stagingBuffer, m_TextureImage, static_cast<uint32_t>(textureWidth), static_cast<uint32_t>(textureHeight));
-
-		//To be able to start sampling from the image texture in the shader, we need one last transition to prepare it for shader access.
-		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
-		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
-	}
-
-
-
 	void CreateTextureSampler()
 	{
 		/*
@@ -1833,6 +1790,58 @@ private:
 	}
 
 
+	void CreateTextureImage()
+	{
+		/*
+			The stbi_load function takes the file path and number of channels to load as arguments. The STBI_rgb_alpha value forces the image to be loaded with an alpha channel,
+			even if it doesn't have one, which is nice for consistency with other textures in the future. The middle three parameters are outputs for the width, height and
+			actual number of channels in the image. The pointer that is returned is the first element in an array of pixel values. The pixels are laid out row by row
+			with 4 bytes per pixel in the case of STBI_rgb_alpha for a total of textureWidth * textureHeight * 4 values.
+		*/
+		int textureWidth, textureHeight, textureChannels;
+		stbi_uc* pixels = stbi_load(m_ModelTexturePath.c_str(), &textureWidth, &textureHeight, &textureChannels, STBI_rgb_alpha);
+		VkDeviceSize imageSize = textureWidth * textureHeight * 4;
+
+		if (!pixels)
+		{
+			throw std::runtime_error("Failed to load texture image.");
+		}
+
+		//We're going to create a buffer in host visible memory so that we can use vkMapMemory and copy the pixels to it.
+		//This buffer should not only be in host visible memory but also be able to be used as a transfer source so we can copy it to an image eventually.
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+		//We can then directly copy the pixel values that we got from the image loading library to the buffer.
+		void* data;
+		vkMapMemory(m_Device, stagingBufferMemory, 0, imageSize, 0, &data);
+		memcpy(data, pixels, static_cast<size_t>(imageSize));
+		vkUnmapMemory(m_Device, stagingBufferMemory);
+
+		//Clean up the original pixel array once mapped.
+		stbi_image_free(pixels);
+
+		//Creates the texture image here. 4 component, 32-bit unsigned normalized format that has 8 bit per component. 
+		CreateImage(textureWidth, textureHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			m_TextureImage, m_TextureImageMemory);
+
+		/*
+			Now, we are going to copy the staging buffer in host visible memory to the texture image. This involves two steps:
+			1) Transitioning the texture image to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL.
+			2) Execute the buffer to image operation.
+			The image was created with the VK_IMAGE_UNDEFINED layout, so that one should be specified as the old layout when transitioning m_TextureImage. Remember that we can do this because
+			we don't care about its contents perior to the copy operation.
+		*/
+		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		CopyBufferToImage(stagingBuffer, m_TextureImage, static_cast<uint32_t>(textureWidth), static_cast<uint32_t>(textureHeight));
+
+		//To be able to start sampling from the image texture in the shader, we need one last transition to prepare it for shader access.
+		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
+		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
+	}
 
 	void CreateDescriptorSetLayout()
 	{
@@ -1939,7 +1948,6 @@ private:
 		}
 	}
 
-	
 
 	bool HasStencilComponent(VkFormat format)
 	{
@@ -2069,33 +2077,7 @@ private:
 		}
 	}
 
-	VkShaderModule CreateShaderModule(const std::vector<char>& code) 
-	{
-		//Before we can pass our shader code to the pipeline, we have to wrap it in a VkShaderModule object. This function will take a buffer with the bytecode as parameter and create a VkShaderModule from it. 
-		VkShaderModuleCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		createInfo.codeSize = code.size();
-		/*
-			The catch here is that the size of the bytecode is specified in bytes, but the bytecode pointer is a uint32_t pointer rather than a char pointer.
-			Therefore, we will need to cast the pointer with a reintepret cast as shown below. When you a perform a cast like this, you also need to ensure that the data
-			satisfies the alignment requirements of uint32_t. Lucky for us, the data is stored in an std::vector where the default allocator already ensures that the data satisfies
-			the worse case alignment requirements.
-		*/
-		//reinterpret_cast is used to convert one pointer to another pointer of any type, no matter whether the class is related to each other or not.
-		//It does not check if the pointer type and data pointed by the pointer is the same or not.
-		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(m_Device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create shader module!");
-		}
-		else
-		{
-			std::cout << "Successfully created Shader Module." << "\n";
-		}
-
-		return shaderModule;
-	}
+	
 
 	
 
