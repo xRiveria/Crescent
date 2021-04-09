@@ -630,8 +630,7 @@ private:
 
 		return details;
 	}
-
-
+ 
 	bool CheckDeviceExtensionSupport(VkPhysicalDevice device)
 	{
 		//Not all graphic cards are capable of presenting images directly to a screen for various reasons, for example because they are designed for servers and don't have any display outputs.
@@ -1438,9 +1437,6 @@ private:
 		return shaderModule;
 	}
 
-
-
-
 	void CreateGraphicsPipeline()
 	{
 		std::vector<char> vertexShaderCode = ReadFile("Resources/Shaders/vertex.spv");
@@ -1692,6 +1688,190 @@ private:
 		vkDestroyShaderModule(m_Device, vertexShaderModule, nullptr);
 	}
 
+
+
+
+
+	void CreateDescriptorSetLayout()
+	{
+		/*
+			As we are able to pass arbitrary attributes to the vertex shader for each vertex, what about global variables? We're going to move on to 3D graphics and
+			this requires a model-view-projection matrix. We could include it as vertex data, but that's a waste of memory and it would require us to update the vertex buffer
+			whenever the transformationn changes. The transformation could easily change every single frame.
+
+			The right way to tackle this in Vulkan is to use resource descriptors. A descriptor is a way for shaders to freely access resources like buffers and images. We're
+			going to set up a buffer that contains the transformation matrices and have the vertex shader access them through a descriptor. The usage of such a descriptor consists
+			of three parts: Specifying a descriptor layout during pipeline creation, allocating a descriptor set from a descriptor pool and finally binding the set during rendering.
+
+			The descriptor layout specifies the types of resources that are going to be accessed by the pipeline, just like a render pass specifies the types of attachments that will be accessed.
+			A descriptor set specifies the actual buffer or image resources that will be bound to the descriptors, just like a framebuffer specifies the actual image views to bind to the
+			render pass attachments. The descriptor set is then bound for the drawing commands just like the vertex buffers and framebuffer.
+
+			There are many types of descriptors, but we will work for UBO (uniform buffer objects). Every binding needs to be first described through a VkDescriptorSetLayoutBinding struct.
+
+			The first two fields specify the binding used in the shader and the type of descriptor, which is a uniform buffer object. It is possible for the shader variable to represent
+			an array of uniform buffer objects, and descriptorCount specifies the number of values in the array. This could be used to specify a transformation for each of the bones
+			in a skeleton for skeletal animation, for example. Our MVP transformation is in a single uniform buffer object, so we're using a descriptorCount of 1.
+		*/
+		VkDescriptorSetLayoutBinding uboLayoutBinding{};
+		uboLayoutBinding.binding = 0;
+		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBinding.descriptorCount = 1;
+		//We also need to specify in which shader stages the descriptor is going to be referenced. The stageFlags field can be combination of VkShaderStageFlagBits values
+		//or the value VK_SHADER_STAGE_ALL_GRAPHICS. In our case, we're only referencing the descriptor from the vertex shader.
+		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		//The pImmutableSamplers field is only relevant for image sampling related descriptors, which we will look at later. You can leave this to its default value.
+		uboLayoutBinding.pImmutableSamplers = nullptr; //Optional
+
+		/*
+			We looked at UBO descriptors above, but we will now look at a new type of descriptor: combined image sampler. This descriptor makes it possible for shaders
+			to access an image resource through a sampler object like the one we created for textures.
+
+			We will now add a VkDescriptorSetLayoutBinding for a combined image sampler descriptor.
+		*/
+		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+		samplerLayoutBinding.binding = 1;
+		samplerLayoutBinding.descriptorCount = 1;
+		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerLayoutBinding.pImmutableSamplers = nullptr;
+		//Make sure to set the stageFlags flag to indicate that we intend to use the combined image sampler descriptor in the fragment shader. That's where the color of the fragment
+		//is going to be determined. It is possible to use texture sampling in the vertex shader, for example to dynamically deform a grid of vertices by a heightmap. 
+		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
+		//All of the descriptor bindings are combined into a single VkDescriptorSetLayout object. We can then create it using vkCreateDescriptorSetLayout. This function accepts
+		//a simple VkDescriptorSetLayoutCreateInfo with the array of bindings. 
+		VkDescriptorSetLayoutCreateInfo layoutInfo{};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+		layoutInfo.pBindings = bindings.data();
+
+		if (vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create descriptor set layout.");
+		}
+	}
+
+	void CreateDescriptorPool()
+	{
+		//We will create a descriptor set for each VkBuffer resource to bind it to the uniform buffer descriptor. Now, descriptor sets cannot be created directly but rather
+		//must be allocated from a pool like command buffers. The equivalent for descriptor sets is unsurprisingly called a descriptor pool. First, we will need to describe which
+		//descriptor types our descriptor sets are going to contain and how many of them.
+		std::array<VkDescriptorPoolSize, 2> poolSizes{};
+		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSizes[0].descriptorCount = static_cast<uint32_t>(m_SwapChainImages.size());
+
+		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSizes[1].descriptorCount = static_cast<uint32_t>(m_SwapChainImages.size());
+
+		/*
+			Inadequete descriptor pools are a good example of a problem that the validation layers will not catch: As of Vulkan 1.1, vkAllocateDescriptorSets may fail with the error code
+			VK_ERROR_POOL_OUT_OF_MEMORY if the pool is not sufficiently large, but the driver may also try solve the problem internally. This means that sometimes
+			(depending on hardware, pool size and allocation size) the driver will let us get away with an allocation that exceeds the limits of our descriptor pool.
+
+			Other times, vkAllocateDescriptorSets will fail and return VK_ERROR_POOL_OUT_OF_MEMORY. This can be particularly frustrating if the allocation succeeds on some machines,
+			but fails on others.
+
+			Since Vulkan shifts the responsiblity for the allocation to the driver, it is no longer a strict requirement to only allocate as many descriptors of a certain type
+			(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, etc) as specified by the corresponding descriptorCount members for the creation of the descriptor pool. However, it remains
+			best practice to do so and in the future, VK_LAYER_KHRONOS_validation will warn about this type of problem if you enable Best Practice Validation.
+		*/
+		//We will allocate one of these descriptors for every frame. This pool size structure is referenced by the main VkDescriptorPoolCreateInfo.
+		VkDescriptorPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+		poolInfo.pPoolSizes = poolSizes.data();
+		//Aside from the maximum number of individual descriptors that are avaliable, we also need to specify the maximum number of descriptor sets that may be allocated.
+		poolInfo.maxSets = static_cast<uint32_t>(m_SwapChainImages.size());
+		//The structure has an optional flag similar to command pools that determines if individual descriptor sets can be freed or not: VK_DESCRIPTOR_CREATE_FREE_DESCRIPTOR_SET_BIT.
+		//We're not going to touch the descriptor set after creating it, so we don't need this flag.
+		poolInfo.flags = 0;
+
+		if (vkCreateDescriptorPool(m_Device, &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create descriptor pool.");
+		}
+		else
+		{
+			std::cout << "Successfully created Descriptor Pool." << "\n";
+		}
+	}
+
+	void CreateDescriptorSets()
+	{
+		//We will create one descriptor set for each swapchain image, all with the same layout. 
+		std::vector<VkDescriptorSetLayout> layouts(m_SwapChainImages.size(), m_DescriptorSetLayout);
+
+		VkDescriptorSetAllocateInfo allocateInfo{};
+		allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocateInfo.descriptorPool = m_DescriptorPool;
+		allocateInfo.descriptorSetCount = static_cast<uint32_t>(m_SwapChainImages.size());
+		allocateInfo.pSetLayouts = layouts.data();
+
+		m_DescriptorSets.resize(m_SwapChainImages.size());
+		//The vkAllocateDescriptorSets will allocate descriptor sets each with one uniform buffer descriptor.
+		if (vkAllocateDescriptorSets(m_Device, &allocateInfo, m_DescriptorSets.data()) != VK_SUCCESS) //Our array here needs to match the number of descriptor sets shown above.
+		{
+			throw std::runtime_error("Failed to allocate descriptor sets."); //Note that we do not have to explictly cleanup the descriptor sets as they will be freed when the pool is destroyed.
+		}
+
+		//After allocation, we now need to configure each of the descriptors.
+		for (size_t i = 0; i < m_SwapChainImages.size(); i++)
+		{
+			//Descriptors that refer to buffers, like our uniform buffer descriptor, are configured with a VkDescriptorBufferInfo struct. 
+			//This structure specifies the buffer and the region within it that contains the data for the descriptor.
+			VkDescriptorBufferInfo bufferInfo{};
+			bufferInfo.buffer = m_UniformBuffers[i];
+			bufferInfo.offset = 0;
+			bufferInfo.range = sizeof(UniformBufferObject); //If we are overwriting the whole buffer, it is possible to use VK_WHOLE_SIZE for the range. 
+
+			//The final step is to bind the actual image and sampler resources to the descriptors in the descriptor set.
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = m_TextureImageView;
+			imageInfo.sampler = m_TextureSampler;
+
+			//The configuration of the descriptors is updated using the vkUpdateDescriptorSets function, which takes an array of VkWriteDescriptorSet structs as parameter.
+			/*
+				The first two fields specify the descriptor set to update and the binding. We gave our uniform buffer binding index 0. Remember that descriptors can be arrays,
+				so we also need to specify the first index in the array that we want to update. We're not using an array, so the index is simply 0.
+
+				We also need to specify the type of descriptor again. Its possible to update multiple descriptors at once in an array, starting at index dstArrayElement. The descriptorCount
+				field specifies how many array elements you wish to update.
+
+				The last field references an array with descriptorCount structs that actually configure the descriptors. It depends on the type of descriptors which one of the three you
+				actually need to use. The pBufferInfo field is used for descriptors that refer to buffer data, pImageInfo is used for descriptors that refer to image data and
+				pTexelBufferView is used for descriptors that refer to buffer views. Our descriptor is based on buffers, so we're using pBufferInfo.
+			*/
+
+			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[0].dstSet = m_DescriptorSets[i];
+			descriptorWrites[0].dstBinding = 0;
+			descriptorWrites[0].dstArrayElement = 0;
+			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrites[0].descriptorCount = 1;
+			descriptorWrites[0].pBufferInfo = &bufferInfo;
+			descriptorWrites[0].pImageInfo = nullptr; //Optional as we are using a buffer data here.
+			descriptorWrites[0].pTexelBufferView = nullptr; //Optional as we are using buffer data here.
+
+			//The descriptors must be updated with the imageinfo descriptor info struct. Once done, they are finally ready to be used by the shaders. 
+			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[1].dstSet = m_DescriptorSets[i];
+			descriptorWrites[1].dstBinding = 1;
+			descriptorWrites[1].dstArrayElement = 0;
+			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrites[1].descriptorCount = 1;
+			descriptorWrites[1].pImageInfo = &imageInfo;
+
+			//The updates are applied with vkUpdateDescriptorSets. It accepts two kinds of arrays as parameters: an array of VkWriteDescriptorSet and an array of VkCopyDescriptorSet.
+			//The latter can be used to copy descriptors to each other as its name implies.
+			vkUpdateDescriptorSets(m_Device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+		}
+	}
+
+
 	void CreateTextureSampler()
 	{
 		/*
@@ -1789,7 +1969,6 @@ private:
 		}
 	}
 
-
 	void CreateTextureImage()
 	{
 		/*
@@ -1842,112 +2021,6 @@ private:
 		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
 		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
 	}
-
-	void CreateDescriptorSetLayout()
-	{
-		/*
-			As we are able to pass arbitrary attributes to the vertex shader for each vertex, what about global variables? We're going to move on to 3D graphics and
-			this requires a model-view-projection matrix. We could include it as vertex data, but that's a waste of memory and it would require us to update the vertex buffer
-			whenever the transformationn changes. The transformation could easily change every single frame. 
-
-			The right way to tackle this in Vulkan is to use resource descriptors. A descriptor is a way for shaders to freely access resources like buffers and images. We're
-			going to set up a buffer that contains the transformation matrices and have the vertex shader access them through a descriptor. The usage of such a descriptor consists
-			of three parts: Specifying a descriptor layout during pipeline creation, allocating a descriptor set from a descriptor pool and finally binding the set during rendering.
-			
-			The descriptor layout specifies the types of resources that are going to be accessed by the pipeline, just like a render pass specifies the types of attachments that will be accessed.
-			A descriptor set specifies the actual buffer or image resources that will be bound to the descriptors, just like a framebuffer specifies the actual image views to bind to the
-			render pass attachments. The descriptor set is then bound for the drawing commands just like the vertex buffers and framebuffer.
-
-			There are many types of descriptors, but we will work for UBO (uniform buffer objects). Every binding needs to be first described through a VkDescriptorSetLayoutBinding struct.
-		
-			The first two fields specify the binding used in the shader and the type of descriptor, which is a uniform buffer object. It is possible for the shader variable to represent
-			an array of uniform buffer objects, and descriptorCount specifies the number of values in the array. This could be used to specify a transformation for each of the bones
-			in a skeleton for skeletal animation, for example. Our MVP transformation is in a single uniform buffer object, so we're using a descriptorCount of 1. 
-		*/
-		VkDescriptorSetLayoutBinding uboLayoutBinding{};
-		uboLayoutBinding.binding = 0;
-		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uboLayoutBinding.descriptorCount = 1;
-		//We also need to specify in which shader stages the descriptor is going to be referenced. The stageFlags field can be combination of VkShaderStageFlagBits values
-		//or the value VK_SHADER_STAGE_ALL_GRAPHICS. In our case, we're only referencing the descriptor from the vertex shader.
-		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-		//The pImmutableSamplers field is only relevant for image sampling related descriptors, which we will look at later. You can leave this to its default value.
-		uboLayoutBinding.pImmutableSamplers = nullptr; //Optional
-
-		/*
-			We looked at UBO descriptors above, but we will now look at a new type of descriptor: combined image sampler. This descriptor makes it possible for shaders
-			to access an image resource through a sampler object like the one we created for textures.
-
-			We will now add a VkDescriptorSetLayoutBinding for a combined image sampler descriptor.
-		*/
-		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-		samplerLayoutBinding.binding = 1;
-		samplerLayoutBinding.descriptorCount = 1;
-		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		samplerLayoutBinding.pImmutableSamplers = nullptr;
-		//Make sure to set the stageFlags flag to indicate that we intend to use the combined image sampler descriptor in the fragment shader. That's where the color of the fragment
-		//is going to be determined. It is possible to use texture sampling in the vertex shader, for example to dynamically deform a grid of vertices by a heightmap. 
-		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
-
-		std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
-		//All of the descriptor bindings are combined into a single VkDescriptorSetLayout object. We can then create it using vkCreateDescriptorSetLayout. This function accepts
-		//a simple VkDescriptorSetLayoutCreateInfo with the array of bindings. 
-		VkDescriptorSetLayoutCreateInfo layoutInfo{};
-		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-		layoutInfo.pBindings = bindings.data();
-
-		if (vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create descriptor set layout.");
-		}
-	}
-
-	void CreateDescriptorPool()
-	{
-		//We will create a descriptor set for each VkBuffer resource to bind it to the uniform buffer descriptor. Now, descriptor sets cannot be created directly but rather
-		//must be allocated from a pool like command buffers. The equivalent for descriptor sets is unsurprisingly called a descriptor pool. First, we will need to describe which
-		//descriptor types our descriptor sets are going to contain and how many of them.
-		std::array<VkDescriptorPoolSize, 2> poolSizes{};
-		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSizes[0].descriptorCount = static_cast<uint32_t>(m_SwapChainImages.size());
-
-		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSizes[1].descriptorCount = static_cast<uint32_t>(m_SwapChainImages.size());
-
-		/*
-			Inadequete descriptor pools are a good example of a problem that the validation layers will not catch: As of Vulkan 1.1, vkAllocateDescriptorSets may fail with the error code 
-			VK_ERROR_POOL_OUT_OF_MEMORY if the pool is not sufficiently large, but the driver may also try solve the problem internally. This means that sometimes
-			(depending on hardware, pool size and allocation size) the driver will let us get away with an allocation that exceeds the limits of our descriptor pool.
-
-			Other times, vkAllocateDescriptorSets will fail and return VK_ERROR_POOL_OUT_OF_MEMORY. This can be particularly frustrating if the allocation succeeds on some machines,
-			but fails on others.
-
-			Since Vulkan shifts the responsiblity for the allocation to the driver, it is no longer a strict requirement to only allocate as many descriptors of a certain type
-			(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, etc) as specified by the corresponding descriptorCount members for the creation of the descriptor pool. However, it remains
-			best practice to do so and in the future, VK_LAYER_KHRONOS_validation will warn about this type of problem if you enable Best Practice Validation. 
-		*/
-		//We will allocate one of these descriptors for every frame. This pool size structure is referenced by the main VkDescriptorPoolCreateInfo.
-		VkDescriptorPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-		poolInfo.pPoolSizes = poolSizes.data();
-		//Aside from the maximum number of individual descriptors that are avaliable, we also need to specify the maximum number of descriptor sets that may be allocated.
-		poolInfo.maxSets = static_cast<uint32_t>(m_SwapChainImages.size());
-		//The structure has an optional flag similar to command pools that determines if individual descriptor sets can be freed or not: VK_DESCRIPTOR_CREATE_FREE_DESCRIPTOR_SET_BIT.
-		//We're not going to touch the descriptor set after creating it, so we don't need this flag.
-		poolInfo.flags = 0;
-
-		if (vkCreateDescriptorPool(m_Device, &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create descriptor pool.");
-		}
-		else
-		{
-			std::cout << "Successfully created Descriptor Pool." << "\n";
-		}
-	}
-
 
 	bool HasStencilComponent(VkFormat format)
 	{
@@ -2002,84 +2075,6 @@ private:
 		*/
 		TransitionImageLayout(m_DepthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 	}
-
-	void CreateDescriptorSets()
-	{
-		//We will create one descriptor set for each swapchain image, all with the same layout. 
-		std::vector<VkDescriptorSetLayout> layouts(m_SwapChainImages.size(), m_DescriptorSetLayout);
-
-		VkDescriptorSetAllocateInfo allocateInfo{};
-		allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocateInfo.descriptorPool = m_DescriptorPool;
-		allocateInfo.descriptorSetCount = static_cast<uint32_t>(m_SwapChainImages.size());
-		allocateInfo.pSetLayouts = layouts.data();
-
-		m_DescriptorSets.resize(m_SwapChainImages.size());
-		//The vkAllocateDescriptorSets will allocate descriptor sets each with one uniform buffer descriptor.
-		if (vkAllocateDescriptorSets(m_Device, &allocateInfo, m_DescriptorSets.data()) != VK_SUCCESS) //Our array here needs to match the number of descriptor sets shown above.
-		{
-			throw std::runtime_error("Failed to allocate descriptor sets."); //Note that we do not have to explictly cleanup the descriptor sets as they will be freed when the pool is destroyed.
-		}
-
-		//After allocation, we now need to configure each of the descriptors.
-		for (size_t i = 0; i < m_SwapChainImages.size(); i++)
-		{
-			//Descriptors that refer to buffers, like our uniform buffer descriptor, are configured with a VkDescriptorBufferInfo struct. 
-			//This structure specifies the buffer and the region within it that contains the data for the descriptor.
-			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = m_UniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject); //If we are overwriting the whole buffer, it is possible to use VK_WHOLE_SIZE for the range. 
-
-			//The final step is to bind the actual image and sampler resources to the descriptors in the descriptor set.
-			VkDescriptorImageInfo imageInfo{};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = m_TextureImageView;
-			imageInfo.sampler = m_TextureSampler;
-
-			//The configuration of the descriptors is updated using the vkUpdateDescriptorSets function, which takes an array of VkWriteDescriptorSet structs as parameter.
-			/*
-				The first two fields specify the descriptor set to update and the binding. We gave our uniform buffer binding index 0. Remember that descriptors can be arrays,
-				so we also need to specify the first index in the array that we want to update. We're not using an array, so the index is simply 0.
-
-				We also need to specify the type of descriptor again. Its possible to update multiple descriptors at once in an array, starting at index dstArrayElement. The descriptorCount
-				field specifies how many array elements you wish to update. 
-
-				The last field references an array with descriptorCount structs that actually configure the descriptors. It depends on the type of descriptors which one of the three you
-				actually need to use. The pBufferInfo field is used for descriptors that refer to buffer data, pImageInfo is used for descriptors that refer to image data and
-				pTexelBufferView is used for descriptors that refer to buffer views. Our descriptor is based on buffers, so we're using pBufferInfo.
-			*/
-
-			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-
-			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet = m_DescriptorSets[i];
-			descriptorWrites[0].dstBinding = 0;
-			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pBufferInfo = &bufferInfo;
-			descriptorWrites[0].pImageInfo = nullptr; //Optional as we are using a buffer data here.
-			descriptorWrites[0].pTexelBufferView = nullptr; //Optional as we are using buffer data here.
-
-			//The descriptors must be updated with the imageinfo descriptor info struct. Once done, they are finally ready to be used by the shaders. 
-			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = m_DescriptorSets[i];
-			descriptorWrites[1].dstBinding = 1;
-			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo = &imageInfo;
-
-			//The updates are applied with vkUpdateDescriptorSets. It accepts two kinds of arrays as parameters: an array of VkWriteDescriptorSet and an array of VkCopyDescriptorSet.
-			//The latter can be used to copy descriptors to each other as its name implies.
-			vkUpdateDescriptorSets(m_Device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-		}
-	}
-
-	
-
-	
 
 	void CreateFramebuffers()
 	{

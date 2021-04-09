@@ -7,6 +7,7 @@ namespace Crescent
 	{
 	public:
 		VulkanPipeline(const VkFormat& swapchainImageFormat, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkExtent2D* m_SwapchainExtent);
+		void DestroyPipelineInstance();
 
 	private:
 		void CreateRenderPass();
@@ -14,7 +15,8 @@ namespace Crescent
 
 	private:
 		VkRenderPass m_RenderPass;
-		VkPipeline m_GraphicsPipeline;
+		VkPipeline m_Pipeline;
+		VkPipelineLayout m_PipelineLayout;
 
 		VkExtent2D* m_SwapchainExtent;
 		VkFormat m_SwapchainImageFormat;

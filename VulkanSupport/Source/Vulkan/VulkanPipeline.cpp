@@ -12,6 +12,13 @@ namespace Crescent
 		CreateGraphicsPipeline();
 	}
 
+	void VulkanPipeline::DestroyPipelineInstance()
+	{
+		vkDestroyPipeline(*m_LogicalDevice, m_Pipeline, nullptr);
+		vkDestroyPipelineLayout(*m_LogicalDevice, m_PipelineLayout, nullptr);
+		vkDestroyRenderPass(*m_LogicalDevice, m_RenderPass, nullptr);
+	}
+
 	void VulkanPipeline::CreateRenderPass()
 	{
 		/*
@@ -185,11 +192,11 @@ namespace Crescent
 
 		/*
 			The older graphics APIs provided default state for most of the stages of the graphics pipeline. In Vulkan, you have to be explict about everything, from
-			viewPort size to color blending functions. We will thus have to create each of these ourselves. 
-			
+			viewPort size to color blending functions. We will thus have to create each of these ourselves.
+
 			The VkPipelineVertexInputStateCreateInfo structure describes the format of the vertex data that will be passed to the vertex shader. It describes this in roughly two ways:
 			- Bindings: Spacing between data and whether data is per-vertex or per-instance (Geometry Instance, where multiple copies of the same mesh are rendered at once in a scene).
-			- Attribute Descriptions: Type of the attributes passed to the vertex shader, which binding to load them from and at which offset. 
+			- Attribute Descriptions: Type of the attributes passed to the vertex shader, which binding to load them from and at which offset.
 		*/
 		VkVertexInputBindingDescription bindingDescription = Vertex::RetrieveBindingDescription();
 		std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = Vertex::RetrieveAttributeDescriptions();
@@ -198,7 +205,7 @@ namespace Crescent
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
 		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription; //This points to an array of structs the describe the aforementioned details for loading vertex data.
-		
+
 		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data(); //This points to an array of structs that describe the aforementioned details for loading vertex data.
 
@@ -228,12 +235,205 @@ namespace Crescent
 			Remember the size of the swapchain and its images may differ from the width/height of the window. The swapchain images will be used as framebuffers later on,
 			so we should stick to their size.
 		*/
-		VkViewport viewportInfo;
+		VkViewport viewportInfo{};
 		viewportInfo.x = 0.0f;
 		viewportInfo.y = 0.0f;
 		viewportInfo.width = (float)m_SwapchainExtent->width;
 		viewportInfo.height = (float)m_SwapchainExtent->height;
 		viewportInfo.minDepth = 0.0f; //The minDepth and maxDepth values specify the range of depth values to use for the framebuffer.
 		viewportInfo.maxDepth = 1.0f; //These values must be within the [0.0f, 1.0f] range, but minDepth may be higher than maxDepth. If you aren't doing anything special, then you should stick to the standard values of 0.0f and 1.0f.
+
+		/*
+			While viewports define the transformation from the image to the framebuffer, scissor rectangles define in which regions pixels will actually be stored. Any pixel
+			outside the scissor rectangles will be discarded by the rasterizer. They function like a filter rather than a transformation. A we wish to draw to the entire framebuffer,
+			we will specify a scissor rectangle that covers it entirely.
+		*/
+		VkRect2D scissorInfo{};
+		scissorInfo.offset = { 0, 0 };
+		scissorInfo.extent = *m_SwapchainExtent;
+
+		/*
+			Now, this viewport and scissor rectangle need to be combined into a viewport state using the VkPipelineViewportStateCreateInfo struct. It is possible to use
+			multiple viewports and scissor rectangles on some graphics cards, so its members reference an array of them. Using multiple requires enabling a GPU feature.
+		*/
+		VkPipelineViewportStateCreateInfo viewportStateInfo{};
+		viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewportStateInfo.viewportCount = 1;
+		viewportStateInfo.pViewports = &viewportInfo;
+		viewportStateInfo.scissorCount = 1;
+		viewportStateInfo.pScissors = &scissorInfo;
+
+		/*
+			The rasterizer takes the geometry that is shaped by the vertices from the vertex shader and turns it into fragments to be colored by the fragment shader. It also
+			performs depth testing, face culling and the scissor test, and it can be configured to output fragments that fill entire polygons or just the edges (wireframe rendering).
+			All this is configured using the VkPipelineRasterizationStateCreateInfo structure.
+		*/
+		VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
+		rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		/*
+			If this is true, then fragments that are beyond the near and far planes are clamped to them as opposed to discarding them. This is useful in special cases like
+			shadow maps. This requires a GPU feature as well.
+		*/
+		rasterizerInfo.depthClampEnable = VK_FALSE;
+		/*
+			The polygonMode determines how fragments are generated for geometry. The following modes are avaliable and using any other mode other than fill requires enabling a GPU feature.
+			- VK_POLYGON_MODE_FILL: Fills the area of the polygon with fragments.
+			- VK_POLYGON_MODE_LINE: Polygon edges are drawn as lines.
+			- VK_POLYGON_MODE_POINT: Polygon vertices are drawn as points.
+		*/
+		rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;
+		/*
+			The lineWidth member is straightforward. It describes the thickness of lines in terms of number of fragments. The maximum line width that is supported depends on the
+			hardware and any line thicker than 1.0f requires you to enable the wideLines GPU feature.
+		*/
+		rasterizerInfo.lineWidth = 1.0f;
+		/*
+			The cullMode variable determines the type of face culling to use. You can disable culling, cull the front faces, cull the back faces or both. The frontFace variable
+			describes the vertex order for faces to be considered front-facing and can be clockwise or counter-clockwise.
+		*/
+		rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		//The rasterizer can alter ther depth values by adding a constant value or biasing them based on the fragment's slope. This is sometimes used for shadow mapping, but we won't be using it.
+		rasterizerInfo.depthBiasEnable = VK_FALSE;
+		rasterizerInfo.depthBiasConstantFactor = 0.0f; //Optional
+		rasterizerInfo.depthBiasClamp = 0.0f; //Optional
+		rasterizerInfo.depthBiasSlopeFactor = 0.0f; //Optional
+
+		/*
+			The VkPipelineMultisampleStateCreateInfo struct configures multisampling, which is one of the ways to perform antialiasing. It works by combining the fragment
+			shader results of multiple polygons that rasterize to the same pixel. This mainly occurs along edges, which is also where the most noticeable aliasing artifacts
+			occur. Because it doesn't need to run the fragment shader multiple times if only one polygon maps to a pixel, it is significantly less expensive than
+			simply rendering to a higher resolution and then downscaling. Enabing it requires enabling a GPU feature.
+		*/
+		VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
+		multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisamplingInfo.sampleShadingEnable = VK_FALSE;
+		multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		multisamplingInfo.minSampleShading = 1.0f;
+		multisamplingInfo.pSampleMask = nullptr;
+		multisamplingInfo.alphaToCoverageEnable = VK_FALSE;
+		multisamplingInfo.alphaToOneEnable = VK_FALSE;
+
+		/*
+			After a fragment shader has returned a color, it needs to be combined with the color that is already in the framebuffer. This transformation is known as color blending
+			and there are two ways to do it:
+
+			- Mix the old and new value to produce a final color.
+			- Combine the old and new value using a bitwise operation.
+
+			There are two types of structs as well to configure color blending. The first struct, VkPipelineColorBlendAttachmentState contains the configuration per attached
+			framebuffer and the second struct VkPipelineColorBlendingStateCreateInfo contains the global color blending settings. In our case, we only have 1 framebuffer.
+		*/
+		VkPipelineColorBlendAttachmentState colorBlendInfo{};
+		colorBlendInfo.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendInfo.blendEnable = VK_FALSE;
+		colorBlendInfo.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+		colorBlendInfo.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+		colorBlendInfo.colorBlendOp = VK_BLEND_OP_ADD;
+		colorBlendInfo.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		colorBlendInfo.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		colorBlendInfo.alphaBlendOp = VK_BLEND_OP_ADD;
+
+		//The second struct references an array of structs for all of the framebuffers and allows you to set blend constants that you can use as blend factors in the aforementioned calculations.
+		VkPipelineColorBlendStateCreateInfo globalBlendInfo{};
+		globalBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		/*
+			Set this to true if you wish to use the second method of blending (bitwise combination). This will automatically disable the first method, as if you have set
+			blendEnable to VK_FALSE for every attached framebuffer. Of course, it is possible to disable both modes as we've done here, in which case the fragment colors will be written
+			to the framebuffer unmodified.
+		*/
+		globalBlendInfo.logicOpEnable = VK_FALSE;
+		globalBlendInfo.logicOp = VK_LOGIC_OP_COPY; //This is where the bitwise operation can be specified.
+		globalBlendInfo.attachmentCount = 1; //We only have 1 framebuffer.
+		globalBlendInfo.pAttachments = &colorBlendInfo;
+		globalBlendInfo.blendConstants[0] = 0.0f;
+		globalBlendInfo.blendConstants[1] = 0.0f;
+		globalBlendInfo.blendConstants[2] = 0.0f;
+		globalBlendInfo.blendConstants[3] = 0.0f;
+
+		/*
+			You can use uniform values in shaders, which are global similar to dynamic state variables that can be changed at drawing time to alter the behavior of your shaders
+			without having to recreate them. They are commonly used to pass the transformation matrix to the vertex shader, or to create texture samplers in the fragment shader.
+			These uniform values need to be specified during pipeline creation by creating a vkPipelineLayout object. If we won't be using them, we are still
+			required to create empty pipeline layout.
+		*/
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 1;
+		pipelineLayoutInfo.pSetLayouts = 0; //We need to specify the descriptor set layout during pipeline creation to tell Vulkan which descriptors the shaders will be using.
+		pipelineLayoutInfo.pushConstantRangeCount = 0; //Optional
+		pipelineLayoutInfo.pPushConstantRanges = nullptr; //Optional. Push Constants are another way of passing dynamic values to shaders.
+
+		if (vkCreatePipelineLayout(*m_LogicalDevice, &pipelineLayoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create Pipeline Layout.\n");
+		}
+		else
+		{
+			std::cout << "Successfully created Pipeline Layout. \n";
+		}
+
+		VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
+		depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		depthStencilInfo.depthTestEnable = VK_TRUE; //Specifies if the depth of new fragments should be compared to the depth buffer to see if they should be discarded.
+		depthStencilInfo.depthWriteEnable = VK_TRUE; //Specifies if the depth of new fragments that pass the depth test should actually be written to the depth buffer.
+		//Specifies the comparison that is performed to keep or discard fragments. We're sticking to the convention of lower depth = closer, so the depth of new fragments should be less.
+		//Essentially, we're saying that whichever is closer is kept.
+		depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS; 
+		depthStencilInfo.depthBoundsTestEnable = VK_FALSE; //These are used for optional depth bound tests. This allows you to only keep fragments that fall within the specified depth range.
+		depthStencilInfo.minDepthBounds = 0.0f;
+		depthStencilInfo.maxDepthBounds = 1.0f;
+		depthStencilInfo.stencilTestEnable = VK_FALSE; //For stencil buffer operations. If we want to use these, ensure that the format of the depth/stencil image contains a stencil component.
+		depthStencilInfo.front = {};
+		depthStencilInfo.back = {};
+
+		//Finally, we have our graphics pipeline.
+		VkGraphicsPipelineCreateInfo pipelineCreationInfo{};
+		pipelineCreationInfo.pStages = shaderStages;
+		//Then, we start by referencing the array of VkPipelineShaderStageCreateInfo structs.
+		pipelineCreationInfo.stageCount = 2;
+		pipelineCreationInfo.pStages = shaderStages;
+		//Then, we reference all of the structure describing the fixed-function stage.
+		pipelineCreationInfo.pVertexInputState = &vertexInputInfo;
+		pipelineCreationInfo.pInputAssemblyState = &inputAssemblyInfo;
+		pipelineCreationInfo.pViewportState = &viewportStateInfo;
+		pipelineCreationInfo.pRasterizationState = &rasterizerInfo;
+		pipelineCreationInfo.pMultisampleState = &multisamplingInfo;
+		pipelineCreationInfo.pDepthStencilState = &depthStencilInfo;
+		pipelineCreationInfo.pColorBlendState = &globalBlendInfo;
+		pipelineCreationInfo.pDynamicState = nullptr;
+		//After that comes the pipeline layout, which is a Vulkan handle rather than a struct pointer.
+		pipelineCreationInfo.layout = m_PipelineLayout;
+		/*
+			Finally, we have a reference to the render pass and the index of the subpass where this graphics pipeline will be used. It is also possible to use other render passes
+			with this pipeline instead of this specific instance, but they have to be compatible with the renderPass parameter. The requirements for compatibility are described
+			in the specification, 
+		*/
+		pipelineCreationInfo.renderPass = m_RenderPass;
+		pipelineCreationInfo.subpass = 0;
+
+		/*
+			There are two more parameters: basePipelineHandle and basePipelineIndex. Vulkan allows you to create a new graphics pipeline by deriving from an existing pipeline.
+			The idea of pipeline derivatives is that it is less expensive to set up pipeline when they have much functionality in common with an existing pipeline and switching
+			between pipelines from the same parent can also be done much quicker. You can either specify the handle of an existing pipeline with basePipelineHandle or reference
+			another pipeline that is about to be created by index with basePipelineIndex. Right now, there is only a single pipeline, so we will specify a null handle and an invalid
+			index. These values are only used if the VK_PIPELINE_CREATE_DERIVATE_BIT flag is also specified in the flags fiedld of VkGraphicsPipelineCreateInfo.
+
+			The vkCreateGraphicsPipelines function actually has more parameters than the usual object creation functions in Vulkan. It is designed to take multiple 
+			VkGraphicsPipelineCreateInfo objects and create multiple VkPipeline objects in a single call. The second parameter, in which we've passed VK_NULL_HANDLE
+			as argument, references an optional VkPipelineCache object. This makes it possible to significantly speed up pipeline creation at a later time. We will get into
+			this eventually.
+		*/
+		if (vkCreateGraphicsPipelines(*m_LogicalDevice, VK_NULL_HANDLE, 1, &pipelineCreationInfo, nullptr, &m_Pipeline) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create graphics pipeline.\n");
+		}
+		else
+		{
+			std::cout << "Successfully created Graphics Pipeline.\n";
+		}
+
+		vertexShader.DestroyShaderInstance();
+		fragmentShader.DestroyShaderInstance();
 	}
 }
