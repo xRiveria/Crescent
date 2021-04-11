@@ -5,7 +5,9 @@
 #include "../Source/Vulkan/VulkanDebug.h"
 #include "../Source/Vulkan/VulkanDevice.h"
 #include "../Source/Vulkan/VulkanSwapchain.h"
+#include "../Source/Vulkan/VulkanDescriptorLayout.h"
 #include "../Source/Vulkan/VulkanPipeline.h"
+#include "../Source/Vulkan/VulkanCommandPool.h"
 #include "Window.h"
 
 namespace Crescent
@@ -27,7 +29,9 @@ namespace Crescent
 		std::shared_ptr<VulkanDebug> m_DebugMessenger = nullptr;
 		std::shared_ptr<VulkanDevice> m_Devices = nullptr;
 		std::shared_ptr<VulkanSwapchain> m_Swapchain = nullptr;
+		std::shared_ptr<VulkanDescriptorLayout> m_DescriptorLayout = nullptr;
 		std::shared_ptr<VulkanPipeline> m_Pipeline = nullptr;
+		std::shared_ptr<VulkanCommandPool> m_CommandPool = nullptr;
 
 		//Presentation
 		std::shared_ptr<Window> m_Window = nullptr;

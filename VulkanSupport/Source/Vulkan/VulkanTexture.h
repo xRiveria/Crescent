@@ -9,10 +9,13 @@ namespace Crescent
 	public:
 		//For textures uploaded by the user.
 		VulkanTexture(const std::string& filePath, VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, VkFormat imageFormat, const VkImageAspectFlags& imageAspectFlags);
-
 		//For textures whose data are populated by the implementation, such as those used by the swapchain.
 		VulkanTexture(VkDevice* logicalDevice, const VkImage& image, const VkFormat& imageFormat, const VkImageAspectFlags& imageAspectFlags);
+		//For textures to be created on the spot.
+		VulkanTexture(const int& textureWidth, const int& textureHeight, VkFormat format, const VkImageAspectFlags& imageAspectFlags, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice);
 		void DeleteTextureInstance();
+
+		void TransitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout, const VkCommandPool& commandPool, const VkQueue& queue);
 
 		VkImage* RetrieveTexture() { return &m_Texture; }
 		VkImageView* RetrieveTextureView() { return &m_TextureView; }

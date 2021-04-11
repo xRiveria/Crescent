@@ -211,17 +211,18 @@ private:
 		CreateSwapChain();
 		CreateImageViews();
 		CreateRenderPass();
-
-
 		CreateDescriptorSetLayout();
 		CreateGraphicsPipeline();
 		CreateCommandPool();
+
 		CreateDepthResources();
 		CreateFramebuffers();
+
 		CreateTextureImage();
 		CreateTextureImageView();
 		CreateTextureSampler();
 		LoadModel();
+
 		CreateVertexBuffer();
 		CreateIndexBuffer();
 		CreateUniformBuffers();
@@ -1688,10 +1689,6 @@ private:
 		vkDestroyShaderModule(m_Device, vertexShaderModule, nullptr);
 	}
 
-
-
-
-
 	void CreateDescriptorSetLayout()
 	{
 		/*
@@ -1751,6 +1748,277 @@ private:
 			throw std::runtime_error("Failed to create descriptor set layout.");
 		}
 	}
+
+	void CreateCommandPool()
+	{
+		/*
+			Commands in Vulkan, like drawing operations and memory transfers are not executed directly using function calls. You have to record all of the operations
+			you want to perform in command buffer objects. The advantage of this is that all of the hard work of setting up drawing commands can be done in advance and in multiple
+			threads. After that, you just have to tell Vulkan to execute the commands in the main loop.
+
+			We have to create a command pool before we can create command buffers. Command pools manage the memory that is used to store the buffers and command buffers are allocated from them.
+			Command buffers are executed by submitting them on one of the device queues, like the graphics and presentation queues we've retrieved. Each command pool can only
+			allocate command buffers that are submitted on a single type of queue. We're going to record commands for drawing, which is why we've chosen the graphics queue family.
+			There are two possible flags for command pools:
+			- VK_COMMAND_POOL_CREATE_TRANSIENT_BIT: Hint that command buffers are rerecorded with new commands very often (may change memory allocated behavior).
+			- VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT: Allow command buffers to be rerecorded individually, without this flag they all have to be reset together.
+			We will only record the command buffers at the beginning of the program and then execute them many times in the main loop, so we don't have to use any of these flags.
+		*/
+		QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(m_PhysicalDevice);
+		VkCommandPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolInfo.queueFamilyIndex = queueFamilyIndices.m_GraphicsFamily.value();
+		poolInfo.flags = 0;
+
+		if (vkCreateCommandPool(m_Device, &poolInfo, nullptr, &m_CommandPool) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create command pool.");
+		}
+		else
+		{
+			std::cout << "Successfully created Command Pool." << "\n";
+		}
+	}
+
+	void CreateDepthResources()
+	{
+		/*
+			The problem now is that the fragments of a lower square are drawn over the fragments of a upper square, simply because it comes later in the index array. There are
+			two ways to solve this: 1) Sort all of the draw calls by back to front or 2) Use depth testing with a depth buffer.
+
+			The first approach is commonly used for drawing transparent objects, because order-independant transparency is a difficult challenge to solve. However, the problem of
+			ordering fragments by depth is much more commonly solved using a depth buffer. A depth buffer is an additional attachment that stores the depth for every position,
+			just like the color attachment stores the color of every position. Everytime the rasterizer produces a fragment, the depth test will check if the new fragment is closer
+			than the previous one.
+
+			If it isn't, then the new fragment is discarded. A fragment that passes the depth test will write its own depth to the depth buffer. It is possible to manipulate
+			this value from the fragment shader, just like you can manipulate the color output.
+
+			A depth attachment is based on an image, just like the color attachment. The difference is that the swap chain will not automatically create depth images for us.
+			We only need a single depth image, because only one draw operation is running at once. The depth image will again require the trifecta of resources: image, memory and image view.
+
+			Creating a depth image is fairly straightforward. It should have the same resolution as the color attachment, defined by the swap chain extent, an image usage
+			appropriate for a depth attachment, optimal tiling and device local memory. The only question is: what is the right format for a depth image? The format must
+			contain a depth component, specified by _D??__ in the VK_FORMAT_.
+
+			Unlike the texture image, we don't necessarily need a specific format, because we won't be directly accessing the texels from the program. It just needs to have a
+			reasonable accuracy, at least 24 bits is common in real-world applications. There are several formats that fit this requirement:
+
+			- VK_FORMAT_D32_SFLOAT: 32-bit float for depth.
+			- VK_FORMAT_D32_SFLOAT_S8_UINT: 32-bit signed float for depth and 8 bit stencil component.
+			- VK_FORMAT_D24_UNORM_S8_UINT: 24-bit float for depth and 8 bit stencil component.
+
+			We could simply go for VK_FORMAT_D32_SFLOAT, because support for it is extremely common, but its nice to add some extra flexibility to our application where possible.
+			We're going to writer a function FindSupportedFormat that takes a list of candidate formats in order from the most desirable to least desirable, and check which is the
+			first one that is supported.
+		*/
+
+		VkFormat depthFormat = FindDepthFormat(); //Find a depth format.
+
+		CreateImage(m_SwapChainExtent.width, m_SwapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_DepthImage, m_DepthImageMemory);
+
+		m_DepthImageView = CreateImageView(m_DepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		/*
+			Thats it for creating the depth image. We don't need to map it or copy another image to it, because we're going to clear it at the start of the render pass like the color attachment.
+			We don't need to explicitly transition the layout of the image to a depth attachment because we will take care of this in the render pass.
+			Here, the undefined layout can be used as initial layout, because there is no exisiting depth image contents that matter.
+		*/
+		TransitionImageLayout(m_DepthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	}
+
+	//Starts a new command buffer.
+	VkCommandBuffer BeginSingleTimeCommands()
+	{
+		/*
+			Memory transfer operations are executed using command buffers, just like drawing commands. Therefore, we must allocate a temporary command buffer. You may
+			wish to create a seperate command pool for these kinds of short-lived buffers, because the implementation may be able to apply memory allocation optimizations.
+			You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case. This indicates that the command buffers allocated from said pool will have short lived (reset/freed in a short timeframe).
+		*/
+		VkCommandBufferAllocateInfo allocationInfo{};
+		allocationInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocationInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; //Primary command buffers can be submitted to a queue for execution, but cannot be called from other command buffers.
+		allocationInfo.commandPool = m_CommandPool;
+		allocationInfo.commandBufferCount = 1;
+
+		VkCommandBuffer commandBuffer;
+		vkAllocateCommandBuffers(m_Device, &allocationInfo, &commandBuffer);
+
+		//We're only going to use the command buffer once and wait with returning from the function until the copy operation has finished executing. Thus, its good practice
+		//to tell the driver about our intent using VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT.
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+		return commandBuffer;
+	}
+
+	//Ends and submits a command buffer for execution after recording.
+	void EndSingleTimeCommands(VkCommandBuffer commandBuffer)
+	{
+		vkEndCommandBuffer(commandBuffer);
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+
+		//Execute the command buffer to complete the operation.
+		vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
+		/*
+			Unlike draw commands, there are no events we need to wait on this in transfer operations. We just want to execute the transfer on the buffers immediately. There are again two
+			possible ways to wait on this transfer to complete. We could use a fence and wait with vkWaitForFences, or simply wait for the transfer queue to become idle with vkQueueWaitIdle.
+			A fence would allow you to schedule multiple transfers simultaneously and wait for all of them to complete, instead of executing one at a time. That may give the driver more opportunities to optimize.
+		*/
+		vkQueueWaitIdle(m_GraphicsQueue);
+
+		//Don't forget to clean up the command buffer used for the transfer operation.
+		vkFreeCommandBuffers(m_Device, m_CommandPool, 1, &commandBuffer);
+	}
+
+	bool HasStencilComponent(VkFormat format)
+	{
+		//Check if the chosen depth format contains a stencil format. 
+		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+	}
+
+	void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+	{
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+		/*
+			One of the most common ways to perform layout transitions is using an image memory barrier. A pipeline barrier like that is generally used to synchronize access to resources,
+			like ensuring that a write to a buffer completes before reading from it, but it can also be used to transition image layouts and transfer queue family ownership
+			when VK_SHARING_MODE_EXCLUSIVE (access of the object is limited a single queue) is used. There is an equivalent buffer memory barrier to do this buffers.
+		*/
+		VkImageMemoryBarrier barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		//The first two fields specify layout transitions. It is possible to use VK_IMAGE_LAYOUT_UNDEFINED as oldLayout if you don't care about the existing contents of the image.
+		barrier.oldLayout = oldLayout;
+		barrier.newLayout = newLayout;
+
+		//If you are using the barrier to transfer queue family ownerships, then these two fields should be the indices of the queue families. They must be set to VK_QUEUE_FAMILY_IGNORED
+		//if you don't want to do this, and not the default values.
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+		//The image and subresourceRange specify the image that is affected and the specific part of the image. Our image is not an array and does not have any mipmapping levels, so only one level and layer are specified.
+		barrier.image = image;
+
+		if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+		{
+			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+			if (HasStencilComponent(format))
+			{
+				barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+			}
+		}
+		else
+		{
+			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		}
+
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+
+
+		/*
+			Barriers are primarily used for synchronization purposes, so you must specify which types of operations that involve the resource must happen before the barrier, and
+			which operations that involve the resource must wait on the barrier. We need to do that despite already using vkQueueWaitIdle to manually synchronize.
+
+			There are two transitions that we need to handle in our case:
+			- Undefined -> Transfer Destination: Transfer writes that don't need to wait on anything.
+			- Transfer Destination -> Shader Reading: Shader reads should wait on transfer writes, specifically the shader reads in the fragment shaders, because that's where we're going to use the texture.
+
+			Transfer writes must occur in the pipeline transfer stage. Since the writers don't have to wait on anything, you may specify an empty access mask and the earlist possible pipeline
+			stage VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT for the pre-barrier operations. It should be noted that the VK_PIPELINE_STAGE_TRANSFER_BIT is not a real stage within the graphics
+			and compute pipelines. It is more of a pseudo-stage where transfers happen.
+
+			The image will be written in the same pipeline stage and subsequenmtly read by thge fragment shader, which is why we specify shader reading access in the fragment shader pipeline stage.
+			If we need to do more transitions in the future, then we will extend the function.
+
+			One thing to note is that the command buffer submission results in implicit VK_ACCESS_HOST_WRITE_BIT sychronization in the beginning. Since the TransitionImageLayout function
+			executes a command buffer with only a single command, you could use this implicit synchornization and set srcAccessMask to 0 if you ever need a VK_ACCESS_HOST_WRITE_BIT dependency
+			in a layout transition. Its up tio you if you want to be explicit about it or not, but personally lets not be fans of relying on these OpenGL like "hidden" operations.
+
+			There is actually a special type of image layout that supports all operations, VK_IMAGE_LAYOUT_GENERAL. The problem with it is of course, it doesn't necessarily offer the best
+			performance for any operation. It is required for some special cases, like using an image as both input and output, or for reading an image after it has left the preinitialized layout.
+
+			All of the helper functions that submit commands so far have been set up to execute synchronously by waiting for the queue to become idle. For practical applications
+			it is recommended to combine these operations into a single command buffer and execute them asynchronously for higher throughput, especially the transitions and
+			copy in the CreateTextureImage function.
+		*/
+
+		VkPipelineStageFlags sourceStage;
+		VkPipelineStageFlags destinationStage;
+
+		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+		{
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		{
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
+		//The depth buffer will be read from to perform depth tests to see if a fragment is visible, and will be written to when a new fragment is drawn.
+		//The reading happens in VK_PIPELINE_STAGE_EARLY_FRAGMENTS_TESTS_BIT stage and the writing in the VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT. You should
+		//pick the earliest pipeline stage that matches the specified operations, so that it is ready for usage as depth attachment when it needs to be.
+		else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+		{
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		}
+		else
+		{
+			throw std::invalid_argument("Unsupported Layout Transition.");
+		}
+
+		/*
+			All types of pipeline barriers are submitted using the same function. The first parameter after the command buffer specifies in which pipeline stage the operations occur
+			that should happen before the barrier.
+
+			The second parameter specifies the pipeline stage in which operations will wait on the barrier. The pipeline stages that you are
+			allowed to specify before and after the barrier depend on how you use the resource before and after the barrier. For example, if you're going to read from a uniform after the barrier,
+			you would specify a usage of VK_ACCESS_UNIFORM_READ_BIT and the earliest shader that will read from the uniform as pipeline stage, for example VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT.
+			It would not make sense to specify a non-shader pipeline stage for this type of usage and the validation layers will warn you when you specify a pipeline stage that does not match the type of usage.
+
+			The third parameter is either 0 or VK_DEPENDENCY_BY_REGION_BIT. The latter turns the barrier into a per-region condition. This means that the implementation is allowed to
+			already begin reading from the parts of a resource that were written so far, for example.
+
+			The last three pairs of parameters reference arrays of pipeline barriers of the three avaliable types: memory barriers, buffer memory barriers and image memory barriers like the one we are using.
+			Note that we're not using the VkFormat parameter yet, but we will use that for special transitions in the depth buffer chapter.
+		*/
+		vkCmdPipelineBarrier(commandBuffer,
+			sourceStage, destinationStage,
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &barrier);
+
+		EndSingleTimeCommands(commandBuffer);
+	}
+
+
+
+
+
+
 
 	void CreateDescriptorPool()
 	{
@@ -2022,60 +2290,6 @@ private:
 		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
 	}
 
-	bool HasStencilComponent(VkFormat format)
-	{
-		//Check if the chosen depth format contains a stencil format. 
-		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-	}
-
-	void CreateDepthResources()
-	{
-		/*
-			The problem now is that the fragments of a lower square are drawn over the fragments of a upper square, simply because it comes later in the index array. There are
-			two ways to solve this: 1) Sort all of the draw calls by back to front or 2) Use depth testing with a depth buffer. 
-
-			The first approach is commonly used for drawing transparent objects, because order-independant transparency is a difficult challenge to solve. However, the problem of
-			ordering fragments by depth is much more commonly solved using a depth buffer. A depth buffer is an additional attachment that stores the depth for every position,
-			just like the color attachment stores the color of every position. Everytime the rasterizer produces a fragment, the depth test will check if the new fragment is closer
-			than the previous one. 
-
-			If it isn't, then the new fragment is discarded. A fragment that passes the depth test will write its own depth to the depth buffer. It is possible to manipulate
-			this value from the fragment shader, just like you can manipulate the color output.
-		
-			A depth attachment is based on an image, just like the color attachment. The difference is that the swap chain will not automatically create depth images for us.
-			We only need a single depth image, because only one draw operation is running at once. The depth image will again require the trifecta of resources: image, memory and image view.
-			
-			Creating a depth image is fairly straightforward. It should have the same resolution as the color attachment, defined by the swap chain extent, an image usage
-			appropriate for a depth attachment, optimal tiling and device local memory. The only question is: what is the right format for a depth image? The format must
-			contain a depth component, specified by _D??__ in the VK_FORMAT_.
-
-			Unlike the texture image, we don't necessarily need a specific format, because we won't be directly accessing the texels from the program. It just needs to have a 
-			reasonable accuracy, at least 24 bits is common in real-world applications. There are several formats that fit this requirement:
-
-			- VK_FORMAT_D32_SFLOAT: 32-bit float for depth.
-			- VK_FORMAT_D32_SFLOAT_S8_UINT: 32-bit signed float for depth and 8 bit stencil component.
-			- VK_FORMAT_D24_UNORM_S8_UINT: 24-bit float for depth and 8 bit stencil component.
-
-			We could simply go for VK_FORMAT_D32_SFLOAT, because support for it is extremely common, but its nice to add some extra flexibility to our application where possible.
-			We're going to writer a function FindSupportedFormat that takes a list of candidate formats in order from the most desirable to least desirable, and check which is the
-			first one that is supported.
-		*/
-
-		VkFormat depthFormat = FindDepthFormat(); //Find a depth format.
-
-		CreateImage(m_SwapChainExtent.width, m_SwapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_DepthImage, m_DepthImageMemory);
-
-		m_DepthImageView = CreateImageView(m_DepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-
-		/*
-			Thats it for creating the depth image. We don't need to map it or copy another image to it, because we're going to clear it at the start of the render pass like the color attachment.
-			We don't need to explicitly transition the layout of the image to a depth attachment because we will take care of this in the render pass.
-			Here, the undefined layout can be used as initial layout, because there is no exisiting depth image contents that matter. 
-		*/
-		TransitionImageLayout(m_DepthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-	}
-
 	void CreateFramebuffers()
 	{
 		/*
@@ -2115,218 +2329,6 @@ private:
 				std::cout << "Successfully created Framebuffer." << "\n";
 			}
 		}
-	}
-		
-	void CreateCommandPool()
-	{
-		/*
-			Commands in Vulkan, like drawing operations and memory transfers are not executed directly using function calls. You have to record all of the operations
-			you want to perform in command buffer objects. The advantage of this is that all of the hard work of setting up drawing commands can be done in advance and in multiple
-			threads. After that, you just have to tell Vulkan to execute the commands in the main loop.
-
-			We have to create a command pool before we can create command buffers. Command pools manage the memory that is used to store the buffers and command buffers are allocated from them.
-			Command buffers are executed by submitting them on one of the device queues, like the graphics and presentation queues we've retrieved. Each command pool can only
-			allocate command buffers that are submitted on a single type of queue. We're going to record commands for drawing, which is why we've chosen the graphics queue family.
-			There are two possible flags for command pools:
-			- VK_COMMAND_POOL_CREATE_TRANSIENT_BIT: Hint that command buffers are rerecorded with new commands very often (may change memory allocated behavior).
-			- VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT: Allow command buffers to be rerecorded individually, without this flag they all have to be reset together.
-			We will only record the command buffers at the beginning of the program and then execute them many times in the main loop, so we don't have to use any of these flags.
-		*/
-		QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(m_PhysicalDevice);
-		VkCommandPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		poolInfo.queueFamilyIndex = queueFamilyIndices.m_GraphicsFamily.value();
-		poolInfo.flags = 0;
-
-		if (vkCreateCommandPool(m_Device, &poolInfo, nullptr, &m_CommandPool) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create command pool.");
-		}
-		else
-		{
-			std::cout << "Successfully created Command Pool." << "\n";
-		}
-	}
-
-
-	//Starts a new command buffer.
-	VkCommandBuffer BeginSingleTimeCommands()
-	{
-		/*
-			Memory transfer operations are executed using command buffers, just like drawing commands. Therefore, we must allocate a temporary command buffer. You may
-			wish to create a seperate command pool for these kinds of short-lived buffers, because the implementation may be able to apply memory allocation optimizations.
-			You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case. This indicates that the command buffers allocated from said pool will have short lived (reset/freed in a short timeframe).
-		*/
-		VkCommandBufferAllocateInfo allocationInfo{};
-		allocationInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocationInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; //Primary command buffers can be submitted to a queue for execution, but cannot be called from other command buffers.
-		allocationInfo.commandPool = m_CommandPool;
-		allocationInfo.commandBufferCount = 1;
-
-		VkCommandBuffer commandBuffer;
-		vkAllocateCommandBuffers(m_Device, &allocationInfo, &commandBuffer);
-
-		//We're only going to use the command buffer once and wait with returning from the function until the copy operation has finished executing. Thus, its good practice
-		//to tell the driver about our intent using VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT.
-		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-		return commandBuffer;
-	}
-
-	//Ends and submits a command buffer for execution after recording.
-	void EndSingleTimeCommands(VkCommandBuffer commandBuffer)
-	{
-		vkEndCommandBuffer(commandBuffer);
-
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffer;
-
-		//Execute the command buffer to complete the operation.
-		vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-
-		/*
-			Unlike draw commands, there are no events we need to wait on this in transfer operations. We just want to execute the transfer on the buffers immediately. There are again two
-			possible ways to wait on this transfer to complete. We could use a fence and wait with vkWaitForFences, or simply wait for the transfer queue to become idle with vkQueueWaitIdle.
-			A fence would allow you to schedule multiple transfers simultaneously and wait for all of them to complete, instead of executing one at a time. That may give the driver more opportunities to optimize.
-		*/
-		vkQueueWaitIdle(m_GraphicsQueue);
-
-		//Don't forget to clean up the command buffer used for the transfer operation.
-		vkFreeCommandBuffers(m_Device, m_CommandPool, 1, &commandBuffer);
-	}
-
-	void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
-	{
-		VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
-		/*
-			One of the most common ways to perform layout transitions is using an image memory barrier. A pipeline barrier like that is generally used to synchronize access to resources,
-			like ensuring that a write to a buffer completes before reading from it, but it can also be used to transition image layouts and transfer queue family ownership
-			when VK_SHARING_MODE_EXCLUSIVE (access of the object is limited a single queue) is used. There is an equivalent buffer memory barrier to do this buffers. 
-		*/
-		VkImageMemoryBarrier barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		//The first two fields specify layout transitions. It is possible to use VK_IMAGE_LAYOUT_UNDEFINED as oldLayout if you don't care about the existing contents of the image.
-		barrier.oldLayout = oldLayout;
-		barrier.newLayout = newLayout;
-
-		//If you are using the barrier to transfer queue family ownerships, then these two fields should be the indices of the queue families. They must be set to VK_QUEUE_FAMILY_IGNORED
-		//if you don't want to do this, and not the default values.
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-		//The image and subresourceRange specify the image that is affected and the specific part of the image. Our image is not an array and does not have any mipmapping levels, so only one level and layer are specified.
-		barrier.image = image;
-
-		if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-		{
-			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-			if (HasStencilComponent(format))
-			{
-				barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-			}
-		}
-		else
-		{
-			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		}
-
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = 1;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = 1;
-
-
-		/*
-			Barriers are primarily used for synchronization purposes, so you must specify which types of operations that involve the resource must happen before the barrier, and
-			which operations that involve the resource must wait on the barrier. We need to do that despite already using vkQueueWaitIdle to manually synchronize. 
-
-			There are two transitions that we need to handle in our case:
-			- Undefined -> Transfer Destination: Transfer writes that don't need to wait on anything.
-			- Transfer Destination -> Shader Reading: Shader reads should wait on transfer writes, specifically the shader reads in the fragment shaders, because that's where we're going to use the texture.
-		
-			Transfer writes must occur in the pipeline transfer stage. Since the writers don't have to wait on anything, you may specify an empty access mask and the earlist possible pipeline
-			stage VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT for the pre-barrier operations. It should be noted that the VK_PIPELINE_STAGE_TRANSFER_BIT is not a real stage within the graphics
-			and compute pipelines. It is more of a pseudo-stage where transfers happen.
-
-			The image will be written in the same pipeline stage and subsequenmtly read by thge fragment shader, which is why we specify shader reading access in the fragment shader pipeline stage.
-			If we need to do more transitions in the future, then we will extend the function. 
-
-			One thing to note is that the command buffer submission results in implicit VK_ACCESS_HOST_WRITE_BIT sychronization in the beginning. Since the TransitionImageLayout function
-			executes a command buffer with only a single command, you could use this implicit synchornization and set srcAccessMask to 0 if you ever need a VK_ACCESS_HOST_WRITE_BIT dependency
-			in a layout transition. Its up tio you if you want to be explicit about it or not, but personally lets not be fans of relying on these OpenGL like "hidden" operations.
-
-			There is actually a special type of image layout that supports all operations, VK_IMAGE_LAYOUT_GENERAL. The problem with it is of course, it doesn't necessarily offer the best
-			performance for any operation. It is required for some special cases, like using an image as both input and output, or for reading an image after it has left the preinitialized layout.
-		
-			All of the helper functions that submit commands so far have been set up to execute synchronously by waiting for the queue to become idle. For practical applications 
-			it is recommended to combine these operations into a single command buffer and execute them asynchronously for higher throughput, especially the transitions and
-			copy in the CreateTextureImage function. 
-		*/
-
-		VkPipelineStageFlags sourceStage;
-		VkPipelineStageFlags destinationStage;
-
-		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-		{
-			barrier.srcAccessMask = 0;
-			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		}
-		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-		{
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-			destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-		}
-		//The depth buffer will be read from to perform depth tests to see if a fragment is visible, and will be written to when a new fragment is drawn.
-		//The reading happens in VK_PIPELINE_STAGE_EARLY_FRAGMENTS_TESTS_BIT stage and the writing in the VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT. You should
-		//pick the earliest pipeline stage that matches the specified operations, so that it is ready for usage as depth attachment when it needs to be.
-		else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-		{
-			barrier.srcAccessMask = 0;
-			barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-		}
-		else
-		{
-			throw std::invalid_argument("Unsupported Layout Transition.");
-		}
-
-		/*
-			All types of pipeline barriers are submitted using the same function. The first parameter after the command buffer specifies in which pipeline stage the operations occur
-			that should happen before the barrier.
-			
-			The second parameter specifies the pipeline stage in which operations will wait on the barrier. The pipeline stages that you are
-			allowed to specify before and after the barrier depend on how you use the resource before and after the barrier. For example, if you're going to read from a uniform after the barrier,
-			you would specify a usage of VK_ACCESS_UNIFORM_READ_BIT and the earliest shader that will read from the uniform as pipeline stage, for example VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT.
-			It would not make sense to specify a non-shader pipeline stage for this type of usage and the validation layers will warn you when you specify a pipeline stage that does not match the type of usage.
-		
-			The third parameter is either 0 or VK_DEPENDENCY_BY_REGION_BIT. The latter turns the barrier into a per-region condition. This means that the implementation is allowed to 
-			already begin reading from the parts of a resource that were written so far, for example. 
-
-			The last three pairs of parameters reference arrays of pipeline barriers of the three avaliable types: memory barriers, buffer memory barriers and image memory barriers like the one we are using.
-			Note that we're not using the VkFormat parameter yet, but we will use that for special transitions in the depth buffer chapter.
-		*/
-		vkCmdPipelineBarrier(commandBuffer,
-			sourceStage, destinationStage,
-			0,
-			0, nullptr,
-			0, nullptr,
-			1, &barrier);
-
-		EndSingleTimeCommands(commandBuffer);
 	}
 
 	void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t imageWidth, uint32_t imageHeight)

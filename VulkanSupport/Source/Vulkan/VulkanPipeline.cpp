@@ -5,8 +5,8 @@
 
 namespace Crescent
 {
-	VulkanPipeline::VulkanPipeline(const VkFormat& swapchainImageFormat, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkExtent2D* m_SwapchainExtent) :
-		m_SwapchainImageFormat(swapchainImageFormat), m_PhysicalDevice(physicalDevice), m_LogicalDevice(logicalDevice), m_SwapchainExtent(m_SwapchainExtent)
+	VulkanPipeline::VulkanPipeline(const VkFormat& swapchainImageFormat, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkExtent2D* swapchainExtent, VkDescriptorSetLayout* descriptorSetLayout) :
+		m_SwapchainImageFormat(swapchainImageFormat), m_PhysicalDevice(physicalDevice), m_LogicalDevice(logicalDevice), m_SwapchainExtent(swapchainExtent), m_DescriptorSetLayout(descriptorSetLayout)
 	{
 		CreateRenderPass();
 		CreateGraphicsPipeline();
@@ -175,11 +175,11 @@ namespace Crescent
 
 		if (vkCreateRenderPass(*m_LogicalDevice, &renderPassInfo, nullptr, &m_RenderPass) != VK_SUCCESS)
 		{
-			throw std::runtime_error("Failed to create Render Pass.");
+			throw std::runtime_error("Failed to create Render Pass.\n");
 		}
 		else
 		{
-			std::cout << "Successfully created Render Pass.";
+			std::cout << "Successfully created Render Pass.\n";
 		}
 	}
 
@@ -360,7 +360,7 @@ namespace Crescent
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = 1;
-		pipelineLayoutInfo.pSetLayouts = 0; //We need to specify the descriptor set layout during pipeline creation to tell Vulkan which descriptors the shaders will be using.
+		pipelineLayoutInfo.pSetLayouts = m_DescriptorSetLayout; //We need to specify the descriptor set layout during pipeline creation to tell Vulkan which descriptors the shaders will be using.
 		pipelineLayoutInfo.pushConstantRangeCount = 0; //Optional
 		pipelineLayoutInfo.pPushConstantRanges = nullptr; //Optional. Push Constants are another way of passing dynamic values to shaders.
 
@@ -389,6 +389,7 @@ namespace Crescent
 
 		//Finally, we have our graphics pipeline.
 		VkGraphicsPipelineCreateInfo pipelineCreationInfo{};
+		pipelineCreationInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipelineCreationInfo.pStages = shaderStages;
 		//Then, we start by referencing the array of VkPipelineShaderStageCreateInfo structs.
 		pipelineCreationInfo.stageCount = 2;

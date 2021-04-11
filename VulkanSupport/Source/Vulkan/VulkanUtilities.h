@@ -211,10 +211,10 @@ namespace Crescent
 			/*
 				The typeFilter parameter will be used to specify the bit field of memory types that are suitable. That means that we can find the index of a suitable memory
 				type by simply iterating over them and checking if the corresponding bit is set to 1. However, we're not just interested in a memory type that is suitable
-				for our buffer. We also need to be able to write our data to that memory. The memoryTypes array consists of VkMemoryType structs that specify the 
+				for our buffer. We also need to be able to write our data to that memory. The memoryTypes array consists of VkMemoryType structs that specify the
 				heap and properties of each type of memory. The properties define special features of the memory, like being able to map it so we can write to it from the CPU.
 				This property is indicated with VK_MEMORY_HOST_VISIBLE_BIT, but we also need to use the VK_MEMORY_PROPERTY_HOST_COHERENT_BIT property. We will see why when we map the memory.
-				
+
 				We may have more than one desirable property, so we should check if the result of the bitwise AND is not just non-zero, but also equal to the desired properties bit field.
 				If there is a memory type suitable for the buffer that also has all the properties we need, then return its index. Otherwise, we throw an exception.
 			*/
@@ -332,5 +332,66 @@ namespace Crescent
 			then it is required to be divisible by memoryRequirements.alignment.
 		*/
 		vkBindBufferMemory(logicalDevice, buffer, bufferMemory, 0);
+	}
+
+	//Starts a new command buffer.
+	static VkCommandBuffer BeginSingleTimeCommands(const VkDevice& logicalDevice, const VkCommandPool& commandPool)
+	{
+		/*
+			Memory transfer operations are executed using command buffers, just like drawing commands. Therefore, we must allocate a temporary command buffer. You may wish
+			to create a seperate command pool for these kinds of short-lived buffers, because the implementation may then be able to apply memory allocation optimizations.
+			You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case. This indicates that the command buffers allocated from said pool
+			will be short lived (reset/freed in a short timeframe).
+		*/
+		VkCommandBufferAllocateInfo commandBufferInfo{};
+		commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; //Primary command buffers can be submitted to a queue for execution, but cannot be called from other command buffers.
+		commandBufferInfo.commandPool = commandPool;
+		commandBufferInfo.commandBufferCount = 1;
+
+		VkCommandBuffer commandBuffer;
+		vkAllocateCommandBuffers(logicalDevice, &commandBufferInfo, &commandBuffer);
+
+		/*
+			We're only going to use the command buffer once and wait with returning from the function until the copy operation has finished executing. Thus, its good practice
+			to tell the driver about our intent using VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT.
+		*/
+		VkCommandBufferBeginInfo commandBufferBeginInfo{};
+		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo); //Begin recording of a command buffer.
+
+		return commandBuffer;
+	}
+
+	//Ends and submits a command buffer for execution aftrer recording.
+	static void EndSingleTimeCommands(VkCommandBuffer commandBuffer, const VkCommandPool& commandPool, const VkDevice& logicalDevice, const VkQueue& queue)
+	{
+		vkEndCommandBuffer(commandBuffer);
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+
+		//Execute the command buffer to complete the operation.
+		vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+
+		/*
+			Unlike drawing commands, there are no events we need to wait on in transfer operations. We just want to execute the transfers on the buffers immediately. There are
+			again two possible ways to wait on this transfer to complete. We could use a fence and wait with vkWaitForFences, or simply wait for the transfer queue to become idle
+			with vkQueueWaitIdle. A fence would allow you to schedule multiple transfers simultaneously and wait for all of them to complete, instead of executing one at a time.
+			That may give the driver more opportunities to optimize. 
+		*/
+		vkQueueWaitIdle(queue);
+
+		//Don't forget to clean up the command buffer used for the transfer operation.
+		vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
+	}
+
+	static bool HasStencilComponent(VkFormat format)
+	{
+		//Check if the chosen depth format contains a stencil format.
+		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 	}
 }

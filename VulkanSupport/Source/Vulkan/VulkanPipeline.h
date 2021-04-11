@@ -6,7 +6,7 @@ namespace Crescent
 	class VulkanPipeline
 	{
 	public:
-		VulkanPipeline(const VkFormat& swapchainImageFormat, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkExtent2D* m_SwapchainExtent);
+		VulkanPipeline(const VkFormat& swapchainImageFormat, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkExtent2D* swapchainExtent, VkDescriptorSetLayout* descriptorSetLayout);
 		void DestroyPipelineInstance();
 
 	private:
@@ -18,6 +18,7 @@ namespace Crescent
 		VkPipeline m_Pipeline;
 		VkPipelineLayout m_PipelineLayout;
 
+		VkDescriptorSetLayout* m_DescriptorSetLayout;
 		VkExtent2D* m_SwapchainExtent;
 		VkFormat m_SwapchainImageFormat;
 		VkPhysicalDevice* m_PhysicalDevice;

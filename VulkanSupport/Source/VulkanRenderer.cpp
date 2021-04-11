@@ -21,8 +21,10 @@ namespace Crescent
 		CreatePresentationSurface();
 		m_Devices = std::make_shared<VulkanDevice>(&m_VulkanInstance, &m_Surface);
 		m_Swapchain = std::make_shared<VulkanSwapchain>(m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), &m_Surface, m_Window->RetrieveWindow());
-		
-		m_Pipeline = std::make_shared<VulkanPipeline>(m_Swapchain->RetrieveSwapchainImageFormat(), m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Swapchain->RetrieveSwapchainExtent());
+		m_DescriptorLayout = std::make_shared<VulkanDescriptorLayout>(m_Devices->RetrieveLogicalDevice());
+		m_Pipeline = std::make_shared<VulkanPipeline>(m_Swapchain->RetrieveSwapchainImageFormat(), m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Swapchain->RetrieveSwapchainExtent(), m_DescriptorLayout->RetrieveDescriptorSetLayout());
+		m_CommandPool = std::make_shared<VulkanCommandPool>(m_Devices->RetrieveLogicalDevice(), m_Devices->RetrievePhysicalDevice(), &m_Surface);
+		m_Swapchain->CreateDepthBufferResources(m_CommandPool->RetrieveCommandPool(), m_Devices->RetrieveGraphicsQueue());
 	}
 
 	VulkanRenderer::~VulkanRenderer()
@@ -167,6 +169,8 @@ namespace Crescent
 		//This is where we destroy the Vulkan instance. For now, rather then leaving them to the destructors, we will do them manually.
 		m_Pipeline->DestroyPipelineInstance();
 		m_Swapchain->DestroySwapchainInstance();
+		m_DescriptorLayout->DestroyDescriptorLayoutInstance();
+		m_CommandPool->DestroyCommandPoolInstance();
 		m_Devices->DestroyDeviceInstances();
 		vkDestroySurfaceKHR(m_VulkanInstance, m_Surface, nullptr);
 		m_DebugMessenger->DestroyDebugInstance();

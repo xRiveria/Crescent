@@ -13,6 +13,8 @@ namespace Crescent
 		VulkanSwapchain(VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkSurfaceKHR* presentationSurface, GLFWwindow* window);
 		void DestroySwapchainInstance();
 
+		void CreateDepthBufferResources(VkCommandPool* commandPool, VkQueue* queue);
+		void CreateFramebuffers();
 		VkFormat RetrieveSwapchainImageFormat() const { return m_SwapchainFormat; }
 		VkExtent2D* RetrieveSwapchainExtent() { return &m_SwapchainExtent; }
 
@@ -28,6 +30,7 @@ namespace Crescent
 		VkFormat m_SwapchainFormat;
 		VkExtent2D m_SwapchainExtent;
 		std::vector<std::shared_ptr<VulkanTexture>> m_SwapchainTextures;
+		std::shared_ptr<VulkanTexture> m_DepthTexture = nullptr;
 		
 		GLFWwindow* m_Window;
 		VkSurfaceKHR* m_Surface;

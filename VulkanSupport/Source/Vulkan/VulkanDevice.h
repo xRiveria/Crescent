@@ -19,8 +19,6 @@ namespace Crescent
 		uint32_t m_APIVersion;
 	};
 
-	
-
 	class VulkanDevice
 	{
 	public:
@@ -29,6 +27,8 @@ namespace Crescent
 
 		VkDevice* RetrieveLogicalDevice() { return &m_LogicalDevice; }
 		VkPhysicalDevice* RetrievePhysicalDevice() { return &m_PhysicalDevice; }
+		VkQueue* RetrieveGraphicsQueue() { return &m_GraphicsQueue; }
+		VkQueue* RetrievePresentationQueue() { return &m_PresentationQueue; }
 
 	private:
 		std::vector<VkPhysicalDevice> GatherPhysicalDevices();
