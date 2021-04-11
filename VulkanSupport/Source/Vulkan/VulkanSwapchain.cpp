@@ -13,6 +13,13 @@ namespace Crescent
 
 	void VulkanSwapchain::DestroySwapchainInstance()
 	{
+		m_DepthTexture->DeleteTextureInstance();
+
+		for (size_t i = 0; i < m_SwapchainTextures.size(); i++)
+		{
+			vkDestroyFramebuffer(*m_LogicalDevice, m_SwapchainFramebuffers[i], nullptr);
+		}
+
 		for (int i = 0; i < m_SwapchainTextures.size(); i++)
 		{
 			m_SwapchainTextures[i]->DeleteTextureInstance();
@@ -245,7 +252,7 @@ namespace Crescent
 		for (int i = 0; i < swapchainImages.size(); i++)
 		{
 			//Our swapchain textures will be used as color attachments.
-			m_SwapchainTextures.push_back(std::make_shared<VulkanTexture>(m_LogicalDevice, swapchainImages[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT));
+			m_SwapchainTextures.push_back(std::make_shared<VulkanTexture>(m_LogicalDevice, m_PhysicalDevice, swapchainImages[i], surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT));
 		}
 
 		//Store the format and swap extent for future uses.
@@ -297,7 +304,44 @@ namespace Crescent
 		m_DepthTexture->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, *commandPool, *queue);
 	}
 
-	void VulkanSwapchain::CreateFramebuffers()
+	void VulkanSwapchain::CreateFramebuffers(VkRenderPass* renderPass)
 	{
+		/*
+			We have set up the render pass to expect a single framebuffer with the same format as the swapchain images, but we haven't created any yet. The attachments specified 
+			during render pass creation are bound by wrapping them into a VkFramebuffer object. A framebuffer object references all of the VkImageView objects that represent 
+			the attachments. In our case, there will only be a single one: the color attachment. However, the image that we have to use for the attachment depends on which 
+			image the swapchain returns when we retrieve one for presentation. That means that we have to create a framebuffer for all of the images in the swapchain and use the 
+			one that corresponds to the retrieved image at drawing time.
+		*/
+		m_SwapchainFramebuffers.resize(m_SwapchainTextures.size());
+		/*
+			We will then interate through the image views and create framebuffers from them. As seen, the creation of framebuffers is quite straightforward. We first need to specify 
+			which renderpass the framebuffer needs to be compatible with. You only use a framebuffer with the render passes that it is compatible with, which roughly means that 
+			they use the same number and type of attachments. The attachmentCount and pAttachments parameters specify the VkImageView objects that should be bound to the respective 
+			attachment descriptions in the renderpass pAttachments array. The width and height parameters are self explainatory and layers refer to the number of layers in image arrays.
+			Our swapchain images are single images, so the number of layers is 1.
+		*/
+		for (size_t i = 0; i < m_SwapchainTextures.size(); i++)
+		{
+			std::array<VkImageView, 2> attachments = { *m_SwapchainTextures[i]->RetrieveTextureView(), *m_DepthTexture->RetrieveTextureView() };
+			
+			VkFramebufferCreateInfo framebufferInfo{};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferInfo.renderPass = *renderPass; //Tells the framebuffer about its attachment usage.
+			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+			framebufferInfo.pAttachments = attachments.data();
+			framebufferInfo.width = m_SwapchainExtent.width;
+			framebufferInfo.height = m_SwapchainExtent.height;
+			framebufferInfo.layers = 1;
+
+			if (vkCreateFramebuffer(*m_LogicalDevice, &framebufferInfo, nullptr, &m_SwapchainFramebuffers[i]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("Failed to create Framebuffer.\n");
+			}
+			else
+			{
+				std::cout << "Successfully created Framebuffer.\n";
+			}
+		}
 	}
 }

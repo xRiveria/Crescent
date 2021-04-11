@@ -14,7 +14,8 @@ namespace Crescent
 		void DestroySwapchainInstance();
 
 		void CreateDepthBufferResources(VkCommandPool* commandPool, VkQueue* queue);
-		void CreateFramebuffers();
+		void CreateFramebuffers(VkRenderPass* renderPass);
+
 		VkFormat RetrieveSwapchainImageFormat() const { return m_SwapchainFormat; }
 		VkExtent2D* RetrieveSwapchainExtent() { return &m_SwapchainExtent; }
 
@@ -30,6 +31,7 @@ namespace Crescent
 		VkFormat m_SwapchainFormat;
 		VkExtent2D m_SwapchainExtent;
 		std::vector<std::shared_ptr<VulkanTexture>> m_SwapchainTextures;
+		std::vector<VkFramebuffer> m_SwapchainFramebuffers;
 		std::shared_ptr<VulkanTexture> m_DepthTexture = nullptr;
 		
 		GLFWwindow* m_Window;

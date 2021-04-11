@@ -51,6 +51,9 @@
     <ClCompile Include="Source\Vulkan\VulkanCommandPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Vulkan\VulkanResource.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Fragment.shader" />
@@ -97,6 +100,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Vulkan\VulkanCommandPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Vulkan\VulkanResource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

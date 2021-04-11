@@ -23,7 +23,7 @@ namespace Crescent
 	{
 		/*
 			When a GPU renders a scene, it is comfigured with one or more render targets, or framebuffer attachments in Khronos terminology. The size and format of the
-			attachment determine how graphics work is configured across the parallelism avaliable on all modern GPUs. Fore xample, on a tile-based renderer, the set of
+			attachment determine how graphics work is configured across the parallelism avaliable on all modern GPUs. Fore example, on a tile-based renderer, the set of
 			attachments is used to determine the way the image is divided into tiles. In Vulkan, a render pass is the set of attachments, the way they are used and
 			the rendering work that is performed using them. In a traditional API, a change to a new render pass might correspond to binding a new framebuffer.
 

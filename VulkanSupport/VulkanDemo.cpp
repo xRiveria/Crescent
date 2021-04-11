@@ -22,7 +22,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/hash.hpp>s
+#include <glm/gtx/hash.hpp>
 #include <array>
 #include <chrono>
 #define STB_IMAGE_IMPLEMENTATION
@@ -214,10 +214,8 @@ private:
 		CreateDescriptorSetLayout();
 		CreateGraphicsPipeline();
 		CreateCommandPool();
-
 		CreateDepthResources();
 		CreateFramebuffers();
-
 		CreateTextureImage();
 		CreateTextureImageView();
 		CreateTextureSampler();
@@ -2014,6 +2012,321 @@ private:
 		EndSingleTimeCommands(commandBuffer);
 	}
 
+	void CreateFramebuffers()
+	{
+		/*
+			We've set up the render pass to expect a single framebuffer with the same format as the swap chain images, but we haven't actually created any yet.
+			The attachments specified during render pass creation are bound by wrapping them into a VkFramebuffer object. A framebuffer object references all of the
+			VkImageView objects that represent the attachments. In our case, there will only be a single one: the color attachment. However, the image that we have to use for
+			the attachment depends on which image the swapchain returns when we retrieve one for presentation. That means that we have to create a framebuffer for all of the images
+			in the swapchaim and use the one that corresponds to the retrieved image at drawing time.
+		*/
+		m_SwapChainFramebuffers.resize(m_SwapChainImageViews.size());
+		//We will then iterate through the image views and create framebuffers from them.
+
+		/*
+			As seen, the creation of framebuffers is quite straigtforward. We first need to specify with which renderPass the framebuffer needs to be compatible. You only
+			use a framebuffer with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
+			The attachmentCount and pAttachments parameters specify the VkImageView objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
+			The width and height parameters are self explainatory and layers refer to the number of layers in image arrays. Our swap chain images are single images, so the number of layers is 1.
+		*/
+		for (size_t i = 0; i < m_SwapChainImageViews.size(); i++)
+		{
+			std::array<VkImageView, 2> attachments = { m_SwapChainImageViews[i], m_DepthImageView }; //The color attachment can be different for every swapchain image, but the same depth image can be used byt all of them because only a single subp[ass is running at the same time due to our semaphores.
+			VkFramebufferCreateInfo framebufferInfo{};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferInfo.renderPass = m_RenderPass;
+			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+			framebufferInfo.pAttachments = attachments.data();
+			framebufferInfo.width = m_SwapChainExtent.width;
+			framebufferInfo.height = m_SwapChainExtent.height;
+			framebufferInfo.layers = 1;
+
+			if (vkCreateFramebuffer(m_Device, &framebufferInfo, nullptr, &m_SwapChainFramebuffers[i]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("Failed to create framebuffer.");
+			}
+			else
+			{
+				std::cout << "Successfully created Framebuffer." << "\n";
+			}
+		}
+	}
+
+	void CreateTextureImage()
+	{
+		/*
+			The stbi_load function takes the file path and number of channels to load as arguments. The STBI_rgb_alpha value forces the image to be loaded with an alpha channel,
+			even if it doesn't have one, which is nice for consistency with other textures in the future. The middle three parameters are outputs for the width, height and
+			actual number of channels in the image. The pointer that is returned is the first element in an array of pixel values. The pixels are laid out row by row
+			with 4 bytes per pixel in the case of STBI_rgb_alpha for a total of textureWidth * textureHeight * 4 values.
+		*/
+		int textureWidth, textureHeight, textureChannels;
+		stbi_uc* pixels = stbi_load(m_ModelTexturePath.c_str(), &textureWidth, &textureHeight, &textureChannels, STBI_rgb_alpha);
+		VkDeviceSize imageSize = textureWidth * textureHeight * 4;
+
+		if (!pixels)
+		{
+			throw std::runtime_error("Failed to load texture image.");
+		}
+
+		//We're going to create a buffer in host visible memory so that we can use vkMapMemory and copy the pixels to it.
+		//This buffer should not only be in host visible memory but also be able to be used as a transfer source so we can copy it to an image eventually.
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+		//We can then directly copy the pixel values that we got from the image loading library to the buffer.
+		void* data;
+		vkMapMemory(m_Device, stagingBufferMemory, 0, imageSize, 0, &data);
+		memcpy(data, pixels, static_cast<size_t>(imageSize));
+		vkUnmapMemory(m_Device, stagingBufferMemory);
+
+		//Clean up the original pixel array once mapped.
+		stbi_image_free(pixels);
+
+		//Creates the texture image here. 4 component, 32-bit unsigned normalized format that has 8 bit per component. 
+		CreateImage(textureWidth, textureHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			m_TextureImage, m_TextureImageMemory);
+
+		/*
+			Now, we are going to copy the staging buffer in host visible memory to the texture image. This involves two steps:
+			1) Transitioning the texture image to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL.
+			2) Execute the buffer to image operation.
+			The image was created with the VK_IMAGE_UNDEFINED layout, so that one should be specified as the old layout when transitioning m_TextureImage. Remember that we can do this because
+			we don't care about its contents perior to the copy operation.
+		*/
+		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		CopyBufferToImage(stagingBuffer, m_TextureImage, static_cast<uint32_t>(textureWidth), static_cast<uint32_t>(textureHeight));
+
+		//To be able to start sampling from the image texture in the shader, we need one last transition to prepare it for shader access.
+		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
+		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
+	}
+
+	void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t imageWidth, uint32_t imageHeight)
+	{
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+		//Just like with buffer copies, you need to specify which part of the buffer is going to be copied to which part of the image, done through VkBufferImageCopy structs.
+		VkBufferImageCopy region{};
+		region.bufferOffset = 0; //Byte offset in the buffer at which the pixel values start. 
+		//Specifies how the pixels are laid out in memory. For example, you could have some padding bytes between rows of the image. 
+		//Specifying 0 for both indicates that the pixels are simply tightly packed like they are in our case. 
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+
+		//The imageSubresource, imageOffset and imageExrtent fields indicate to which part of the image we want to copy our pixels. In this case, we are copying to the entire image.
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+
+		region.imageOffset = { 0, 0, 0 };
+		region.imageExtent = { imageWidth, imageHeight, 1 }; //XYZ. 
+
+		/*
+			Buffer top image copy operations are enqueued using the vkCmdCopyBufferToImage function.
+			The fourth parameter indicates which layout the image is currently using. We are assuming here that the image has already been transitioned to the layout that is optimal for
+			copying pixels to. Right now, we're only copying one chunk of pixels to the whole image, but its possible to specify an array of VkBufferImageCopy to perform many different copies
+			from this buffer to the image in one operation.
+		*/
+		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+		EndSingleTimeCommands(commandBuffer);
+	}
+
+	void CreateTextureSampler()
+	{
+		/*
+			It is possible for shaders to read texels directly from images, but it is not very common when they are used as textures. Textures are usually accessed through
+			samplers, which will apply filtering and transformations to compute the final color that is retrieved. These filters are helpful to deal with problems like
+			oversampling. Consider a texture that is mapped to geometry with more fragments than texels. If you simply took the closest texel for the texture coordinate in each
+			fragment, you would get quite a Minecraft styled pixelized image.
+
+			However, if you combine the 4 closest texels through linear interpolation, then you would get a smoother result. Of course, your application may have art style
+			requirements that fit the pixelized style more, the clearer one is more preferred in conventional graphics application.
+
+			Undersampling is the opposite problem, where you have more texels than fragments. This will lead to artifacts when sampling high frequency patterns like a checkerboard
+			texture at a sharp angle. Without anisotropic filtering, the textures turns into a blurry mess in the distance. With anisotropic filtering, however, it is applied
+			automatically by a sampler.
+
+			Aside from these filters, a sampler can also take care of transformations. It determines what happens when you try to read texels outside the image through
+			its addressing mode: Repeat, Mirrored Repeat, Clamp to Edge and Clamp to Border.
+
+			Samplers are configured through a VkSamplerCreateInfo structure, which specifies all filters and transformations that is should apply.
+		*/
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		/*
+			The magFilter and minFilter field specify how to interpolate texels that are magnified or minified. Magnification concerns the oversampling problems
+			described above, minification concerns undersampling. The choices are VK_FILTER_NEAREST and VK_FILTER_LINEAR, corresponding to the modes demonstrated in the images above.
+		*/
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		/*
+			The addressing mode can be specified per axis using the addressMode fields. The avaliable values are listed below. Note that the axes are called U, V and W
+			instead of X, Y and Z. This is a convention for textgure space coordinates:
+
+			- VK_SAMPLER_ADDRESS_MODE_REPEAT: Repeat the texture when going beyond the image dimensions.
+			- VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT: Like repeat, but inverts the coordinates to mirror the image when going beyond the dimensions.
+			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE: Take the color of the edge closest to the coordinate beyond the image dimensions.
+			- VK_SAMPLER_ADDRESS_MIRROR_CLAMP_TO_EDGE: Like clamp to edge, but instead uses the edge opposite to the closest edge.
+			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER: Return a solid color when sampling beyond the dimensions of the image.
+
+			It doesn't really matter which addressing mode we use here, because we're not going to sample outside the image in their tutorial. However, the repeat mode
+			is probably the most common mode, because it can be used to tile textures like floors and walls.
+		*/
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		/*
+			These two fields specify if anisotropic filtering should be used. There is no reason not to use this unless performance is a concern. The maxAnisotropy field
+			limits the amount of texel samples that can be used to calculate the final color. A lower value results in better performance, but lower quality results. To figure out
+			which value we can use, we need to retrieve the properties of the physical device like so:
+		*/
+		samplerInfo.anisotropyEnable = VK_TRUE; //We can enforce the avaliability of anisotropic filtering, its also possible to simply not use it by conditionally setting anistropyEnable = VK_FALSE.
+		samplerInfo.maxAnisotropy = 5;
+
+		VkPhysicalDeviceProperties properties{};
+		vkGetPhysicalDeviceProperties(m_PhysicalDevice, &properties);
+		/*
+			If you look at the documentation for the VkPhysicalDeviceProperties struct, you will see that it contains a VkPhysicalDeviceLimits member named limits. This
+			struct in turn has a member called maxSamplerAnisotropy and this is the maximum value we can samplke for maxAnisotropy. If we want to go for maximum quality,
+			we can simply use that value directly.
+
+			You can either query the properties at the beginning of your program and pass them around to the functions that need them, or query them in the CreateTextureSampler
+			function itself.
+		*/
+		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+		/*
+			The borderColor field specifies which color is returned when sampling beyond the image with clamp to border addressing mode. It is possible to return black, white
+			or transparent in either float or int formats. You cannot specify an arbitrary color.
+		*/
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		/*
+			The unnormalizedCoordinates field specifies which coordinate system you want to use to address texels in an image. If this field is VK_TRUE, then you can
+			simply use coordinates within the [0, textureWidth] and [0, textureHeight] range. If it is VK_FALSE, then the texels are addressed using the [0, 1] range on
+			all axes. Real-world applications almost always use normalized coordinates, because then its possible to use textures of varying resolutions wuith the exact
+			same coordinates.
+		*/
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		/*
+			If a comparison function is enabled, then texels will first be compared to a value, and the result of that comparison is used in filtering operations. This is mainly used for
+			percentage closer filtering on shadow maps. We will look at this in a future chapter.
+		*/
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+		//All of these fields apply to mipmapping. We will look at mipmapping in a later chapter, but basically its another type of filter that can be applied. 
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+
+		//The functioning of the sampler is now fully defined. Add a class member to hold the handle of the sampler object and create the sampler with vkCreateSampler.
+		//Note that the sampler does not reference a VkImage anywhere. The sampler is a distinct object that provides an interface to extract colors from a texture.
+		//It can be applied to any image you want, whether it is 1D, 2D or 3D. This is different from many older APIs, which combineds texture images and filtering into a single state.
+		if (vkCreateSampler(m_Device, &samplerInfo, nullptr, &m_TextureSampler) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create texture sampler.");
+		}
+	}
+
+	void LoadModel()
+	{
+		/*
+			A model is loaded into the library's data structures by calling the tinyobj::LoadObj function. An OBJ file consists of positions, normals, texture coordinates and faces.
+			Faces consist of an arbitrary amount of vertices, where each vertex refer to a position, normal and/or texture coordinate by index. This makes it possible to not
+			just reuse wentire vertices, but also individual attributes.
+
+			The tinyobj::attrib_t container holds all of the positions, normals and texture coordinates in its attrib.vertices. The shape_t container contains all of the
+			seperate objects and their faces. Each face consists of an array of vertices, and each vertex contains the indices of the position, normal and texture coordinate attributes.
+			OBJ models can also define a material and texture per face, but we will be ignoring this.
+
+			The error string contains errors and the warn string contains warnings that occur while loading the file, like a missing material definition. Loading only really
+			fail if the LoadObj function returns false. As mentioned above, faces in OBJ files actually contain an arbitrary number of vertices, whereas our application
+			can only render triangles. Luckily, the LoadObj has an optional parameter to automatically triangulate such faces, which is enabled by default.
+		*/
+		tinyobj::attrib_t modelAttributes;
+		std::vector<tinyobj::shape_t> modelShapes;
+		std::vector<tinyobj::material_t> modelMaterials;
+		std::string warning, error;
+
+		if (!tinyobj::LoadObj(&modelAttributes, &modelShapes, &modelMaterials, &warning, &error, m_ModelPath.c_str()))
+		{
+			throw std::runtime_error(warning + error);
+		}
+
+		std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+		//We're going to combine all of the faces into the file into a single mode, so just iterate over all of the shapes.
+		for (const tinyobj::shape_t& shape : modelShapes)
+		{
+			//The triangulation feature has already made sure that there are 3 vertices per faces, so we can now directly iterate over the vertices and dump them straight into our vertices vector.
+			for (const tinyobj::index_t& index : shape.mesh.indices)
+			{
+				Vertex vertex{};
+				/*
+					For simplicity, we will assume that every vertex is unique for now, hence the simple auto-increment indices. The index variable is of type
+					tinyobj::index_t, which contains the vertex_index, normal_index and texcoord_index members. We need to use these indices to look up the actual vertex
+					attributes in the attrib arays.
+
+					Unfortunately, the modelAttributes.vertices array is an array of float values instead of something like glm::vec3, so you need to multiply the index of 3.
+					Similarly, there are two texture coordinate components per entry. The offsets of 0, 1 and 2 are used to access the X, Y and Z components, or the U and V components in the case of texture coordinates.
+				*/
+
+				vertex.m_Position =
+				{
+					modelAttributes.vertices[3 * index.vertex_index + 0], //Vertex X
+					modelAttributes.vertices[3 * index.vertex_index + 1], //Vertex Y
+					modelAttributes.vertices[3 * index.vertex_index + 2]  //Vertex Z
+				};
+
+				/*
+					Great, the geometry looks correct, but the texture might look wrong. The OBJ format assumes a coordinate system where a vertical coordinate of 0 means
+					the bottom of the image, however we've uploaded our image into Vulkan in a top to bottom orientation where 0 means the top of the image. Solve this by
+					flipping the vertical component of the texture coordinates.
+				*/
+				vertex.m_TexCoord =
+				{
+					modelAttributes.texcoords[2 * index.texcoord_index + 0], //U 
+					1.0f - modelAttributes.texcoords[2 * index.texcoord_index + 1] //V
+				};
+
+				/*
+					Unfortunately, we're not really taking advantage of the index buffer yet. THe vertices vector contains a lot of duplicated vertex data, because many
+					vertices are included in multiple triangles. We should only keep the unique vertices and use the index buffer to reuse them whenever they come up.
+
+					A straightforward way to implement this is to use a map or unordered map to keep track of the unique vertices and respective indices:
+
+					This means that every time we read a vertex from the OBJ file, we check if we have already seen a vertex with the exact same position and texture coordinates
+					before. If not, we add it to m_Vertices and store its index in the uniqueVertices container. After that, we add the index of the new vertex to m_Indices.
+					If we've seen the exact same vertex before, then we look up its index in uniqueVertices and store that index in m_Indices.
+
+					The program will fail to compile as using a user-defined type like our Vertex struct as a key in a hash table requires us to implement two functions:
+					equality test and hash calculation. The former is easy to do so by overriding the == operator in the Vertex struct. You can see their implementation
+					at the start of the application.
+
+					Once done, you will see that we sucessfully shrink the program from 1,500,000 to 265,645.
+				*/
+
+				vertex.m_Color = { 1.0f, 1.0f, 1.0f };
+
+				//Seaches the container for elements whose key is the parameter and returns the number of elements found. 
+				//Bwecause unordered_map containers do not allow for duplicated keys, this means that the function actually returns 1 if an element with that key exists, and zero otherwise.
+				if (uniqueVertices.count(vertex) == 0) //If the vertex does not yet exist in our map, aka it is unique.
+				{
+					uniqueVertices[vertex] = static_cast<uint32_t>(m_Vertices.size()); //This size will always be equal to the current total number of vertices following this loop that increments it at the end of the function.
+					m_Vertices.push_back(vertex);
+				}
+
+				m_Indices.push_back(uniqueVertices[vertex]); //We store the index of the vertex in m_Indices.
+			}
+		}
+	}
+
+
 
 
 
@@ -2139,229 +2452,6 @@ private:
 		}
 	}
 
-
-	void CreateTextureSampler()
-	{
-		/*
-			It is possible for shaders to read texels directly from images, but it is not very common when they are used as textures. Textures are usually accessed through
-			samplers, which will apply filtering and transformations to compute the final color that is retrieved. These filters are helpful to deal with problems like
-			oversampling. Consider a texture that is mapped to geometry with more fragments than texels. If you simply took the closest texel for the texture coordinate in each
-			fragment, you would get quite a Minecraft styled pixelized image.
-
-			However, if you combine the 4 closest texels through linear interpolation, then you would get a smoother result. Of course, your application may have art style
-			requirements that fit the pixelized style more, the clearer one is more preferred in conventional graphics application.
-
-			Undersampling is the opposite problem, where you have more texels than fragments. This will lead to artifacts when sampling high frequency patterns like a checkerboard
-			texture at a sharp angle. Without anisotropic filtering, the textures turns into a blurry mess in the distance. With anisotropic filtering, however, it is applied
-			automatically by a sampler.
-
-			Aside from these filters, a sampler can also take care of transformations. It determines what happens when you try to read texels outside the image through
-			its addressing mode: Repeat, Mirrored Repeat, Clamp to Edge and Clamp to Border.
-
-			Samplers are configured through a VkSamplerCreateInfo structure, which specifies all filters and transformations that is should apply.
-		*/
-		VkSamplerCreateInfo samplerInfo{};
-		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		/*
-			The magFilter and minFilter field specify how to interpolate texels that are magnified or minified. Magnification concerns the oversampling problems
-			described above, minification concerns undersampling. The choices are VK_FILTER_NEAREST and VK_FILTER_LINEAR, corresponding to the modes demonstrated in the images above.
-		*/
-		samplerInfo.magFilter = VK_FILTER_LINEAR;
-		samplerInfo.minFilter = VK_FILTER_LINEAR;
-		/*
-			The addressing mode can be specified per axis using the addressMode fields. The avaliable values are listed below. Note that the axes are called U, V and W
-			instead of X, Y and Z. This is a convention for textgure space coordinates:
-
-			- VK_SAMPLER_ADDRESS_MODE_REPEAT: Repeat the texture when going beyond the image dimensions.
-			- VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT: Like repeat, but inverts the coordinates to mirror the image when going beyond the dimensions.
-			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE: Take the color of the edge closest to the coordinate beyond the image dimensions.
-			- VK_SAMPLER_ADDRESS_MIRROR_CLAMP_TO_EDGE: Like clamp to edge, but instead uses the edge opposite to the closest edge.
-			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER: Return a solid color when sampling beyond the dimensions of the image.
-
-			It doesn't really matter which addressing mode we use here, because we're not going to sample outside the image in their tutorial. However, the repeat mode
-			is probably the most common mode, because it can be used to tile textures like floors and walls.
-		*/
-		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		/*
-			These two fields specify if anisotropic filtering should be used. There is no reason not to use this unless performance is a concern. The maxAnisotropy field
-			limits the amount of texel samples that can be used to calculate the final color. A lower value results in better performance, but lower quality results. To figure out
-			which value we can use, we need to retrieve the properties of the physical device like so:
-		*/
-		samplerInfo.anisotropyEnable = VK_TRUE; //We can enforce the avaliability of anisotropic filtering, its also possible to simply not use it by conditionally setting anistropyEnable = VK_FALSE.
-		samplerInfo.maxAnisotropy = 5;
-
-		VkPhysicalDeviceProperties properties{};
-		vkGetPhysicalDeviceProperties(m_PhysicalDevice, &properties);
-		/*
-			If you look at the documentation for the VkPhysicalDeviceProperties struct, you will see that it contains a VkPhysicalDeviceLimits member named limits. This
-			struct in turn has a member called maxSamplerAnisotropy and this is the maximum value we can samplke for maxAnisotropy. If we want to go for maximum quality,
-			we can simply use that value directly.
-
-			You can either query the properties at the beginning of your program and pass them around to the functions that need them, or query them in the CreateTextureSampler
-			function itself.
-		*/
-		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-		/*
-			The borderColor field specifies which color is returned when sampling beyond the image with clamp to border addressing mode. It is possible to return black, white
-			or transparent in either float or int formats. You cannot specify an arbitrary color.
-		*/
-		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-		/*
-			The unnormalizedCoordinates field specifies which coordinate system you want to use to address texels in an image. If this field is VK_TRUE, then you can
-			simply use coordinates within the [0, textureWidth] and [0, textureHeight] range. If it is VK_FALSE, then the texels are addressed using the [0, 1] range on
-			all axes. Real-world applications almost always use normalized coordinates, because then its possible to use textures of varying resolutions wuith the exact
-			same coordinates.
-		*/
-		samplerInfo.unnormalizedCoordinates = VK_FALSE;
-		/*
-			If a comparison function is enabled, then texels will first be compared to a value, and the result of that comparison is used in filtering operations. This is mainly used for
-			percentage closer filtering on shadow maps. We will look at this in a future chapter.
-		*/
-		samplerInfo.compareEnable = VK_FALSE;
-		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-		//All of these fields apply to mipmapping. We will look at mipmapping in a later chapter, but basically its another type of filter that can be applied. 
-		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerInfo.mipLodBias = 0.0f;
-		samplerInfo.minLod = 0.0f;
-		samplerInfo.maxLod = 0.0f;
-
-		//The functioning of the sampler is now fully defined. Add a class member to hold the handle of the sampler object and create the sampler with vkCreateSampler.
-		//Note that the sampler does not reference a VkImage anywhere. The sampler is a distinct object that provides an interface to extract colors from a texture.
-		//It can be applied to any image you want, whether it is 1D, 2D or 3D. This is different from many older APIs, which combineds texture images and filtering into a single state.
-		if (vkCreateSampler(m_Device, &samplerInfo, nullptr, &m_TextureSampler) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create texture sampler.");
-		}
-	}
-
-	void CreateTextureImage()
-	{
-		/*
-			The stbi_load function takes the file path and number of channels to load as arguments. The STBI_rgb_alpha value forces the image to be loaded with an alpha channel,
-			even if it doesn't have one, which is nice for consistency with other textures in the future. The middle three parameters are outputs for the width, height and
-			actual number of channels in the image. The pointer that is returned is the first element in an array of pixel values. The pixels are laid out row by row
-			with 4 bytes per pixel in the case of STBI_rgb_alpha for a total of textureWidth * textureHeight * 4 values.
-		*/
-		int textureWidth, textureHeight, textureChannels;
-		stbi_uc* pixels = stbi_load(m_ModelTexturePath.c_str(), &textureWidth, &textureHeight, &textureChannels, STBI_rgb_alpha);
-		VkDeviceSize imageSize = textureWidth * textureHeight * 4;
-
-		if (!pixels)
-		{
-			throw std::runtime_error("Failed to load texture image.");
-		}
-
-		//We're going to create a buffer in host visible memory so that we can use vkMapMemory and copy the pixels to it.
-		//This buffer should not only be in host visible memory but also be able to be used as a transfer source so we can copy it to an image eventually.
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-		//We can then directly copy the pixel values that we got from the image loading library to the buffer.
-		void* data;
-		vkMapMemory(m_Device, stagingBufferMemory, 0, imageSize, 0, &data);
-		memcpy(data, pixels, static_cast<size_t>(imageSize));
-		vkUnmapMemory(m_Device, stagingBufferMemory);
-
-		//Clean up the original pixel array once mapped.
-		stbi_image_free(pixels);
-
-		//Creates the texture image here. 4 component, 32-bit unsigned normalized format that has 8 bit per component. 
-		CreateImage(textureWidth, textureHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			m_TextureImage, m_TextureImageMemory);
-
-		/*
-			Now, we are going to copy the staging buffer in host visible memory to the texture image. This involves two steps:
-			1) Transitioning the texture image to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL.
-			2) Execute the buffer to image operation.
-			The image was created with the VK_IMAGE_UNDEFINED layout, so that one should be specified as the old layout when transitioning m_TextureImage. Remember that we can do this because
-			we don't care about its contents perior to the copy operation.
-		*/
-		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		CopyBufferToImage(stagingBuffer, m_TextureImage, static_cast<uint32_t>(textureWidth), static_cast<uint32_t>(textureHeight));
-
-		//To be able to start sampling from the image texture in the shader, we need one last transition to prepare it for shader access.
-		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
-		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
-	}
-
-	void CreateFramebuffers()
-	{
-		/*
-			We've set up the render pass to expect a single framebuffer with the same format as the swap chain images, but we haven't actually created any yet.
-			The attachments specified during render pass creation are bound by wrapping them into a VkFramebuffer object. A framebuffer object references all of the
-			VkImageView objects that represent the attachments. In our case, there will only be a single one: the color attachment. However, the image that we have to use for
-			the attachment depends on which image the swapchain returns when we retrieve one for presentation. That means that we have to create a framebuffer for all of the images
-			in the swapchaim and use the one that corresponds to the retrieved image at drawing time.
-		*/
-		m_SwapChainFramebuffers.resize(m_SwapChainImageViews.size());
-		//We will then iterate through the image views and create framebuffers from them.
-
-		/*
-			As seen, the creation of framebuffers is quite straigtforward. We first need to specify with which renderPass the framebuffer needs to be compatible. You only
-			use a framebuffer with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments. 
-			The attachmentCount and pAttachments parameters specify the VkImageView objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
-			The width and height parameters are self explainatory and layers refer to the number of layers in image arrays. Our swap chain images are single images, so the number of layers is 1. 
-		*/
-		for (size_t i = 0; i < m_SwapChainImageViews.size(); i++)
-		{
-			std::array<VkImageView, 2> attachments = { m_SwapChainImageViews[i], m_DepthImageView }; //The color attachment can be different for every swapchain image, but the same depth image can be used byt all of them because only a single subp[ass is running at the same time due to our semaphores.
-			VkFramebufferCreateInfo framebufferInfo{};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = m_RenderPass;
-			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-			framebufferInfo.pAttachments = attachments.data();
-			framebufferInfo.width = m_SwapChainExtent.width;
-			framebufferInfo.height = m_SwapChainExtent.height;
-			framebufferInfo.layers = 1;
-
-			if (vkCreateFramebuffer(m_Device, &framebufferInfo, nullptr, &m_SwapChainFramebuffers[i]) != VK_SUCCESS)
-			{
-				throw std::runtime_error("Failed to create framebuffer.");
-			}
-			else
-			{
-				std::cout << "Successfully created Framebuffer." << "\n";
-			}
-		}
-	}
-
-	void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t imageWidth, uint32_t imageHeight)
-	{
-		VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
-		//Just like with buffer copies, you need to specify which part of the buffer is going to be copied to which part of the image, done through VkBufferImageCopy structs.
-		VkBufferImageCopy region{};
-		region.bufferOffset = 0; //Byte offset in the buffer at which the pixel values start. 
-		//Specifies how the pixels are laid out in memory. For example, you could have some padding bytes between rows of the image. 
-		//Specifying 0 for both indicates that the pixels are simply tightly packed like they are in our case. 
-		region.bufferRowLength = 0; 
-		region.bufferImageHeight = 0;
-
-		//The imageSubresource, imageOffset and imageExrtent fields indicate to which part of the image we want to copy our pixels. In this case, we are copying to the entire image.
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = 0;
-		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = 1;
-		
-		region.imageOffset = { 0, 0, 0 };
-		region.imageExtent = { imageWidth, imageHeight, 1 }; //XYZ. 
-
-		/*
-			Buffer top image copy operations are enqueued using the vkCmdCopyBufferToImage function.
-			The fourth parameter indicates which layout the image is currently using. We are assuming here that the image has already been transitioned to the layout that is optimal for
-			copying pixels to. Right now, we're only copying one chunk of pixels to the whole image, but its possible to specify an array of VkBufferImageCopy to perform many different copies
-			from this buffer to the image in one operation.
-		*/
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-		
-		EndSingleTimeCommands(commandBuffer);
-	}
-
 	void CopyBuffer(VkBuffer sourceBuffer, VkBuffer destinationBuffer, VkDeviceSize size)
 	{
 		VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
@@ -2379,97 +2469,7 @@ private:
 		EndSingleTimeCommands(commandBuffer);
 	}
 
-	void LoadModel()
-	{
-		/*
-			A model is loaded into the library's data structures by calling the tinyobj::LoadObj function. An OBJ file consists of positions, normals, texture coordinates and faces.
-			Faces consist of an arbitrary amount of vertices, where each vertex refer to a position, normal and/or texture coordinate by index. This makes it possible to not
-			just reuse wentire vertices, but also individual attributes. 
-			
-			The tinyobj::attrib_t container holds all of the positions, normals and texture coordinates in its attrib.vertices. The shape_t container contains all of the
-			seperate objects and their faces. Each face consists of an array of vertices, and each vertex contains the indices of the position, normal and texture coordinate attributes.
-			OBJ models can also define a material and texture per face, but we will be ignoring this. 
 
-			The error string contains errors and the warn string contains warnings that occur while loading the file, like a missing material definition. Loading only really
-			fail if the LoadObj function returns false. As mentioned above, faces in OBJ files actually contain an arbitrary number of vertices, whereas our application
-			can only render triangles. Luckily, the LoadObj has an optional parameter to automatically triangulate such faces, which is enabled by default.
-		*/
-		tinyobj::attrib_t modelAttributes;
-		std::vector<tinyobj::shape_t> modelShapes;
-		std::vector<tinyobj::material_t> modelMaterials;
-		std::string warning, error;
-
-		if (!tinyobj::LoadObj(&modelAttributes, &modelShapes, &modelMaterials, &warning, &error, m_ModelPath.c_str()))
-		{
-			throw std::runtime_error(warning + error);
-		}
-
-		std::unordered_map<Vertex, uint32_t> uniqueVertices{};
-		//We're going to combine all of the faces into the file into a single mode, so just iterate over all of the shapes.
-		for (const tinyobj::shape_t& shape : modelShapes)
-		{
-			//The triangulation feature has already made sure that there are 3 vertices per faces, so we can now directly iterate over the vertices and dump them straight into our vertices vector.
-			for (const tinyobj::index_t& index : shape.mesh.indices)
-			{
-				Vertex vertex{};
-				/*
-					For simplicity, we will assume that every vertex is unique for now, hence the simple auto-increment indices. The index variable is of type
-					tinyobj::index_t, which contains the vertex_index, normal_index and texcoord_index members. We need to use these indices to look up the actual vertex
-					attributes in the attrib arays.
-
-					Unfortunately, the modelAttributes.vertices array is an array of float values instead of something like glm::vec3, so you need to multiply the index of 3.
-					Similarly, there are two texture coordinate components per entry. The offsets of 0, 1 and 2 are used to access the X, Y and Z components, or the U and V components in the case of texture coordinates.
-				*/
-				
-				vertex.m_Position =
-				{
-					modelAttributes.vertices[3 * index.vertex_index + 0], //Vertex X
-					modelAttributes.vertices[3 * index.vertex_index + 1], //Vertex Y
-					modelAttributes.vertices[3 * index.vertex_index + 2]  //Vertex Z
-				};
-
-				/*
-					Great, the geometry looks correct, but the texture might look wrong. The OBJ format assumes a coordinate system where a vertical coordinate of 0 means
-					the bottom of the image, however we've uploaded our image into Vulkan in a top to bottom orientation where 0 means the top of the image. Solve this by
-					flipping the vertical component of the texture coordinates.
-				*/
-				vertex.m_TexCoord =
-				{
-					modelAttributes.texcoords[2 * index.texcoord_index + 0], //U 
-					1.0f - modelAttributes.texcoords[2 * index.texcoord_index + 1] //V
-				};
-
-				/*
-					Unfortunately, we're not really taking advantage of the index buffer yet. THe vertices vector contains a lot of duplicated vertex data, because many
-					vertices are included in multiple triangles. We should only keep the unique vertices and use the index buffer to reuse them whenever they come up.
-
-					A straightforward way to implement this is to use a map or unordered map to keep track of the unique vertices and respective indices:
-				
-					This means that every time we read a vertex from the OBJ file, we check if we have already seen a vertex with the exact same position and texture coordinates
-					before. If not, we add it to m_Vertices and store its index in the uniqueVertices container. After that, we add the index of the new vertex to m_Indices.
-					If we've seen the exact same vertex before, then we look up its index in uniqueVertices and store that index in m_Indices.
-
-					The program will fail to compile as using a user-defined type like our Vertex struct as a key in a hash table requires us to implement two functions:
-					equality test and hash calculation. The former is easy to do so by overriding the == operator in the Vertex struct. You can see their implementation
-					at the start of the application.
-
-					Once done, you will see that we sucessfully shrink the program from 1,500,000 to 265,645. 
-				*/
-
-				vertex.m_Color = { 1.0f, 1.0f, 1.0f };
-
-				//Seaches the container for elements whose key is the parameter and returns the number of elements found. 
-				//Bwecause unordered_map containers do not allow for duplicated keys, this means that the function actually returns 1 if an element with that key exists, and zero otherwise.
-				if (uniqueVertices.count(vertex) == 0) //If the vertex does not yet exist in our map, aka it is unique.
-				{
-					uniqueVertices[vertex] = static_cast<uint32_t>(m_Vertices.size()); //This size will always be equal to the current total number of vertices following this loop that increments it at the end of the function.
-					m_Vertices.push_back(vertex);
-				}
-
-				m_Indices.push_back(uniqueVertices[vertex]); //We store the index of the vertex in m_Indices.
-			}
-		}
-	}
 
 	void CreateVertexBuffer()
 	{

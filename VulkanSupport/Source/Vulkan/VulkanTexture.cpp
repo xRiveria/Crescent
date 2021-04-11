@@ -7,7 +7,8 @@
 
 namespace Crescent
 {
-	VulkanTexture::VulkanTexture(const std::string& filePath, VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, VkFormat imageFormat, const VkImageAspectFlags& imageAspectFlags) : m_LogicalDevice(logicalDevice), m_PhysicalDevice(physicalDevice), m_TextureFormat(imageFormat), m_TextureTypeFlag(imageAspectFlags)
+	VulkanTexture::VulkanTexture(const std::string& filePath, VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, VkFormat imageFormat, const VkImageAspectFlags& imageAspectFlags, VkCommandPool* commandPool, VkQueue* queue) 
+		: m_LogicalDevice(logicalDevice), m_PhysicalDevice(physicalDevice), m_TextureFormat(imageFormat), m_TextureTypeFlag(imageAspectFlags), m_CommandPool(commandPool), m_Queue(queue)
 	{
 		/*
 			The stbi_load function takes the file path and number of channels to load as arguments. The STBI_rgb_alpha value forces the the image to be loaded with an alpha channel,
@@ -42,20 +43,33 @@ namespace Crescent
 		//Create our Vulkan image object. This will be a 4 component, 32-bit unsigned normalized format that has 8 bits per component.
 		CreateTexture(textureWidth, textureHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_Texture, m_TextureMemory);
 		CreateTextureView();
+		CreateTextureSampler();
 
 		/*
 			Now, we are going to copy the staging buffer in host visible memory to the texture image. This involves 2 steps:
+
 				1) Transitioning the texture image to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL.
 				2) Executing the buffer-to-image operation.
+
 			The image was created with the VK_IMAGE_UNDEFINED layout, so that layout should be specified as the old layout when transitioning the texture image. Remember that
 			we can do this because we don't care about its contents prior to the copy operation.
 		*/
+		TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, *m_CommandPool, *m_Queue);
+
+		CopyBufferToImage(stagingBuffer, static_cast<uint32_t>(textureWidth), static_cast<int32_t>(textureHeight));
+
+		//To be able to start sampling from the image texture in the shader, we need one last transition to prepare it for shader access.
+		TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, *m_CommandPool, *m_Queue);
+
+		vkDestroyBuffer(*m_LogicalDevice, stagingBuffer, nullptr);
+		vkFreeMemory(*m_LogicalDevice, stagingBufferMemory, nullptr);
 	}
 
-	VulkanTexture::VulkanTexture(VkDevice* logicalDevice, const VkImage& image, const VkFormat& imageFormat, const VkImageAspectFlags& imageAspectFlags)
-		: m_LogicalDevice(logicalDevice), m_Texture(image), m_TextureFormat(imageFormat), m_TextureTypeFlag(imageAspectFlags)
+	VulkanTexture::VulkanTexture(VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, const VkImage& image, const VkFormat& imageFormat, const VkImageAspectFlags& imageAspectFlags)
+		: m_LogicalDevice(logicalDevice), m_PhysicalDevice(physicalDevice), m_Texture(image), m_TextureFormat(imageFormat), m_TextureTypeFlag(imageAspectFlags)
 	{
 		CreateTextureView();
+		CreateTextureSampler();
 	}
 
 	VulkanTexture::VulkanTexture(const int& textureWidth, const int& textureHeight, VkFormat format, const VkImageAspectFlags& imageAspectFlags, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice)
@@ -63,13 +77,15 @@ namespace Crescent
 	{
 		CreateTexture(textureWidth, textureHeight, m_TextureFormat, tiling, usage, properties, m_Texture, m_TextureMemory);
 		CreateTextureView();
+		CreateTextureSampler();
 	}
 
 	void VulkanTexture::DeleteTextureInstance()
 	{
+		vkDestroySampler(*m_LogicalDevice, m_TextureSampler, nullptr);
 		vkDestroyImageView(*m_LogicalDevice, m_TextureView, nullptr);
-		//vkDestroyImage(*m_LogicalDevice, m_Texture, nullptr);
-		//vkFreeMemory(*m_LogicalDevice, m_TextureMemory, nullptr);
+		vkDestroyImage(*m_LogicalDevice, m_Texture, nullptr);
+		vkFreeMemory(*m_LogicalDevice, m_TextureMemory, nullptr);
 	}
 
 	//Represents an abstract texture creation function. The width, height, format, tiling mode, usage and memory properties parameters are different as they vary between images.
@@ -143,6 +159,10 @@ namespace Crescent
 		{
 			throw std::runtime_error("Failed to create image.");
 		}
+		else
+		{
+			std::cout << "Successfully create Image.\n";
+		}
 		/*
 			Allocating memory for an image works exactly in the same way as allocating memory for a buffer. Use vkGetImageMemoryRequirements instead of vkGetBufferMemoryRequirements,
 			and use vkBindImageMemory instead of vkBindBufferMemory.
@@ -200,6 +220,141 @@ namespace Crescent
 		{
 			std::cout << "Successfully created Image View.\n";
 		}
+	}
+
+	void VulkanTexture::CreateTextureSampler()
+	{
+		/*
+			It is possible for shaders to read texels directly from images, but it is not very common when they are used as textures. Textures are usually accessed through 
+			samplers, which will apply filtering and transformations to compute the final color that is retrieved. These filters are helpful to deal with problems like oversampling.
+			Consider a texture that is mapped to geometry with more fragments than texels. If you simply took the closest texel for the texture coordinate in each fragment, you 
+			would get quite a Minecraft styled pixelized image.
+
+			However, if you combine the 4 closest texels through linear interpolation, then you would get a smoother result. Of course, your application may have art style requirements 
+			that fit the pixelized style more, the cleaner one is more preferred in conventional graphics application.
+
+			Undersampling is the opposite problem, where you have more texels than fragments. This will lead to artifacts when sampling high frequently patterns like a checkerboard 
+			texture at a sharp angle. Without anisotropic filtering, the texture turns into a blurry mess in the distance. Anisotropic filtering, however, is applied automatically 
+			by a sampler.
+
+			Aside from these filters, a sampler can also take care of transformations. It determines what happens when you try to read texels outside the image through its addressing
+			mode: Repeat, Mirrored Repeat, Clamp to Edge and Clamp to Border.
+
+			Samplers are configured through a VkSamplerCreateInfo structure, which specifies all filters and transformations that it should apply.
+		*/
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		/*
+			The magFilter and minFilter field specify how to interpolate texels that are magnified or minified. Magnification concerns the oversampling problems described above 
+			and minification concerns undersampling. The choices are VK_FILTER_NEAREST and VK_FILTER_LINEAR, corresponding to the modes demonstrated in the images above.
+		*/
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		/*
+			The addressing mode can be specifed per axis using the addressMode fields. The avaliable values are listeds below. Note that the axes are called U, V and W instead 
+			of X, Y and Z. This is a convention for texture space coordinates:
+
+			- VK_SAMPLER_ADDRESS_MODE_REPEAT: Repeat the texture when going beyond the image dimensions.
+			- VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT: Like repeat, but inverts the coordinates to mirror the image when going beyond the dimensions.
+			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE: Take the color of the edge closest to the coordinate beyond the image dimensions.
+			- VK_SAMPLER_ADDRESS_MIRROR_CLAMP_TO_EDGE: Like clamp to edge, but instead uses the edge opposite to the closest edge.
+			- VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER: Return a solid color when sampling beyond the dimensions of the image.
+
+			It doesn't really really matter which addressing mode we use here, because we're not going to sample outside the image for now. However, the repeat mode 
+			is probably the most common mode, because it can be used to tile textures like floors and walls.
+		*/
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+		/*
+			These two fields specify if anistropic filtering should be used. There is no reason not to use this unless peformance is a concern. The maxAnisotropy field 
+			limits the amount of texels samples that can be used to calculate the final color. A lower value results in better performance, but lower quality results. To figure
+			out which values we can use, we need to retrieve the properties of the physical device like so:
+		*/
+		samplerInfo.anisotropyEnable = VK_TRUE; //We can enforce the avaliability of anistropic filtering, its also possible to simply not use it by conditionally setting anistropyEnable = VK_FALSE.
+		samplerInfo.maxAnisotropy = 5;
+
+		VkPhysicalDeviceProperties physicalDeviceProperties{};
+		vkGetPhysicalDeviceProperties(*m_PhysicalDevice, &physicalDeviceProperties);
+		/*
+			If you look at the documentation for the VkPhysicalDeviceProperties struct, you will see that it contains a VkPhysicalDeviceLimits member named limits. This 
+			struct in turn has a member called maxSamplerAnistropy and this is the maximum value we can sample for maxAnistropy. If we want to go for maximum quality, we can 
+			use that value directly.
+
+			You can either query the properties at the beginning of your program and pass them around to the functions that need them, or query them here itself.
+		*/
+		samplerInfo.maxAnisotropy = physicalDeviceProperties.limits.maxSamplerAnisotropy;
+		/*
+			The borderColor field specifies which color is returned when sampling beyond the image with clamp to border addressing mode. It is possible to return black, 
+			white or transparent in either float or int formats. You cannot specify an arbitrary colors.
+		*/
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		/*
+			The unnormalizedCoordinates field specifies which coordinate system you want to use to address texels in an image. If this field is VK_TRUE, then you can 
+			simply use coordinates within the [0, textureWidth] and [0, textureHeight] range. If it is VK_FALSE, then the texels are addressed using the [0, 1] range on 
+			all axes. Real-world applications almost always use normalized coordinates, because then its possible to use textures of varying resolutions with the exact same 
+			coordinates.
+		*/
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		/*
+			If a comparison function is enabled, then texels will first be compared to a value, and the result of that comparison is used in filtering operations. This is mainly 
+			used for PCF (percentage closer filtering) on shadow maps. We will look at this in a future chapter.
+		*/
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+		//All of these fields apply to mipmapping. We will look at mipmapping in a later chapter, but basically its another type of filter than can be applied.
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+
+		/*
+			The functioning of the sampler is now fully defined. Add a class member to hold the handle of the sampler object and create the sampler with vkCreateSampler. Note 
+			that the sampler does not reference a VkImage anywhere. The sampler is a distinct object that provides an interface to extract colors from a texture. It can 
+			be applied to any image you want, whether it be 1D, 2D or 3D. This is different from many older APIs, which combines texture images and filtering into a single state.
+		*/
+		if (vkCreateSampler(*m_LogicalDevice, &samplerInfo, nullptr, &m_TextureSampler) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create Texture Sampler.\n");
+		}
+		else
+		{
+			std::cout << "Successfully create Texture Sampler.\n";
+		}
+	}
+
+	void VulkanTexture::CopyBufferToImage(VkBuffer buffer, uint32_t imageWidth, uint32_t imageHeight)
+	{
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommands(*m_LogicalDevice, *m_CommandPool);
+		//Just like with buffer copying, you need to specify which part of the buffer is going to be copied to which part of the image, done through VkBufferImageCopy structs.
+		VkBufferImageCopy regionInfo{};
+		regionInfo.bufferOffset = 0; //Byte offset in the buffer at which the pixel values start.
+		/*
+			Specifies how the pixels are laid out in memory. For example, you could have some padding bytes between rows of the image.
+			Specifying 0 for both indicates that the pixels are simply tightly packed like they are in our case.
+		*/
+		regionInfo.bufferRowLength = 0;
+		regionInfo.bufferImageHeight = 0;
+
+		//The imageSubresource, imageOffset and imageExtent fields indicate to which part of the image we want to copy our pixels. In this case, we are copying to the entire image.
+		regionInfo.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		regionInfo.imageSubresource.mipLevel = 0;
+		regionInfo.imageSubresource.baseArrayLayer = 0;
+		regionInfo.imageSubresource.layerCount = 1;
+
+		regionInfo.imageOffset = { 0, 0, 0 };
+		regionInfo.imageExtent = { imageWidth, imageHeight, 1 }; //XYZ
+
+		/*
+			Buffer top image copy operations are enqueued using the vkCmdCopyBufferToImage function. The fourth parameter indicates which layout the image is currently using. We are 
+			assuming here that the image has already been transitioned to the layout that is optimal for copying pixels to. Right now, we're only copying one chunk of pixels to the 
+			whole image, but its possible to specify an array of VkBufferImageCopy to perform many different copies from this buffer to the image in one operation.
+		*/
+		vkCmdCopyBufferToImage(commandBuffer, buffer, m_Texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &regionInfo);
+
+		EndSingleTimeCommands(commandBuffer, *m_CommandPool, *m_LogicalDevice, *m_Queue);
 	}
 
 	void VulkanTexture::TransitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout, const VkCommandPool& commandPool, const VkQueue& queue)
@@ -332,4 +487,4 @@ namespace Crescent
 
 		EndSingleTimeCommands(commandBuffer, commandPool, *m_LogicalDevice, queue);
 	}
-}
+}	

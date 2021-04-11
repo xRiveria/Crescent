@@ -5,7 +5,10 @@
 #include <stdexcept>
 #include <iostream>
 #include <array>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/hash.hpp>
 
 namespace Crescent
 {
@@ -94,6 +97,8 @@ namespace Crescent
 			return attributeDescriptions;
 		}
 	};
+
+
 
 	struct SwapchainSupportDetails
 	{
@@ -323,7 +328,7 @@ namespace Crescent
 		}
 		else
 		{
-			std::cout << "Successfully allocated buffer memory.\n";
+			std::cout << "Successfully allocated Buffer Memory.\n";
 		}
 
 		/*
@@ -395,3 +400,14 @@ namespace Crescent
 		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 	}
 }
+
+template<>
+struct std::hash<Crescent::Vertex>
+{
+	size_t operator()(Crescent::Vertex const& vertex) const
+	{
+		return ((std::hash<glm::vec3>()(vertex.m_Position) ^
+			(std::hash<glm::vec3>()(vertex.m_Color) << 1)) >> 1) ^
+			(std::hash<glm::vec2>()(vertex.m_TexCoord) << 1);
+	}
+};

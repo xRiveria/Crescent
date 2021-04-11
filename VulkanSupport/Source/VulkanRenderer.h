@@ -8,6 +8,8 @@
 #include "../Source/Vulkan/VulkanDescriptorLayout.h"
 #include "../Source/Vulkan/VulkanPipeline.h"
 #include "../Source/Vulkan/VulkanCommandPool.h"
+#include "../Source/Vulkan/VulkanResource.h"
+#
 #include "Window.h"
 
 namespace Crescent
@@ -39,5 +41,9 @@ namespace Crescent
 
 		//Validation
 		bool m_ValidationLayersEnabled = false;
+
+		//Custom
+		std::shared_ptr<VulkanTexture> m_ModelTexture = nullptr;
+		std::shared_ptr<VulkanResource> m_Model = nullptr;
 	};
 }
