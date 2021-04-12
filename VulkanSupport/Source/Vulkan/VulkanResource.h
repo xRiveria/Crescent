@@ -8,6 +8,9 @@ namespace Crescent
 	public:
 		VulkanResource(const std::string& modelFilePath);
 
+		std::vector<Vertex>* RetrieveVertices() { return &m_Vertices; }
+		std::vector<uint32_t>* RetrieveIndices() { return &m_Indices; }
+			
 	public:
 		void LoadModel();
 

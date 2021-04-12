@@ -220,9 +220,10 @@ private:
 		CreateTextureImageView();
 		CreateTextureSampler();
 		LoadModel();
-
 		CreateVertexBuffer();
 		CreateIndexBuffer();
+
+
 		CreateUniformBuffers();
 		CreateDescriptorPool();
 		CreateDescriptorSets();
@@ -2326,12 +2327,111 @@ private:
 		}
 	}
 
+	void CopyBuffer(VkBuffer sourceBuffer, VkBuffer destinationBuffer, VkDeviceSize size)
+	{
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
+		//Content of buffers are transferred using the vkCmdCopyBuffer command. It takes the source and destination buffers as arguments, and an array of regions to copy.
+		//The regions are defined in VkBufferCopy structs and consist of a source buffer offset, destination buffer offset and size. It is not possible to specify VK_WHOLE_SIZE
+		//here, unlike the vkMapMemory command.
+		VkBufferCopy copyRegion{};
+		copyRegion.srcOffset = 0; //Optional
+		copyRegion.dstOffset = 0;
+		copyRegion.size = size;
+		vkCmdCopyBuffer(commandBuffer, sourceBuffer, destinationBuffer, 1, &copyRegion);
+		//As the command buffer only contains the copy command, we can stop recording after that.
 
+		EndSingleTimeCommands(commandBuffer);
+	}
 
+	void CreateVertexBuffer()
+	{
+		/*
+			While using the vertex buffer directly works just fine, the memory type that allows us to access it from the CPU may not be the most optimal memory type
+			for the graphics carsd itself to read from. The most optimal memory has the VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT flag and is usually not accessible by the CPU
+			on dedicated graphics cards. We will thus create 2 vertex buffers. One staging buffer in CPU accessible memory to upload the data from the vertex array to, and
+			the final vertex buffer in device local memory. We will then use a buffer copy command to move the data from the staging buffer to the actual vertex buffer.
 
+			We will now be using a stagingBuffer with stagingBufferMemory for mapping and copying the vertex data. We have two new buffer flags here to use:
 
+			- VK_BUFFER_USAGE_TRANSFER_SRC_BIT: Buffer can be used as source in a memory transfer operation.
+			- VK_BUFFER_USAGE_TRANSFER_DST_BIT: Buffer can be used as destination in a memory transfer operation.
 
+			With this, the vertexBuffer is now allocated from a memory type that is device local, which generally means that we're not able to use vkMapMemory. However,
+			we can copy data from the stagingBuffer to our vertexBuffer. We have to indicate that we intend to do that by specifying the transfer source flag for the stagingBuffer
+			and the destination flag for the vertexBuffer, along with the vertex buffer usage flag.
+		*/
+		VkDeviceSize bufferSize = sizeof(m_Vertices[0]) * m_Vertices.size();
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+		//It is now time to copy the vertex data to the buffer. This is done by mapping the buffer memory into CPU accessible memory with VkMapMemory.
+		void* data; //Pointer to the mapped memory. 
+		/*
+			This function allows us to access a region of the specified memory resource defined by an offset and size. The offset and size here are 0 and bufferInfo.size respectively.
+			It is also possible to specify the special value VK_WHOLE_SIZE to map all of the memory. The second to large parameter can be used to specify flags, but there aren't any
+			yet avaliable in the current API. It must be set to the value 0. The last parameter specifies the output for the pointer to the mapped memory.
+		*/
+		vkMapMemory(m_Device, stagingBufferMemory, 0, bufferSize, 0, &data);
+
+		/*
+			We can now simply memcpy the vertex data to the mapped memory and unmap it again using vkUnmapMemory. Unfortunately, the driver may not immediately copy the data into
+			the buffer memory, for example because of caching. It is also possible that writes to the buffer are not visible in the mapped memory yet. There are two ways to deal with that problem:
+
+			- Use a memory heap that is coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT.
+			- Call vkFlushMappedMemoryRanges after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading to the mapped memory.
+
+			We went for the first approach, which ensures that the mapped memory always matches the contents of the allocated memory. Do keep in mind that this may lead to slightly
+			worse performance than explicit flushing, but we will see why that doesn't matter eventually.
+
+			Flushing memory ranges or using a coherent memory heap means that the driver will be aware of our writes to the buffer, but it doesn't mean that they are actually visible to the GPU yet.
+			The transfer of data to the GPU is an operation that happens in the background and the specification simply tells us that it is guarenteed to be complete as of the next call to vkQueueSubmit.
+		*/
+
+		memcpy(data, m_Vertices.data(), (size_t)bufferSize);
+		vkUnmapMemory(m_Device, stagingBufferMemory);
+
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_VertexBuffer, m_VertexBufferMemory);
+		CopyBuffer(stagingBuffer, m_VertexBuffer, bufferSize);
+
+		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
+		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
+	}
+
+	void CreateIndexBuffer()
+	{
+		/*
+			There are only two notable differences between the creation of the Index and Vertex buffer. The bufferSize is now equal to the number of indices times the size of
+			the index type. either uint16_t or uint32_t. The usage of the indexBuffer should be VK_BUFFER_USAGE_INDEX_BUFFER_BIT instead of VK_BUFFER_USAGE_VERTEX_BUFFER_BIT.
+			We will create a staging buffer to copy the contents of indices to and then copy it to the final device local index buffer.
+		*/
+
+		VkDeviceSize bufferSize = sizeof(m_Indices[0]) * m_Indices.size();
+
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		//Note that VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT specifies that memory allocated with this type can be mapped for host access using vkMapMemory. 
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+		void* data;
+		vkMapMemory(m_Device, stagingBufferMemory, 0, bufferSize, 0, &data);
+		memcpy(data, m_Indices.data(), (size_t)bufferSize);
+		vkUnmapMemory(m_Device, stagingBufferMemory);
+
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_IndexBuffer, m_IndexBufferMemory);
+		CopyBuffer(stagingBuffer, m_IndexBuffer, bufferSize);
+
+		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
+		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
+
+		/*
+			We mentioned previously that we should allocate multiple resources like buffers from a single memory allocation. However, we should go a step further. Driver developers
+			recommend that we should also store multiple buffers like the vertex and index buffer into a single VkBuffer and use offsets in commands like vkCmdBindVertexBuffer.
+			The advantage is that your data is more cache friendly in that case because its closer totgether. It is even possible to reuse the same chunk of memory for multiple resources
+			if they are not used during the same render operations, provided their data is refreshed of course. This is known as aliasing and some Vulkan functions have explict flags to specify that you want to do this.
+		*/
+	}
 
 	void CreateDescriptorPool()
 	{
@@ -2377,6 +2477,12 @@ private:
 			std::cout << "Successfully created Descriptor Pool." << "\n";
 		}
 	}
+
+
+
+
+
+
 
 	void CreateDescriptorSets()
 	{
@@ -2450,114 +2556,6 @@ private:
 			//The latter can be used to copy descriptors to each other as its name implies.
 			vkUpdateDescriptorSets(m_Device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 		}
-	}
-
-	void CopyBuffer(VkBuffer sourceBuffer, VkBuffer destinationBuffer, VkDeviceSize size)
-	{
-		VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
-
-		//Content of buffers are transferred using the vkCmdCopyBuffer command. It takes the source and destination buffers as arguments, and an array of regions to copy.
-		//The regions are defined in VkBufferCopy structs and consist of a source buffer offset, destination buffer offset and size. It is not possible to specify VK_WHOLE_SIZE
-		//here, unlike the vkMapMemory command.
-		VkBufferCopy copyRegion{};
-		copyRegion.srcOffset = 0; //Optional
-		copyRegion.dstOffset = 0;
-		copyRegion.size = size;
-		vkCmdCopyBuffer(commandBuffer, sourceBuffer, destinationBuffer, 1, &copyRegion);
-		//As the command buffer only contains the copy command, we can stop recording after that.
-
-		EndSingleTimeCommands(commandBuffer);
-	}
-
-
-
-	void CreateVertexBuffer()
-	{
-		/*
-			While using the vertex buffer directly works just fine, the memory type that allows us to access it from the CPU may not be the most optimal memory type
-			for the graphics carsd itself to read from. The most optimal memory has the VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT flag and is usually not accessible by the CPU
-			on dedicated graphics cards. We will thus create 2 vertex buffers. One staging buffer in CPU accessible memory to upload the data from the vertex array to, and
-			the final vertex buffer in device local memory. We will then use a buffer copy command to move the data from the staging buffer to the actual vertex buffer.
-		
-			We will now be using a stagingBuffer with stagingBufferMemory for mapping and copying the vertex data. We have two new buffer flags here to use:
-
-			- VK_BUFFER_USAGE_TRANSFER_SRC_BIT: Buffer can be used as source in a memory transfer operation.
-			- VK_BUFFER_USAGE_TRANSFER_DST_BIT: Buffer can be used as destination in a memory transfer operation.
-
-			With this, the vertexBuffer is now allocated from a memory type that is device local, which generally means that we're not able to use vkMapMemory. However,
-			we can copy data from the stagingBuffer to our vertexBuffer. We have to indicate that we intend to do that by specifying the transfer source flag for the stagingBuffer
-			and the destination flag for the vertexBuffer, along with the vertex buffer usage flag. 
-		*/
-		VkDeviceSize bufferSize = sizeof(m_Vertices[0]) * m_Vertices.size();
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-		//It is now time to copy the vertex data to the buffer. This is done by mapping the buffer memory into CPU accessible memory with VkMapMemory.
-		void* data; //Pointer to the mapped memory. 
-		/*
-			This function allows us to access a region of the specified memory resource defined by an offset and size. The offset and size here are 0 and bufferInfo.size respectively.
-			It is also possible to specify the special value VK_WHOLE_SIZE to map all of the memory. The second to large parameter can be used to specify flags, but there aren't any
-			yet avaliable in the current API. It must be set to the value 0. The last parameter specifies the output for the pointer to the mapped memory.
-		*/
-		vkMapMemory(m_Device, stagingBufferMemory, 0, bufferSize, 0, &data);
-
-		/*
-			We can now simply memcpy the vertex data to the mapped memory and unmap it again using vkUnmapMemory. Unfortunately, the driver may not immediately copy the data into
-			the buffer memory, for example because of caching. It is also possible that writes to the buffer are not visible in the mapped memory yet. There are two ways to deal with that problem:
-
-			- Use a memory heap that is coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT.
-			- Call vkFlushMappedMemoryRanges after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading to the mapped memory.
-
-			We went for the first approach, which ensures that the mapped memory always matches the contents of the allocated memory. Do keep in mind that this may lead to slightly
-			worse performance than explicit flushing, but we will see why that doesn't matter eventually.
-
-			Flushing memory ranges or using a coherent memory heap means that the driver will be aware of our writes to the buffer, but it doesn't mean that they are actually visible to the GPU yet.
-			The transfer of data to the GPU is an operation that happens in the background and the specification simply tells us that it is guarenteed to be complete as of the next call to vkQueueSubmit.
-		*/
-
-		memcpy(data, m_Vertices.data(), (size_t)bufferSize);
-		vkUnmapMemory(m_Device, stagingBufferMemory);
-
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_VertexBuffer, m_VertexBufferMemory);
-		CopyBuffer(stagingBuffer, m_VertexBuffer, bufferSize);
-
-		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
-		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
-	}
-
-	void CreateIndexBuffer()
-	{
-		/*
-			There are only two notable differences between the creation of the Index and Vertex buffer. The bufferSize is now equal to the number of indices times the size of
-			the index type. either uint16_t or uint32_t. The usage of the indexBuffer should be VK_BUFFER_USAGE_INDEX_BUFFER_BIT instead of VK_BUFFER_USAGE_VERTEX_BUFFER_BIT.
-			We will create a staging buffer to copy the contents of indices to and then copy it to the final device local index buffer.
-		*/
-
-		VkDeviceSize bufferSize = sizeof(m_Indices[0]) * m_Indices.size();
-
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		//Note that VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT specifies that memory allocated with this type can be mapped for host access using vkMapMemory. 
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-		
-		void* data;
-		vkMapMemory(m_Device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, m_Indices.data(), (size_t)bufferSize);
-		vkUnmapMemory(m_Device, stagingBufferMemory);
-
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_IndexBuffer, m_IndexBufferMemory);
-		CopyBuffer(stagingBuffer, m_IndexBuffer, bufferSize);
-
-		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
-		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
-
-		/*
-			We mentioned previously that we should allocate multiple resources like buffers from a single memory allocation. However, we should go a step further. Driver developers
-			recommend that we should also store multiple buffers like the vertex and index buffer into a single VkBuffer and use offsets in commands like vkCmdBindVertexBuffer.
-			The advantage is that your data is more cache friendly in that case because its closer totgether. It is even possible to reuse the same chunk of memory for multiple resources
-			if they are not used during the same render operations, provided their data is refreshed of course. This is known as aliasing and some Vulkan functions have explict flags to specify that you want to do this. 
-		*/
 	}
 
 	void CreateUniformBuffers()

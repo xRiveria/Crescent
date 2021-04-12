@@ -29,6 +29,9 @@ namespace Crescent
 
 		m_ModelTexture = std::make_shared<VulkanTexture>("Resources/Textures/viking_room.png", m_Devices->RetrieveLogicalDevice(), m_Devices->RetrievePhysicalDevice(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, m_CommandPool->RetrieveCommandPool(), m_Devices->RetrieveGraphicsQueue());
 		m_Model = std::make_shared<VulkanResource>("Resources/Models/viking_room.obj");
+		m_VertexBuffer = std::make_shared<VulkanVertexBuffer>(m_Model, m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Devices->RetrieveGraphicsQueue(), m_CommandPool->RetrieveCommandPool());
+		m_IndexBuffer = std::make_shared<VulkanIndexBuffer>(m_Model, m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Devices->RetrieveGraphicsQueue(), m_CommandPool->RetrieveCommandPool());
+		m_DescriptorPool = std::make_shared<VulkanDescriptorPool>(m_Swapchain->RetrieveSwapchainImages(), m_Devices->RetrieveLogicalDevice());
 	}
 
 	VulkanRenderer::~VulkanRenderer()

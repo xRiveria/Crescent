@@ -16,6 +16,7 @@ namespace Crescent
 		void CreateDepthBufferResources(VkCommandPool* commandPool, VkQueue* queue);
 		void CreateFramebuffers(VkRenderPass* renderPass);
 
+		std::vector<std::shared_ptr<VulkanTexture>>* RetrieveSwapchainImages() { return &m_SwapchainTextures; }
 		VkFormat RetrieveSwapchainImageFormat() const { return m_SwapchainFormat; }
 		VkExtent2D* RetrieveSwapchainExtent() { return &m_SwapchainExtent; }
 

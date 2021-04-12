@@ -399,6 +399,25 @@ namespace Crescent
 		//Check if the chosen depth format contains a stencil format.
 		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 	}
+
+	static void CopyBuffer(VkBuffer sourceBuffer, VkBuffer destinationBuffer, VkDeviceSize size, const VkCommandPool& commandPool, const VkDevice& logicalDevice, const VkQueue& queue)
+	{
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommands(logicalDevice, commandPool);
+
+		/*
+			Contents of buffers are transferred using the vkCmdCopyBuffer command. It takes the source and destination buffers as arguments, and an array of region to copy.
+			The regions are defined in VkBufferCopy structs and consists of a source buffer offset, destination buffer offset and size. It is not possible to specify VK_WHIOLE_SIZE here
+			unlike the vkMapMemory command.
+		*/
+		VkBufferCopy copyRegionInfo{};
+		copyRegionInfo.srcOffset = 0; //Optional
+		copyRegionInfo.dstOffset = 0; //Optional
+		copyRegionInfo.size = size;
+		vkCmdCopyBuffer(commandBuffer, sourceBuffer, destinationBuffer, 1, &copyRegionInfo);
+		//As the command buffer only contains the copy command, we can stop recording after that.
+
+		EndSingleTimeCommands(commandBuffer, commandPool, logicalDevice, queue);
+	}
 }
 
 template<>

@@ -9,7 +9,9 @@
 #include "../Source/Vulkan/VulkanPipeline.h"
 #include "../Source/Vulkan/VulkanCommandPool.h"
 #include "../Source/Vulkan/VulkanResource.h"
-#
+#include "../Source/Vulkan/VulkanVertexBuffer.h"
+#include "../Source/Vulkan/VulkanIndexBuffer.h"
+#include "../Source/Vulkan/VulkanDescriptorPool.h"
 #include "Window.h"
 
 namespace Crescent
@@ -34,6 +36,7 @@ namespace Crescent
 		std::shared_ptr<VulkanDescriptorLayout> m_DescriptorLayout = nullptr;
 		std::shared_ptr<VulkanPipeline> m_Pipeline = nullptr;
 		std::shared_ptr<VulkanCommandPool> m_CommandPool = nullptr;
+		std::shared_ptr<VulkanDescriptorPool> m_DescriptorPool = nullptr;
 
 		//Presentation
 		std::shared_ptr<Window> m_Window = nullptr;
@@ -42,8 +45,10 @@ namespace Crescent
 		//Validation
 		bool m_ValidationLayersEnabled = false;
 
-		//Custom
+		//Custom - Possible to combine them?
 		std::shared_ptr<VulkanTexture> m_ModelTexture = nullptr;
 		std::shared_ptr<VulkanResource> m_Model = nullptr;
+		std::shared_ptr<VulkanVertexBuffer> m_VertexBuffer = nullptr;
+		std::shared_ptr<VulkanIndexBuffer> m_IndexBuffer = nullptr;
 	};
 }
