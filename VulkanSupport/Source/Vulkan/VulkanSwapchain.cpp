@@ -344,4 +344,107 @@ namespace Crescent
 			}
 		}
 	}
+
+	void VulkanSwapchain::CreateUniformBuffers()
+	{
+		/*
+			We will create the buffers here that contain the UBO data for the shaders. As we will be copying the data to the uniform buffer every frame, it doesn't really 
+			make sense to have a staging buffer. It would just add extra overhead in this case and likely degrade performance instead of improving it. We should have multiple 
+			buffers, because multiple frames may be in flight at the same time and we don't want to have to update the buffer in preparation of the next frame while a previous 
+			one is still reading from it. We could either have a uniform buffer per frame or per swapchain image. However, since we need to refer to the uniform buffer 
+			from the command buffer that we have per swapchain image, it makes the most sense to have a uniform buffer per swapchain image.
+
+			We will write a seperate function that updates the uniform buffer with a new transformation every frame, so there will be no vkMapMemory here.
+		*/
+		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		m_UniformBuffers.resize(m_SwapchainTextures.size());
+		m_UniformBuffersMemory.resize(m_SwapchainTextures.size());
+
+		for (size_t i = 0; i < m_SwapchainTextures.size(); i++)
+		{
+			CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_UniformBuffers[i], m_UniformBuffersMemory[i], *m_LogicalDevice, *m_PhysicalDevice);
+		}
+	}
+
+	void VulkanSwapchain::CreateDescriptorSets(std::shared_ptr<VulkanTexture> texture, VkDescriptorSetLayout* descriptorLayout, VkDescriptorPool* descriptorPool)
+	{
+		//We will create one descriptor set for each swapchain image, all with the same layout.
+		std::vector<VkDescriptorSetLayout> layouts(m_SwapchainTextures.size(), *descriptorLayout);
+
+		VkDescriptorSetAllocateInfo descriptorSetInfo{};
+		descriptorSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		descriptorSetInfo.descriptorPool = *descriptorPool;
+		descriptorSetInfo.descriptorSetCount = static_cast<uint32_t>(m_SwapchainTextures.size());
+		descriptorSetInfo.pSetLayouts = layouts.data();
+
+		m_DescriptorSets.resize(m_SwapchainTextures.size());
+		//The vkAllocateDescriptorSets will allocate descriptor sets each with one uniform buffer descriptor.
+		if (vkAllocateDescriptorSets(*m_LogicalDevice, &descriptorSetInfo, m_DescriptorSets.data()) != VK_SUCCESS) //Our array here needs to match the number of descriptor sets stated above.
+		{
+			throw std::runtime_error("Failed to allocate Descriptor Sets.\n");
+		}
+		else
+		{
+			std::cout << "Successfully allocated " << descriptorSetInfo.descriptorSetCount << " Descriptor Sets.\n";
+		}
+
+		//After allocation, we now need to configure each of the descriptors.
+		for (size_t i = 0; i < m_SwapchainTextures.size(); i++)
+		{
+			//Descriptors that refer to buffers, like our uniform buffer descriptor, are configured with a VkDescriptorBufferInfo struct.
+			//This structure specifies the buffer and the region within it that contains the data for the descriptor.
+			VkDescriptorBufferInfo bufferInfo{};
+			bufferInfo.buffer = m_UniformBuffers[i];
+			bufferInfo.offset = 0;
+			bufferInfo.range = sizeof(UniformBufferObject); //If we are overwriting the whole buffer, it is possible to use VK_WHOLE_SIZE for the range.
+			
+			//The final step is to bind the actual image and sampler resources to the descriptors in the descriptor set.
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = *texture->RetrieveTextureView();
+			imageInfo.sampler = *texture->RetrieveTextureSampler();
+
+			/*
+				The configuration of the descriptors is updated using the vkUpdateDescriptorSets function, which takes an array of VkWriteDescriptorSet structs as parameter. 
+				The first two fields specify the descriptor set to update and the binding. We gave our uniform buffer binding index 0. Remember that descriptors can be arrays,
+				so we also need to specify the first index in the array that we want to update. We're not using an array, so the index is simply 0.
+
+				We also need to specify the type of descriptor again. Its possible to update multiple descriptors at once in an array, starting at index dstArrayElement. The 
+				descriptorCount field specifies how many array elements you wish to update.
+
+				The last field references an array with descriptorCount structs that actually configure the descriptors. It depends on the type of descriptors which one of the 
+				three you actually need to use. The pBufferInfo field is used for descriptors that refer to buffer data, pImageInfo is for descriptors that refer to image data and
+				pTexelBufferView is used for descriptors that refer to buffer views. Our descriptor is based on buffers, so we're using pBufferInfo.
+			*/
+
+			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[0].dstSet = m_DescriptorSets[i];
+			descriptorWrites[0].dstBinding = 0;
+			descriptorWrites[0].dstArrayElement = 0;
+			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrites[0].descriptorCount = 1;
+			descriptorWrites[0].pBufferInfo = &bufferInfo;
+			descriptorWrites[0].pImageInfo = nullptr; //Optional as we are using a buffer data here.
+			descriptorWrites[0].pTexelBufferView = nullptr; //Optional as we are using a buffer data here.
+
+			//The descriptors must be updated with the imageInfo descriptor info struct. Once done, they are finally ready to be used by the shaders/
+			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[1].dstSet = m_DescriptorSets[i];
+			descriptorWrites[1].dstBinding = 1;
+			descriptorWrites[1].dstArrayElement = 0;
+			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrites[1].descriptorCount = 1;
+			descriptorWrites[1].pBufferInfo = nullptr;
+			descriptorWrites[1].pImageInfo = &imageInfo;
+			descriptorWrites[1].pTexelBufferView = nullptr;
+
+			/*
+				The updates are applied with vkUpdateDescriptorSets. It accepts two kinds of arrays as parameters: an array of VkWriteDescriptorSet and an array of VkCopyDescriptorSets. 
+				The latter can be used to copy descriptors to each other as its name implies.
+			*/
+			vkUpdateDescriptorSets(*m_LogicalDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+		}
+	}
 }

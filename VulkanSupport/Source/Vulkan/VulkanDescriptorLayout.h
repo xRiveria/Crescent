@@ -8,6 +8,7 @@ namespace Crescent
 	public:
 		VulkanDescriptorLayout(VkDevice* logicalDevice);
 		void DestroyDescriptorLayoutInstance();
+
 		VkDescriptorSetLayout* RetrieveDescriptorSetLayout() { return &m_DescriptorSetLayout; }
 
 	private:

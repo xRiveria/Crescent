@@ -15,10 +15,13 @@ namespace Crescent
 
 		void CreateDepthBufferResources(VkCommandPool* commandPool, VkQueue* queue);
 		void CreateFramebuffers(VkRenderPass* renderPass);
+		void CreateUniformBuffers();
+		void CreateDescriptorSets(std::shared_ptr<VulkanTexture> texture, VkDescriptorSetLayout* descriptorLayout, VkDescriptorPool* descriptorPool);
 
 		std::vector<std::shared_ptr<VulkanTexture>>* RetrieveSwapchainImages() { return &m_SwapchainTextures; }
 		VkFormat RetrieveSwapchainImageFormat() const { return m_SwapchainFormat; }
 		VkExtent2D* RetrieveSwapchainExtent() { return &m_SwapchainExtent; }
+		//std::vector<VkDeviceMemory>* RetrieveUniformBufferMemory() { return &m_UniformBuffersMemory; }
 
 	private:
 		VkSurfaceFormatKHR SelectSwapchainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& avaliableFormats);
@@ -26,6 +29,12 @@ namespace Crescent
 		VkExtent2D SelectSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
 		void CreateSwapchain();
+
+	public:
+		//Buffers
+		std::vector<VkBuffer> m_UniformBuffers;
+		std::vector<VkDeviceMemory> m_UniformBuffersMemory;
+		std::vector<VkDescriptorSet> m_DescriptorSets;
 
 	private:
 		VkSwapchainKHR m_Swapchain;

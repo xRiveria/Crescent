@@ -98,7 +98,12 @@ namespace Crescent
 		}
 	};
 
-
+	struct UniformBufferObject
+	{
+		glm::mat4 m_ModelMatrix; //The data in the GLM matrices is binary compatible with the way the shader expects it, so we can just memcpy a UniformBufferObject to a VkBuffer.
+		glm::mat4 m_ViewMatrix;
+		glm::mat4 m_ProjectionMatrix;
+	};
 
 	struct SwapchainSupportDetails
 	{

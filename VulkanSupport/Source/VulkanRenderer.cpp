@@ -4,9 +4,13 @@
 #include <vector>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
+#include <chrono>
 
 namespace Crescent
 {
+	const int g_MaxFramesInFlight = 2;
+	size_t g_CurrentFrameIndex = 0;
+
 	VulkanRenderer::VulkanRenderer(const std::string& applicationName, const std::string& engineName, const int& applicationMainVersion, const int& applicationSubVersion, const bool& validationLayersEnabled)
 		: m_ValidationLayersEnabled(validationLayersEnabled)
 	{
@@ -31,7 +35,9 @@ namespace Crescent
 		m_Model = std::make_shared<VulkanResource>("Resources/Models/viking_room.obj");
 		m_VertexBuffer = std::make_shared<VulkanVertexBuffer>(m_Model, m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Devices->RetrieveGraphicsQueue(), m_CommandPool->RetrieveCommandPool());
 		m_IndexBuffer = std::make_shared<VulkanIndexBuffer>(m_Model, m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Devices->RetrieveGraphicsQueue(), m_CommandPool->RetrieveCommandPool());
+		m_Swapchain->CreateUniformBuffers();
 		m_DescriptorPool = std::make_shared<VulkanDescriptorPool>(m_Swapchain->RetrieveSwapchainImages(), m_Devices->RetrieveLogicalDevice());
+		m_Swapchain->CreateDescriptorSets(m_ModelTexture, m_DescriptorLayout->RetrieveDescriptorSetLayout(), m_DescriptorPool->RetrieveDescriptorPool());
 	}
 
 	VulkanRenderer::~VulkanRenderer()
@@ -40,13 +46,13 @@ namespace Crescent
 	}
 
 	//Retrieves the names of extensions required by our Vulkan application.
-	std::vector<const char*> RetrieveRequiredVulkanExtensions(const bool& validationLayersEnabled)
+	static std::vector<const char*> RetrieveRequiredVulkanExtensions(const bool& validationLayersEnabled)
 	{
 		//Vulkan is platform agnostic. Thus, extensions are needed to interface with the window system. GLFW has a handy function that returns the extension(s) it needs to do that.
 		uint32_t glfwExtensionsCount = 0;
 		const char** glfwExtensions;
 		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount); //Returns an array of Vulkan instance extensions and stores the count in a provided buffer. 
-		
+
 		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionsCount); //Creates a vector with data of first parameter to the end of length in second parameter.
 		for (const auto& extension : extensions)
 		{
@@ -164,6 +170,35 @@ namespace Crescent
 		{
 			std::cout << "Successfully created Vulkan Window surface.\n";
 		}
+	}
+
+	void VulkanRenderer::UpdateUniformBuffers(uint32_t currentImage)
+	{
+		/*
+			This function will generate a new transformation every frame to make the geometry spin around. We will make our geometry rotate 90 degrees per second regardless of 
+			framerate. We will now calculate the time in seconds since rendering has started with floating point accuracy. 
+		*/
+		static auto startTime = std::chrono::high_resolution_clock::now(); //Static so as the function is called repeatedly, this won't get redefined and overwritten.
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		UniformBufferObject uniformBufferObject{};
+		//Rotation on the Z axis of 90 degrees per second.
+		uniformBufferObject.m_ModelMatrix = glm::rotate(glm::mat4(1.0f), (time / 3) * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		//The glm::LookAt function takes the eye position, center position and up axis. This is usually a camera, but we don't have this at the moment.
+		uniformBufferObject.m_ViewMatrix = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), (glm::vec3(0.0f, 0.0f, 1.0f)));
+		//The perspective projection will be a 45 degree vertical field-of-view.
+		uniformBufferObject.m_ProjectionMatrix = glm::perspective(glm::radians(45.0f), (float)m_Swapchain->RetrieveSwapchainExtent()->width / (float)m_Swapchain->RetrieveSwapchainExtent()->height, 0.1f, 10.0f);
+		/*
+			As GLM was originally was designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way to compensate for that is to flip the sign on
+			the scaling factor of the Y axis in the projection matrix. If you don't do that, the image will be rendered upside down.
+		*/
+		uniformBufferObject.m_ProjectionMatrix[1][1] *= -1;
+
+		void* data;
+		vkMapMemory(*m_Devices->RetrieveLogicalDevice(), m_Swapchain->m_UniformBuffersMemory[currentImage], 0, sizeof(uniformBufferObject), 0, &data);
+		memcpy(data, &uniformBufferObject, sizeof(uniformBufferObject));
+		vkUnmapMemory(*m_Devices->RetrieveLogicalDevice(), m_Swapchain->m_UniformBuffersMemory[currentImage]);
 	}
 
 	void VulkanRenderer::DrawFrames()

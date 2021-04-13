@@ -21,6 +21,7 @@ namespace Crescent
 		VkImage* RetrieveTexture() { return &m_Texture; }
 		VkImageView* RetrieveTextureView() { return &m_TextureView; }
 		VkDeviceMemory* RetrieveTextureMemory() { return &m_TextureMemory; }
+		VkSampler* RetrieveTextureSampler() { return &m_TextureSampler; }
 
 	private:
 		void CreateTexture(const int& textureWidth, const int& textureHeight, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);

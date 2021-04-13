@@ -222,11 +222,11 @@ private:
 		LoadModel();
 		CreateVertexBuffer();
 		CreateIndexBuffer();
-
-
 		CreateUniformBuffers();
 		CreateDescriptorPool();
 		CreateDescriptorSets();
+
+
 		CreateCommandBuffers();
 		CreateSyncObjects();
 	}
@@ -2478,11 +2478,27 @@ private:
 		}
 	}
 
+	void CreateUniformBuffers()
+	{
+		/*
+			We will create the buffers here that contain the UBO data for the shaders. As we will be copying the data to the uniform buffer every frame, it doesn't really
+			make any sense to have a staging buffer. It would just add extra overhead in this case and likely degrade performance instead of improving it. We should have
+			multiple buffers, because multiple frames may be in flight at the same time and we don't want to have to update the buffer in preparation of the next frame while
+			a previous one is still reading from it. We could either have a uniform buffer per frame or per swap chain image. However, since we need to refer to the uniform buffer
+			from the command buffer that we have per swap chain image, it makes the most sense to have a uniform buffer per swapchain image.
 
+			We will write a seperate function that updates the uniform buffer with a new transformation every frame, so there will be no vkMapMemory here.
+		*/
 
+		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		m_UniformBuffers.resize(m_SwapChainImages.size());
+		m_UniformBuffersMemory.resize(m_SwapChainImages.size());
 
-
-
+		for (size_t i = 0; i < m_SwapChainImages.size(); i++)
+		{
+			CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_UniformBuffers[i], m_UniformBuffersMemory[i]);
+		}
+	};
 
 	void CreateDescriptorSets()
 	{
@@ -2558,27 +2574,11 @@ private:
 		}
 	}
 
-	void CreateUniformBuffers()
-	{
-		/*
-			We will create the buffers here that contain the UBO data for the shaders. As we will be copying the data to the uniform buffer every frame, it doesn't really
-			make any sense to have a staging buffer. It would just add extra overhead in this case and likely degrade performance instead of improving it. We should have
-			multiple buffers, because multiple frames may be in flight at the same time and we don't want to have to update the buffer in preparation of the next frame while
-			a previous one is still reading from it. We could either have a uniform buffer per frame or per swap chain image. However, since we need to refer to the uniform buffer
-			from the command buffer that we have per swap chain image, it makes the most sense to have a uniform buffer per swapchain image. 
 
-			We will write a seperate function that updates the uniform buffer with a new transformation every frame, so there will be no vkMapMemory here. 
-		*/
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-		m_UniformBuffers.resize(m_SwapChainImages.size());
-		m_UniformBuffersMemory.resize(m_SwapChainImages.size());
+	
 
-		for (size_t i = 0; i < m_SwapChainImages.size(); i++)
-		{
-			CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_UniformBuffers[i], m_UniformBuffersMemory[i]);
-		}
-	};
+	
 
 	void CreateCommandBuffers()
 	{
@@ -2943,29 +2943,7 @@ private:
 		g_CurrentFrameIndex = (g_CurrentFrameIndex + 1) % g_MaxFramesInFlight;
 	}
 
-	void UpdateUniformBuffer(uint32_t currentImage)
-	{
-		//This function will generate a new transformation every frame to make the geometry spin around. We will make our geometry rotate 90 degrees per second regardless of framerate.
-		//We will now calculate the time in seconds since rendering has started with floating point accuracy. 
-		static auto startTime = std::chrono::high_resolution_clock::now(); //Static so as the function is called repeatedly, this won't get redefined and overwritten.
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-		UniformBufferObject ubo{};
-		//Rotation on the Z axis of 90 degrees per second.
-		ubo.m_ModelMatrix = glm::rotate(glm::mat4(1.0f), (time / 3) * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		//The glm::LookAt function takes the eye position, center position and up axis. This is usually a camera but we don't have this at the moment.
-		ubo.m_ViewMatrix = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), (glm::vec3(0.0f, 0.0f, 1.0f)));
-		//The perspective projection will be a 45 degree vertical field-of-view.
-		ubo.m_ProjectionMatrix = glm::perspective(glm::radians(45.0f), (float)m_SwapChainExtent.width / (float)m_SwapChainExtent.height, 0.1f, 10.0f); 
-		//As GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way to compensate for that is to flip the
-		//sign on the scaling factor of the Y axis in the projection matrix. If you don't do that, the image will be rendered upside down. 
-		ubo.m_ProjectionMatrix[1][1] *= -1;
-
-		void* data;
-		vkMapMemory(m_Device, m_UniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-		memcpy(data, &ubo, sizeof(ubo));
-		vkUnmapMemory(m_Device, m_UniformBuffersMemory[currentImage]);
 	}
 
 private:
@@ -2987,6 +2965,7 @@ private:
 	std::vector<VkFramebuffer> m_SwapChainFramebuffers; 
 	VkCommandPool m_CommandPool;
 	std::vector<VkCommandBuffer> m_CommandBuffers;
+
 	std::vector<VkSemaphore> m_ImageAvaliableSemaphores; //Each frame should have its own set of semaphores.
 	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
 	std::vector<VkFence> m_InFlightFences;

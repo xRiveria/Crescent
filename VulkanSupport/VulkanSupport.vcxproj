@@ -171,9 +171,11 @@
     <ClCompile Include="Source\Vulkan\VulkanDescriptorLayout.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanDescriptorPool.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanDevice.cpp" />
+    <ClCompile Include="Source\Vulkan\VulkanFence.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanIndexBuffer.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanPipeline.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanResource.cpp" />
+    <ClCompile Include="Source\Vulkan\VulkanSemaphore.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanShader.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanSwapchain.cpp" />
     <ClCompile Include="Source\Vulkan\VulkanTexture.cpp" />
@@ -194,9 +196,11 @@
     <ClInclude Include="Source\Vulkan\VulkanDescriptorLayout.h" />
     <ClInclude Include="Source\Vulkan\VulkanDescriptorPool.h" />
     <ClInclude Include="Source\Vulkan\VulkanDevice.h" />
+    <ClInclude Include="Source\Vulkan\VulkanFence.h" />
     <ClInclude Include="Source\Vulkan\VulkanIndexBuffer.h" />
     <ClInclude Include="Source\Vulkan\VulkanPipeline.h" />
     <ClInclude Include="Source\Vulkan\VulkanResource.h" />
+    <ClInclude Include="Source\Vulkan\VulkanSemaphore.h" />
     <ClInclude Include="Source\Vulkan\VulkanShader.h" />
     <ClInclude Include="Source\Vulkan\VulkanSwapchain.h" />
     <ClInclude Include="Source\Vulkan\VulkanTexture.h" />

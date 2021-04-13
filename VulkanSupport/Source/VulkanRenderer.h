@@ -27,6 +27,7 @@ namespace Crescent
 	private:
 		void CreatePresentationSurface();
 		void CreateVulkanInstance(const std::string& applicationName, const std::string& engineName, const int& applicationMainVersion, const int& applicationSubVersion);
+		void UpdateUniformBuffers(uint32_t currentImage);
 
 	private:
 		VkInstance m_VulkanInstance;
