@@ -80,12 +80,32 @@ namespace Crescent
 		CreateTextureSampler();
 	}
 
-	void VulkanTexture::DeleteTextureInstance()
+	void VulkanTexture::DeleteTextureViewInstance()
+	{
+		vkDestroyImageView(*m_LogicalDevice, m_TextureView, nullptr);
+	}
+
+	void VulkanTexture::DeleteTextureImageInstance()
+	{
+		vkDestroyImage(*m_LogicalDevice, m_Texture, nullptr);
+	}
+
+	void VulkanTexture::DeleteTextureMemoryInstance()
+	{
+		vkFreeMemory(*m_LogicalDevice, m_TextureMemory, nullptr);
+	}
+
+	void VulkanTexture::DeleteTextureSamplerInstance()
 	{
 		vkDestroySampler(*m_LogicalDevice, m_TextureSampler, nullptr);
+	}
+
+	void VulkanTexture::DestroyAllTextureInstances()
+	{
 		vkDestroyImageView(*m_LogicalDevice, m_TextureView, nullptr);
 		vkDestroyImage(*m_LogicalDevice, m_Texture, nullptr);
 		vkFreeMemory(*m_LogicalDevice, m_TextureMemory, nullptr);
+		vkDestroySampler(*m_LogicalDevice, m_TextureSampler, nullptr);
 	}
 
 	//Represents an abstract texture creation function. The width, height, format, tiling mode, usage and memory properties parameters are different as they vary between images.

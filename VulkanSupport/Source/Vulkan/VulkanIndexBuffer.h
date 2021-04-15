@@ -9,7 +9,7 @@ namespace Crescent
 	{
 	public:
 		VulkanIndexBuffer(std::shared_ptr<VulkanResource> resource, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkQueue* graphicsQueue, VkCommandPool* commandPool);
-
+		void DestroyIndexBufferInstance();
 		VkBuffer* RetrieveIndexBuffer() { return &m_IndexBuffer; }
 
 	private:

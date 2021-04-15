@@ -6,7 +6,10 @@ namespace Crescent
 	class VulkanSemaphore
 	{
 	public:
-		VulkanSemaphore(VkDevice* logicalDevice);
+		VulkanSemaphore();
+
+		void CreateVulkanSemaphore(VkDevice* logicalDevice);
+		VkSemaphore* RetrieveSemaphore() { return &m_Semaphore; }
 
 	private:
 		VkSemaphore m_Semaphore;

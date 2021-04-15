@@ -8,6 +8,12 @@ namespace Crescent
 		CreateIndexBuffer();
 	}
 
+	void VulkanIndexBuffer::DestroyIndexBufferInstance()
+	{
+		vkDestroyBuffer(*m_LogicalDevice, m_IndexBuffer, nullptr);
+		vkFreeMemory(*m_LogicalDevice, m_IndexBufferMemory, nullptr);
+	}
+
 	void VulkanIndexBuffer::CreateIndexBuffer()
 	{
 		/*

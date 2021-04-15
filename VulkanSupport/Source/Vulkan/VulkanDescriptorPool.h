@@ -11,10 +11,10 @@ namespace Crescent
 	public:
 		VulkanDescriptorPool(std::vector<std::shared_ptr<VulkanTexture>>* swapchainImages, VkDevice* logicalDevice);
 
-		VkDescriptorPool* RetrieveDescriptorPool() { return &m_DescriptorPool; }
+		void DeleteDescriptorPoolInstance();
 
-	private:
 		void CreateDescriptorPool();
+		VkDescriptorPool* RetrieveDescriptorPool() { return &m_DescriptorPool; }
 
 	private:
 		VkDescriptorPool m_DescriptorPool;

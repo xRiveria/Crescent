@@ -10,6 +10,11 @@ namespace Crescent
 		CreateDescriptorPool();
 	}
 
+	void VulkanDescriptorPool::DeleteDescriptorPoolInstance()
+	{
+		vkDestroyDescriptorPool(*m_LogicalDevice, m_DescriptorPool, nullptr);
+	}
+
 	void VulkanDescriptorPool::CreateDescriptorPool()
 	{
 		/*

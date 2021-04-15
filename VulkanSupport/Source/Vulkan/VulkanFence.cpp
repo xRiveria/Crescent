@@ -4,8 +4,14 @@
 
 namespace Crescent
 {
-	VulkanFence::VulkanFence(VkDevice* logicalDevice) : m_LogicalDevice(logicalDevice)
+	VulkanFence::VulkanFence()
 	{
+
+	}
+
+	void VulkanFence::CreateVulkanFence(VkDevice* logicalDevice)
+	{
+		m_LogicalDevice = logicalDevice;
 		VkFenceCreateInfo fenceInfo{};
 		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;

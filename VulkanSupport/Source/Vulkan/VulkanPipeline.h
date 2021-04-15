@@ -9,11 +9,12 @@ namespace Crescent
 		VulkanPipeline(const VkFormat& swapchainImageFormat, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkExtent2D* swapchainExtent, VkDescriptorSetLayout* descriptorSetLayout);
 		void DestroyPipelineInstance();
 
-		VkRenderPass* RetrieveRenderPass() { return &m_RenderPass; }
-
-	private:
 		void CreateRenderPass();
 		void CreateGraphicsPipeline();
+
+		VkRenderPass* RetrieveRenderPass() { return &m_RenderPass; }
+		VkPipeline* RetrievePipeline() { return &m_Pipeline; }
+		VkPipelineLayout* RetrievePipelineLayout() { return &m_PipelineLayout; }
 
 	private:
 		VkRenderPass m_RenderPass;

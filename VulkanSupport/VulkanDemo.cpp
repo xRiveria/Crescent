@@ -2574,11 +2574,31 @@ private:
 		}
 	}
 
+	void CreateSyncObjects()
+	{
+		//We will need one semaphore to signal that an image has been acquired and is ready for rendering, and another one to signal that rendering has finished and presentation can happen.
+		m_ImageAvaliableSemaphores.resize(g_MaxFramesInFlight);
+		m_RenderFinishedSemaphores.resize(g_MaxFramesInFlight);
+		m_InFlightFences.resize(g_MaxFramesInFlight);
+		m_ImagesInFlight.resize(m_SwapChainImages.size(), VK_NULL_HANDLE); //Initially, not a single frame is using an image so we explictly initialize it to no fence. 
 
+		VkSemaphoreCreateInfo semaphoreInfo{};
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	
+		for (size_t i = 0; i < g_MaxFramesInFlight; i++)
+		{
+			if (vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_ImageAvaliableSemaphores[i]) != VK_SUCCESS ||
+				vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]) != VK_SUCCESS ||
+				vkCreateFence(m_Device, &fenceInfo, nullptr, &m_InFlightFences[i]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("Failed to create semaphores for a frame.");
+			}
+		}
+	}
 
 	void CreateCommandBuffers()
 	{
@@ -2699,31 +2719,12 @@ private:
 		}
 	}
 
-	void CreateSyncObjects()
-	{
-		//We will need one semaphore to signal that an image has been acquired and is ready for rendering, and another one to signal that rendering has finished and presentation can happen.
-		m_ImageAvaliableSemaphores.resize(g_MaxFramesInFlight);
-		m_RenderFinishedSemaphores.resize(g_MaxFramesInFlight);
-		m_InFlightFences.resize(g_MaxFramesInFlight);
-		m_ImagesInFlight.resize(m_SwapChainImages.size(), VK_NULL_HANDLE); //Initially, not a single frame is using an image so we explictly initialize it to no fence. 
 
-		VkSemaphoreCreateInfo semaphoreInfo{};
-		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-		VkFenceCreateInfo fenceInfo{};
-		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		for (size_t i = 0; i < g_MaxFramesInFlight; i++)
-		{
-			if (vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_ImageAvaliableSemaphores[i]) != VK_SUCCESS ||
-				vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]) != VK_SUCCESS ||
-				vkCreateFence(m_Device, &fenceInfo, nullptr, &m_InFlightFences[i]) != VK_SUCCESS)
-			{
-				throw std::runtime_error("Failed to create semaphores for a frame.");
-			}
-		}
-	}
+
+
+
 
 	void RecreateSwapChain()
 	{

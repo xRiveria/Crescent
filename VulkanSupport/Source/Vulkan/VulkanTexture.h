@@ -13,7 +13,16 @@ namespace Crescent
 		VulkanTexture(VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, const VkImage& image, const VkFormat& imageFormat, const VkImageAspectFlags& imageAspectFlags);
 		//For textures to be created on the spot.
 		VulkanTexture(const int& textureWidth, const int& textureHeight, VkFormat format, const VkImageAspectFlags& imageAspectFlags, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice);
-		void DeleteTextureInstance();
+		
+		void DeleteTextureViewInstance();
+		void DeleteTextureImageInstance();
+		void DeleteTextureMemoryInstance();
+		void DeleteTextureSamplerInstance();
+		void DestroyAllTextureInstances();
+
+		void CreateTexture(const int& textureWidth, const int& textureHeight, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+		void CreateTextureView();
+		void CreateTextureSampler();
 
 		void CopyBufferToImage(VkBuffer buffer, uint32_t imageWidth, uint32_t imageHeight);
 		void TransitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout, const VkCommandPool& commandPool, const VkQueue& queue);
@@ -22,11 +31,6 @@ namespace Crescent
 		VkImageView* RetrieveTextureView() { return &m_TextureView; }
 		VkDeviceMemory* RetrieveTextureMemory() { return &m_TextureMemory; }
 		VkSampler* RetrieveTextureSampler() { return &m_TextureSampler; }
-
-	private:
-		void CreateTexture(const int& textureWidth, const int& textureHeight, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
-		void CreateTextureView();
-		void CreateTextureSampler();
 
 	private:
 		VkImage m_Texture;

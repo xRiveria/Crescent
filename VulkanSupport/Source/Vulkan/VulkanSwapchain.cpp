@@ -13,19 +13,7 @@ namespace Crescent
 
 	void VulkanSwapchain::DestroySwapchainInstance()
 	{
-		m_DepthTexture->DeleteTextureInstance();
-
-		for (size_t i = 0; i < m_SwapchainTextures.size(); i++)
-		{
-			vkDestroyFramebuffer(*m_LogicalDevice, m_SwapchainFramebuffers[i], nullptr);
-		}
-
-		for (int i = 0; i < m_SwapchainTextures.size(); i++)
-		{
-			m_SwapchainTextures[i]->DeleteTextureInstance();
-		}
-
-		vkDestroySwapchainKHR(*m_LogicalDevice, m_Swapchain, nullptr);
+		//
 	}
 
 	/*
@@ -248,7 +236,6 @@ namespace Crescent
 		swapchainImages.resize(imageCount);
 		vkGetSwapchainImagesKHR(*m_LogicalDevice, m_Swapchain, &imageCount, swapchainImages.data());
 
-		//Create our custom class and store the image handles within.
 		for (int i = 0; i < swapchainImages.size(); i++)
 		{
 			//Our swapchain textures will be used as color attachments.
@@ -445,6 +432,14 @@ namespace Crescent
 				The latter can be used to copy descriptors to each other as its name implies.
 			*/
 			vkUpdateDescriptorSets(*m_LogicalDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+		}
+	}
+
+	void VulkanSwapchain::RecreateSwapchainImageViews()
+	{
+		for (size_t i = 0; i < m_SwapchainTextures.size(); i++)
+		{
+			m_SwapchainTextures[i]->CreateTextureView();
 		}
 	}
 }

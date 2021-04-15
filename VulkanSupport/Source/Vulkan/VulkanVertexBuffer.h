@@ -9,7 +9,7 @@ namespace Crescent
 	{
 	public:
 		VulkanVertexBuffer(std::shared_ptr<VulkanResource> resource, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkQueue* graphicsQueue, VkCommandPool* commandPool);
-
+		void DestroyVertexBufferInstance();
 		VkBuffer* RetrieveVertexBuffer() { return &m_VertexBuffer; }
 
 	private:

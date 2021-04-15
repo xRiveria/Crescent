@@ -8,6 +8,12 @@ namespace Crescent
 		CreateVertexBuffer();
 	}
 
+	void VulkanVertexBuffer::DestroyVertexBufferInstance()
+	{
+		vkDestroyBuffer(*m_LogicalDevice, m_VertexBuffer, nullptr);
+		vkFreeMemory(*m_LogicalDevice, m_VertexBufferMemory, nullptr);
+	}
+
 	void VulkanVertexBuffer::CreateVertexBuffer()
 	{
 		/*

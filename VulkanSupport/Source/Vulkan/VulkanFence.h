@@ -6,10 +6,15 @@ namespace Crescent
 	class VulkanFence
 	{
 	public:
-		VulkanFence(VkDevice *logicalDevice);
+		VulkanFence();
+
+		void CreateVulkanFence(VkDevice *logicalDevice);
+		//VkFence* RetrieveVulkanFence() { return &m_Fence; }
+
+	public:
+		VkFence m_Fence;
 
 	private:
-		VkFence m_Fence;
 		VkDevice* m_LogicalDevice;
 	};
 }

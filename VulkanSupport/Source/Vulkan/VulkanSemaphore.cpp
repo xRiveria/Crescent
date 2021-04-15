@@ -4,8 +4,14 @@
 
 namespace Crescent
 {
-	VulkanSemaphore::VulkanSemaphore(VkDevice* logicalDevice) : m_LogicalDevice(logicalDevice)
+	VulkanSemaphore::VulkanSemaphore()
 	{
+
+	}
+
+	void VulkanSemaphore::CreateVulkanSemaphore(VkDevice* logicalDevice)
+	{
+		m_LogicalDevice = logicalDevice;
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
