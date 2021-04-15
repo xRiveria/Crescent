@@ -37,6 +37,7 @@ namespace Crescent
 		m_DescriptorLayout = std::make_shared<VulkanDescriptorLayout>(m_Devices->RetrieveLogicalDevice());
 		m_Pipeline = std::make_shared<VulkanPipeline>(m_Swapchain->RetrieveSwapchainImageFormat(), m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Swapchain->RetrieveSwapchainExtent(), m_DescriptorLayout->RetrieveDescriptorSetLayout());
 		m_CommandPool = std::make_shared<VulkanCommandPool>(m_Devices->RetrieveLogicalDevice(), m_Devices->RetrievePhysicalDevice(), &m_Surface);
+		m_Swapchain->CreateMultisampledColorBufferResources();
 		m_Swapchain->CreateDepthBufferResources(m_CommandPool->RetrieveCommandPool(), m_Devices->RetrieveGraphicsQueue());
 		m_Swapchain->CreateFramebuffers(m_Pipeline->RetrieveRenderPass());
 
@@ -372,7 +373,7 @@ namespace Crescent
 			/*
 				We now need to tell Vulkan to change the drawing command to use the Index Buffer.
 			*/
-			vkCmdDrawIndexed(m_CommandBuffers[i], static_cast<uint32_t>(m_Model->RetrieveIndices()->size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(m_CommandBuffers[i], static_cast<uint32_t>(m_Model->m_Indices.size()), 1, 0, 0, 0);
 
 			//The render pass can be ended.
 			vkCmdEndRenderPass(m_CommandBuffers[i]);
@@ -548,17 +549,45 @@ namespace Crescent
 				throw std::runtime_error("Failed to present swapchain image.\n");
 			}
 
+			/*
+				If you run your application with validation layers enabled, you may get either errors or notice that the memory usage usually slowly grows. The reason for this is 
+				that the application is rapidly submitting work in the DrawFrames function, but doesn't actually check if any of it finishes. If the CPU is submitting work faster 
+				than the GPU can keep up, then the queue will slowly fill up with work. Worse, even, is that we are reusing the m_ImageAvaliableSemaphores and m_RenderFinishedSemaphores 
+				along with command buffers for multiple frames at the same time. The easy way to solve this is to wait for the work to finish right after submitting it, for example by 
+				using vkQueueWaitIdle.
+
+				However, we are likely not optimally using the GPU in this way, because the whole graphics pipeline is only used for one frame at a time right now. The stages that the current 
+				frame has already progressed through are idle and could already be used for a next frame. We will now extend our application to allow for multiple frames to be in-flight while 
+				still bounding the amount of work that piles up. Start by adding a constant at the top of the program that specifies how many frames should be processed concurrently.
+
+				Although we've now setup the required objects to faciliate processing of multiple frames simulateneously, we still don't actually prevent more than g_MaxFramesInFlight from being 
+				submitted. Right now, there is only GPU-GPU synchronization and no CPU-GPU synchronization going on to keep track of how work is going. We may be using the frame #0 objects while
+				frame #0 is still in-flight. 
+
+				The perform CPU-GPU synchronization, Vulkan offers a second type of synchronization primitive called fences. Fences are similar to semaphores in the sense that they can be signalled 
+				and waited for, but this time, we actually wait for them in our own code. We will first create a fence for each frame. Then, we will adjust our present function to signal the fence 
+				that rendering is complete, which the fence is waiting for at the start of this function. This allows for operations to complete before a new frame is drawn.
+
+				The memory leak problem may be gone now, but the program is still not working quite correctly yet. If g_MaxFramesInFlight is higher than the number of swapchain 
+				images or vkAcquireNextImageKHR returns images out of order, then its possible that we may start rendering to a swapchain image that is already in flight. To avoid this,
+				we need to track for each swapchain image if a frame in flight is currently using it. This mapping will refer to frames in flight by their fences, so we will immediately have
+				a synchronization object to wait on before a new frame can use that image.
+
+				We have now implemented all the needed synchronization to ensure that there are no more than 2 frames of work enqueued and that these frames are not accidentally using the same image.
+			*/
+
 			vkQueueWaitIdle(*m_Devices->RetrievePresentationQueue());
 
 			//By using the modulo operator, we enmsure that the frame index loop[s around efery g_MaxFramesInFlight enqueued frames.
 			g_CurrentFrameIndex = (g_CurrentFrameIndex + 1) % g_MaxFramesInFlight;
 		} 
 
-
-		//Remember that all of the operations we have while drawing frames are asynchronous. That means that when we exit the loop in the main loop, drawing and presentation
-		//operations may still be going on. Cleaning up resources while that is happening is a bad idea. To fix that, we should wait for the logical device to finish operations
-		//before exiting the update function and destroying the window. Alternatively, you can also wait for operations in a specific command queue to be finished with vkQueueWaitIdle.
-		//These functions can be used as a very rudimentary way to perform synchronization. You will see that the program will exit without problems while doing so. 
+		/*
+			Remember that all of the operations we have while drawing frames are asynchronous. That means that when we exit the loop in the main loop, drawing and presentation
+			operations may still be going on. Cleaning up resources while that is happening is a bad idea. To fix that, we should wait for the logical device to finish operations
+			before exiting the update function and destroying the window. Alternatively, you can also wait for operations in a specific command queue to be finished with vkQueueWaitIdle.
+			These functions can be used as a very rudimentary way to perform synchronization. You will see that the program will exit without problems while doing so. 
+		*/
 		vkDeviceWaitIdle(*m_Devices->RetrieveLogicalDevice());
 
 		CleanupVulkanAssets();

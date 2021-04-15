@@ -103,6 +103,7 @@ namespace Crescent
 			if (QueryPhysicalDeviceSuitability(device)) //For now, we accept the first one that is suitable.
 			{
 				m_PhysicalDevice = device;
+				m_MSAASamples = GetMaxUsableSampleCount();
 
 				VkPhysicalDeviceProperties deviceProperties;
 				vkGetPhysicalDeviceProperties(device, &deviceProperties);
@@ -116,6 +117,28 @@ namespace Crescent
 		{
 			throw std::runtime_error("Failed to obtain a suitable GPU.");
 		}
+	}
+
+	VkSampleCountFlagBits VulkanDevice::GetMaxUsableSampleCount()
+	{
+		/*
+			Most modern GPUs support at least 8 samples but this number is not guaranteed to be the same everywhere. By default, we will be using only one sample pixel, 
+			which is equivalent to no multisampling, in which case the final image will be remain unchanged. The exact maximum number of samples can be extracted from 
+			VkPhysicalDeviceProperties associated with our selected physical device. We're using a depth buffer, so we have to take into account the sample count for both color 
+			and depth. The highest sample count that is supported by both (&) will be the maximum we can support. 
+		*/
+		VkPhysicalDeviceProperties physicalDeviceProperties;
+		vkGetPhysicalDeviceProperties(m_PhysicalDevice, &physicalDeviceProperties);
+
+		VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+		if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+		if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+		if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+		if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+		if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+		if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+
+		return VK_SAMPLE_COUNT_1_BIT;
 	}
 
 	void VulkanDevice::CreateLogicalDevice()

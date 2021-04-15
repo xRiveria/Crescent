@@ -21,7 +21,7 @@ namespace Crescent
 			indes type, either uint16_t or uint32_t. The usage of the indexBuffer should be VK_BUFFER_USAGE_INDEX_BUFFER_BIT instead of VK_BUFFER_USAGE_VERTEX_BUFFER_BIT. We 
 			will create a staging buffer to copty the contents of the indices to and then copy it to the final device local index buffer.
 		*/
-		VkDeviceSize bufferSize = sizeof(m_Resource->RetrieveIndices()[0]) * m_Resource->RetrieveIndices()->size();
+		VkDeviceSize bufferSize = sizeof(m_Resource->m_Indices[0]) * m_Resource->m_Indices.size();
 
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingBufferMemory;
@@ -31,7 +31,7 @@ namespace Crescent
 
 		void* data;
 		vkMapMemory(*m_LogicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, m_Resource->RetrieveIndices()->data(), (size_t)bufferSize);
+		memcpy(data, m_Resource->m_Indices.data(), (size_t)bufferSize);
 		vkUnmapMemory(*m_LogicalDevice, stagingBufferMemory);
 
 		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_IndexBuffer, m_IndexBufferMemory, *m_LogicalDevice, *m_PhysicalDevice);

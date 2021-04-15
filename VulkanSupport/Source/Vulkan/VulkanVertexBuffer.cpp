@@ -31,7 +31,7 @@ namespace Crescent
 			copy data from the stagingBuffer to our vertexBuffer. We have to indicate that we intend to do that by specifying the transfer source flag for the stagingBuffer 
 			and the destination flag for the vertexBuffer, along with the vertex buffer usage flag. 
 		*/
-		VkDeviceSize bufferSize = sizeof(m_Resource->RetrieveVertices()[0]) * m_Resource->RetrieveVertices()->size();
+		VkDeviceSize bufferSize = sizeof(m_Resource->m_Vertices[0]) * m_Resource->m_Vertices.size();
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingBufferMemory;
 		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory, *m_LogicalDevice, *m_PhysicalDevice);
@@ -61,7 +61,7 @@ namespace Crescent
 			visible to the GPU yet. The transfer of data to the GPU is an operation that happens in the background and the specification simply tells us that it is guarenteed to 
 			be complete as of the next call to vkQueueSubmit.
 		*/
-		memcpy(data, m_Resource->RetrieveVertices()->data(), (size_t)bufferSize);
+		memcpy(data, m_Resource->m_Vertices.data(), (size_t)bufferSize);
 		vkUnmapMemory(*m_LogicalDevice, stagingBufferMemory);
 
 		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_VertexBuffer, m_VertexBufferMemory, *m_LogicalDevice, *m_PhysicalDevice);

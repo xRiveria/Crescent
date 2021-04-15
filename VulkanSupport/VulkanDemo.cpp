@@ -225,8 +225,6 @@ private:
 		CreateUniformBuffers();
 		CreateDescriptorPool();
 		CreateDescriptorSets();
-
-
 		CreateCommandBuffers();
 		CreateSyncObjects();
 	}
@@ -2719,13 +2717,6 @@ private:
 		}
 	}
 
-
-
-
-
-
-
-
 	void RecreateSwapChain()
 	{
 		//Minimizaton will result in a framebuffer size of 0. We will handle that by pausing the window until the window is in the foreground again.
@@ -2943,7 +2934,6 @@ private:
 		//By using the modulo operator, we ensure that the frame index loops around every g_MaxFramesInFlight enqueued frames.
 		g_CurrentFrameIndex = (g_CurrentFrameIndex + 1) % g_MaxFramesInFlight;
 	}
-
 
 	}
 

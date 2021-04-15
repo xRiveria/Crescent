@@ -247,6 +247,17 @@ namespace Crescent
 		m_SwapchainExtent = swapExtent;
 	}
 
+	void VulkanSwapchain::CreateMultisampledColorBufferResources()
+	{
+		/*
+			We will now create a multisampled color buffer. Note that we will be using m_MSSASamples here as a function parameter to pass to the texture creation function. 
+			We're also using only 1 mip level, since this is enforced by the Vulkan specification in case of images with more than one sample per pixel. Also, this 
+			color buffer doesn't need mipmaps since its not going to be used as a texture.
+		*/
+		//VkFormat colorFormat = m_SwapchainFormat;
+		//m_MultisampledColorBufferTexture = std::make_shared<VulkanTexture>(m_SwapchainExtent.width, m_SwapchainExtent.height, 1, )
+	}
+
 	void VulkanSwapchain::CreateDepthBufferResources(VkCommandPool* commandPool, VkQueue* queue)
 	{
 		/*

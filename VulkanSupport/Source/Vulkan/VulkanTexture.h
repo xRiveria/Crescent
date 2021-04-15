@@ -33,10 +33,14 @@ namespace Crescent
 		VkSampler* RetrieveTextureSampler() { return &m_TextureSampler; }
 
 	private:
+		void GenerateMipmaps(VkImage texture, VkFormat imageFormat, int32_t textureWidth, int32_t textureHeight, uint32_t mipLevels);
+
+	private:
 		VkImage m_Texture;
 		VkDeviceMemory m_TextureMemory;
 		VkImageView m_TextureView;
 		VkSampler m_TextureSampler;
+		uint32_t m_MipmapLevels = 1;
 
 		VkFormat m_TextureFormat;
 		VkImageAspectFlags m_TextureTypeFlag; //Identifies the resource usage, such as Color, Depth or Stencil Texture etc.

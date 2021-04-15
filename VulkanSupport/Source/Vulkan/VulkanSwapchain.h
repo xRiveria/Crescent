@@ -14,6 +14,7 @@ namespace Crescent
 		void DestroySwapchainInstance();
 
 		void CreateSwapchain();
+		void CreateMultisampledColorBufferResources();
 		void CreateDepthBufferResources(VkCommandPool* commandPool, VkQueue* queue);
 		void CreateFramebuffers(VkRenderPass* renderPass);
 		void CreateUniformBuffers();
@@ -43,6 +44,7 @@ namespace Crescent
 		VkFormat m_SwapchainFormat;
 		VkExtent2D m_SwapchainExtent;
 		std::vector<std::shared_ptr<VulkanTexture>> m_SwapchainTextures;
+		std::shared_ptr<VulkanTexture> m_MultisampledColorBufferTexture = nullptr;
 		std::shared_ptr<VulkanTexture> m_DepthTexture = nullptr;
 		
 		GLFWwindow* m_Window;
