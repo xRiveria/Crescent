@@ -35,13 +35,13 @@ namespace Crescent
 		m_Devices = std::make_shared<VulkanDevice>(&m_VulkanInstance, &m_Surface);
 		m_Swapchain = std::make_shared<VulkanSwapchain>(m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), &m_Surface, m_Window->RetrieveWindow());
 		m_DescriptorLayout = std::make_shared<VulkanDescriptorLayout>(m_Devices->RetrieveLogicalDevice());
-		m_Pipeline = std::make_shared<VulkanPipeline>(m_Swapchain->RetrieveSwapchainImageFormat(), m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Swapchain->RetrieveSwapchainExtent(), m_DescriptorLayout->RetrieveDescriptorSetLayout());
+		m_Pipeline = std::make_shared<VulkanPipeline>(m_Swapchain->RetrieveSwapchainImageFormat(), m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Swapchain->RetrieveSwapchainExtent(), m_DescriptorLayout->RetrieveDescriptorSetLayout(), *m_Devices->RetrieveMSAASampleCount());
 		m_CommandPool = std::make_shared<VulkanCommandPool>(m_Devices->RetrieveLogicalDevice(), m_Devices->RetrievePhysicalDevice(), &m_Surface);
-		m_Swapchain->CreateMultisampledColorBufferResources();
-		m_Swapchain->CreateDepthBufferResources(m_CommandPool->RetrieveCommandPool(), m_Devices->RetrieveGraphicsQueue());
+		m_Swapchain->CreateMultisampledColorBufferResources(*m_Devices->RetrieveMSAASampleCount());
+		m_Swapchain->CreateDepthBufferResources(m_CommandPool->RetrieveCommandPool(), m_Devices->RetrieveGraphicsQueue(), *m_Devices->RetrieveMSAASampleCount());
 		m_Swapchain->CreateFramebuffers(m_Pipeline->RetrieveRenderPass());
 
-		m_ModelTexture = std::make_shared<VulkanTexture>("Resources/Textures/viking_room.png", m_Devices->RetrieveLogicalDevice(), m_Devices->RetrievePhysicalDevice(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, m_CommandPool->RetrieveCommandPool(), m_Devices->RetrieveGraphicsQueue());
+		m_ModelTexture = std::make_shared<VulkanTexture>("Resources/Textures/viking_room.png", m_Devices->RetrieveLogicalDevice(), m_Devices->RetrievePhysicalDevice(), VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, m_CommandPool->RetrieveCommandPool(), m_Devices->RetrieveGraphicsQueue());
 		m_Model = std::make_shared<VulkanResource>("Resources/Models/viking_room.obj");
 		m_VertexBuffer = std::make_shared<VulkanVertexBuffer>(m_Model, m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Devices->RetrieveGraphicsQueue(), m_CommandPool->RetrieveCommandPool());
 		m_IndexBuffer = std::make_shared<VulkanIndexBuffer>(m_Model, m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Devices->RetrieveGraphicsQueue(), m_CommandPool->RetrieveCommandPool());
@@ -595,6 +595,7 @@ namespace Crescent
 
 	void VulkanRenderer::CleanupSwapchain()
 	{
+		m_Swapchain->m_MultisampledColorBufferTexture->DestroyAllTextureInstances();
 		m_Swapchain->m_DepthTexture->DestroyAllTextureInstances();
 
 		for (size_t i = 0; i < m_Swapchain->m_SwapchainTextures.size(); i++)
@@ -697,10 +698,11 @@ namespace Crescent
 		CleanupSwapchain();
 
 		m_Swapchain->CreateSwapchain();
-		m_Swapchain->RecreateSwapchainImageViews();
+		//m_Swapchain->RecreateSwapchainImageViews();
 		m_Pipeline->CreateRenderPass();
 		m_Pipeline->CreateGraphicsPipeline();
-		m_Swapchain->CreateDepthBufferResources(m_CommandPool->RetrieveCommandPool(), m_Devices->RetrieveGraphicsQueue());
+		m_Swapchain->CreateMultisampledColorBufferResources(*m_Devices->RetrieveMSAASampleCount());
+		m_Swapchain->CreateDepthBufferResources(m_CommandPool->RetrieveCommandPool(), m_Devices->RetrieveGraphicsQueue(), *m_Devices->RetrieveMSAASampleCount());
 		m_Swapchain->CreateFramebuffers(m_Pipeline->RetrieveRenderPass());
 		m_Swapchain->CreateUniformBuffers();
 		m_DescriptorPool->CreateDescriptorPool();

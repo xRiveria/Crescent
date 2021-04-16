@@ -7,8 +7,8 @@
 
 namespace Crescent
 {
-	VulkanTexture::VulkanTexture(const std::string& filePath, VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, VkFormat imageFormat, const VkImageAspectFlags& imageAspectFlags, VkCommandPool* commandPool, VkQueue* queue) 
-		: m_LogicalDevice(logicalDevice), m_PhysicalDevice(physicalDevice), m_TextureFormat(imageFormat), m_TextureTypeFlag(imageAspectFlags), m_CommandPool(commandPool), m_Queue(queue)
+	VulkanTexture::VulkanTexture(const std::string& filePath, VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, VkSampleCountFlagBits sampleCount, VkFormat imageFormat, const VkImageAspectFlags& imageAspectFlags, VkCommandPool* commandPool, VkQueue* queue)
+		: m_LogicalDevice(logicalDevice), m_PhysicalDevice(physicalDevice), m_SampleCount(sampleCount), m_TextureFormat(imageFormat), m_TextureTypeFlag(imageAspectFlags), m_CommandPool(commandPool), m_Queue(queue)
 	{
 		/*
 			The stbi_load function takes the file path and number of channels to load as arguments. The STBI_rgb_alpha value forces the the image to be loaded with an alpha channel,
@@ -80,8 +80,8 @@ namespace Crescent
 		CreateTextureSampler();
 	}
 
-	VulkanTexture::VulkanTexture(const int& textureWidth, const int& textureHeight, VkFormat format, const VkImageAspectFlags& imageAspectFlags, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice)
-		: m_TextureFormat(format), m_TextureTypeFlag(imageAspectFlags), m_LogicalDevice(logicalDevice), m_PhysicalDevice(physicalDevice)
+	VulkanTexture::VulkanTexture(const int& textureWidth, const int& textureHeight, VkSampleCountFlagBits sampleCount, VkFormat format, const VkImageAspectFlags& imageAspectFlags, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice)
+		: m_TextureFormat(format), m_TextureTypeFlag(imageAspectFlags), m_SampleCount(sampleCount), m_LogicalDevice(logicalDevice), m_PhysicalDevice(physicalDevice)
 	{
 		CreateTexture(textureWidth, textureHeight, m_TextureFormat, tiling, usage, properties, m_Texture, m_TextureMemory);
 		CreateTextureView();
@@ -175,7 +175,7 @@ namespace Crescent
 			using a 3D texture for a voxel terrain, for example, we could use this to avoid allocating memory to store large amounts of "air" values. We won't be using it,
 			so lets leave it at its default value of 0.
 		*/
-		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		imageInfo.samples = m_SampleCount; //MSAA.
 		imageInfo.flags = 0; //Optional
 		/*
 			The image is created using vkCreateImage, which doesn't have any particularly noteworthy parameters. It is possible that the VK_FORMAT_R8G8B8A8_SRGB format'

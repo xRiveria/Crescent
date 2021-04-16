@@ -5,8 +5,8 @@
 
 namespace Crescent
 {
-	VulkanPipeline::VulkanPipeline(const VkFormat& swapchainImageFormat, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkExtent2D* swapchainExtent, VkDescriptorSetLayout* descriptorSetLayout) :
-		m_SwapchainImageFormat(swapchainImageFormat), m_PhysicalDevice(physicalDevice), m_LogicalDevice(logicalDevice), m_SwapchainExtent(swapchainExtent), m_DescriptorSetLayout(descriptorSetLayout)
+	VulkanPipeline::VulkanPipeline(const VkFormat& swapchainImageFormat, VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, VkExtent2D* swapchainExtent, VkDescriptorSetLayout* descriptorSetLayout, const VkSampleCountFlagBits& maxSampleCount) :
+		m_SwapchainImageFormat(swapchainImageFormat), m_PhysicalDevice(physicalDevice), m_LogicalDevice(logicalDevice), m_SwapchainExtent(swapchainExtent), m_DescriptorSetLayout(descriptorSetLayout), m_MaxSampleCount(maxSampleCount)
 	{
 		CreateRenderPass();
 		CreateGraphicsPipeline();
@@ -34,7 +34,7 @@ namespace Crescent
 		*/
 		VkAttachmentDescription colorAttachmentInfo{};
 		colorAttachmentInfo.format = m_SwapchainImageFormat; //The format of the color attachment should match the format of the swapchain images.
-		colorAttachmentInfo.samples = VK_SAMPLE_COUNT_1_BIT; //Since we're not doing anything with multisampling yet, we will stick with 2 sample.
+		colorAttachmentInfo.samples = m_MaxSampleCount;
 		/*
 			The loadOp and storeOp determine what to do with the data in the attachment before rendering and after rendering. We have the following choices for loadOp:
 
@@ -70,9 +70,12 @@ namespace Crescent
 			We want the image to be ready for presentation using the swapchain after rendering, which is why we use the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR as finalLayout.
 		*/
 		colorAttachmentInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachmentInfo.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-
+		/*
+			You will notice that we have changed the finalLayout from VK_IMAGE_LAYOUT_PRESENT_SHR_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. That is because multisampled 
+			images cannot be presented directly. We first need to resolve them to a regular image. THis requirement does not apply to the depth buffer since it won't be 
+			presented at any poinmt. Therefore, we will have to add only one new attachment for color which is a so-called resolve attachment.
+		*/
+		colorAttachmentInfo.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 		/*
 			A single render pass can consist of multiple subpasses. Subpasses are subsequent rendering operations that depend on the contents of framebuffers in previous
@@ -90,9 +93,25 @@ namespace Crescent
 		*/
 		colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+		//Resolve attachment for our MSAA images.
+		VkAttachmentDescription resolveColorAttachmentInfo{};
+		resolveColorAttachmentInfo.format = m_SwapchainImageFormat;
+		resolveColorAttachmentInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		resolveColorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		resolveColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		resolveColorAttachmentInfo.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		resolveColorAttachmentInfo.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		resolveColorAttachmentInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		resolveColorAttachmentInfo.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		VkAttachmentReference colorAttachmentResolveReferenceInfo{};
+		colorAttachmentResolveReferenceInfo.attachment = 2;
+		colorAttachmentResolveReferenceInfo.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+
 		VkAttachmentDescription depthAttachmentInfo{};
 		depthAttachmentInfo.format = FindDepthFormat(*m_PhysicalDevice); //The format should be the same as the depth image itself.
-		depthAttachmentInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		depthAttachmentInfo.samples = m_MaxSampleCount;
 		depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; //Clears the values to a constant at the start.
 		depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; //Undefined after rendering operations.
 		depthAttachmentInfo.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; //Existing contents are undefined, we don't care about them.
@@ -118,6 +137,7 @@ namespace Crescent
 		subpassInfo.colorAttachmentCount = 1;
 		subpassInfo.pColorAttachments = &colorAttachmentReference;
 		subpassInfo.pDepthStencilAttachment = &depthAttachmentReference;
+		subpassInfo.pResolveAttachments = &colorAttachmentResolveReferenceInfo;
 		/*
 			Remember that the subpasses in a render pass automatically take care of image layout transitions. These transitions are controlled by subpass
 			dependencies, which specify memory and exeuction dependencies between subpasses. We have only a single subpass right now, but the operations right
@@ -162,7 +182,7 @@ namespace Crescent
 			created by filling in the VkRenderPassCreateInfo structure with an array of attachments and subpasses. The VkAttachmentReference object references
 			attachments using the indices of this array.
 		*/
-		std::array<VkAttachmentDescription, 2> attachments = { colorAttachmentInfo, depthAttachmentInfo };
+		std::array<VkAttachmentDescription, 3> attachments = { colorAttachmentInfo, depthAttachmentInfo, resolveColorAttachmentInfo };
 
 		VkRenderPassCreateInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -171,7 +191,7 @@ namespace Crescent
 		renderPassInfo.subpassCount = 1;
 		renderPassInfo.pSubpasses = &subpassInfo;
 		renderPassInfo.dependencyCount = 1;
-		renderPassInfo.pDependencies = &dependencyInfo;
+		renderPassInfo.pDependencies = &dependencyInfo; //Allows us to define a multisample resolve operation which will let us render the image to the screen.
 
 		if (vkCreateRenderPass(*m_LogicalDevice, &renderPassInfo, nullptr, &m_RenderPass) != VK_SUCCESS)
 		{
@@ -307,9 +327,9 @@ namespace Crescent
 		*/
 		VkPipelineMultisampleStateCreateInfo multisamplingInfo{};
 		multisamplingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-		multisamplingInfo.sampleShadingEnable = VK_FALSE;
-		multisamplingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-		multisamplingInfo.minSampleShading = 1.0f;
+		multisamplingInfo.sampleShadingEnable = VK_TRUE;
+		multisamplingInfo.minSampleShading = 1.0f; //Minimum fraction for sample shading. Closer to 1 is smoother.
+		multisamplingInfo.rasterizationSamples = m_MaxSampleCount;
 		multisamplingInfo.pSampleMask = nullptr;
 		multisamplingInfo.alphaToCoverageEnable = VK_FALSE;
 		multisamplingInfo.alphaToOneEnable = VK_FALSE;

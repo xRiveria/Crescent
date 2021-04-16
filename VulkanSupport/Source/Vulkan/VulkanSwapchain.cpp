@@ -247,18 +247,27 @@ namespace Crescent
 		m_SwapchainExtent = swapExtent;
 	}
 
-	void VulkanSwapchain::CreateMultisampledColorBufferResources()
+	void VulkanSwapchain::CreateMultisampledColorBufferResources(VkSampleCountFlagBits maxSampleCount)
 	{
 		/*
+			In MSAA, each pixel is sampled in an offscreen buffer which is then rendered to a screen. This new buffer is slightly different from regular images we've been 
+			rendering to - they have to be able to store more than one sample per pixel. Once a multisampled buffer is created, it has to be resolved to the default 
+			framebuffer (which stores only a single sample per pixel). This is why we have to create an additional render target and modify our current drawing process. 
+
+			We only need one new render target since only one drawing operation is active at a time, just like with the depth buffer. This new image will have to store 
+			the desired number of samples per pixel.
+
 			We will now create a multisampled color buffer. Note that we will be using m_MSSASamples here as a function parameter to pass to the texture creation function. 
 			We're also using only 1 mip level, since this is enforced by the Vulkan specification in case of images with more than one sample per pixel. Also, this 
 			color buffer doesn't need mipmaps since its not going to be used as a texture.
 		*/
-		//VkFormat colorFormat = m_SwapchainFormat;
-		//m_MultisampledColorBufferTexture = std::make_shared<VulkanTexture>(m_SwapchainExtent.width, m_SwapchainExtent.height, 1, )
+
+		VkFormat colorFormat = m_SwapchainFormat;
+		m_MultisampledColorBufferTexture = std::make_shared<VulkanTexture>(m_SwapchainExtent.width, m_SwapchainExtent.height, maxSampleCount, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_LogicalDevice, m_PhysicalDevice);
 	}
 
-	void VulkanSwapchain::CreateDepthBufferResources(VkCommandPool* commandPool, VkQueue* queue)
+	void VulkanSwapchain::CreateDepthBufferResources(VkCommandPool* commandPool, VkQueue* queue, VkSampleCountFlagBits maxSampleCount)
 	{
 		/*
 			The issue now is that the fragments of, for example, a lower square are drawn over the dragments of a upper square simply because it comes later in the index array. There
@@ -292,7 +301,7 @@ namespace Crescent
 		*/
 
 		VkFormat depthFormat = FindDepthFormat(*m_PhysicalDevice); //Find a depth format.
-		m_DepthTexture = std::make_shared<VulkanTexture>(m_SwapchainExtent.width, m_SwapchainExtent.height, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_LogicalDevice, m_PhysicalDevice);
+		m_DepthTexture = std::make_shared<VulkanTexture>(m_SwapchainExtent.width, m_SwapchainExtent.height, maxSampleCount, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_LogicalDevice, m_PhysicalDevice);
 		
 		/*
 			And that is it for creating the depth image. We do not need to map it or copy another image to it, because we're going to clear it at the start of the render pass like the color attachment.
@@ -321,7 +330,7 @@ namespace Crescent
 		*/
 		for (size_t i = 0; i < m_SwapchainTextures.size(); i++)
 		{
-			std::array<VkImageView, 2> attachments = { *m_SwapchainTextures[i]->RetrieveTextureView(), *m_DepthTexture->RetrieveTextureView() };
+			std::array<VkImageView, 3> attachments = { *m_MultisampledColorBufferTexture->RetrieveTextureView(), *m_DepthTexture->RetrieveTextureView(), *m_SwapchainTextures[i]->RetrieveTextureView() };
 			
 			VkFramebufferCreateInfo framebufferInfo{};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -443,14 +452,6 @@ namespace Crescent
 				The latter can be used to copy descriptors to each other as its name implies.
 			*/
 			vkUpdateDescriptorSets(*m_LogicalDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-		}
-	}
-
-	void VulkanSwapchain::RecreateSwapchainImageViews()
-	{
-		for (size_t i = 0; i < m_SwapchainTextures.size(); i++)
-		{
-			m_SwapchainTextures[i]->CreateTextureView();
 		}
 	}
 }

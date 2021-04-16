@@ -14,8 +14,8 @@ namespace Crescent
 		void DestroySwapchainInstance();
 
 		void CreateSwapchain();
-		void CreateMultisampledColorBufferResources();
-		void CreateDepthBufferResources(VkCommandPool* commandPool, VkQueue* queue);
+		void CreateMultisampledColorBufferResources(VkSampleCountFlagBits maxSampleCount);
+		void CreateDepthBufferResources(VkCommandPool* commandPool, VkQueue* queue, VkSampleCountFlagBits maxSampleCount);
 		void CreateFramebuffers(VkRenderPass* renderPass);
 		void CreateUniformBuffers();
 		void CreateDescriptorSets(std::shared_ptr<VulkanTexture> texture, VkDescriptorSetLayout* descriptorLayout, VkDescriptorPool* descriptorPool);

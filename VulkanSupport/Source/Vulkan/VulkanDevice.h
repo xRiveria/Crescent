@@ -25,7 +25,7 @@ namespace Crescent
 		VulkanDevice(VkInstance* vulkanInstance, VkSurfaceKHR* vulkanSurface);
 		void DestroyDeviceInstances();
 
-		VkSampleCountFlagBits* RetrieveMSAASampleCount() { return &m_MSAASamples; }
+		VkSampleCountFlagBits* RetrieveMSAASampleCount() { return &m_MSAAMaxSampleCount; }
 		VkDevice* RetrieveLogicalDevice() { return &m_LogicalDevice; }
 		VkPhysicalDevice* RetrievePhysicalDevice() { return &m_PhysicalDevice; }
 		VkQueue* RetrieveGraphicsQueue() { return &m_GraphicsQueue; }
@@ -43,7 +43,7 @@ namespace Crescent
 	private:
 		std::vector<GraphicCard> m_GraphicCards;
 		const std::vector<const char*> m_RequiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-		VkSampleCountFlagBits m_MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+		VkSampleCountFlagBits m_MSAAMaxSampleCount = VK_SAMPLE_COUNT_1_BIT;
 
 		VkQueue m_GraphicsQueue;
 		VkQueue m_PresentationQueue;

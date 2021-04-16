@@ -103,7 +103,7 @@ namespace Crescent
 			if (QueryPhysicalDeviceSuitability(device)) //For now, we accept the first one that is suitable.
 			{
 				m_PhysicalDevice = device;
-				m_MSAASamples = GetMaxUsableSampleCount();
+				m_MSAAMaxSampleCount = GetMaxUsableSampleCount();
 
 				VkPhysicalDeviceProperties deviceProperties;
 				vkGetPhysicalDeviceProperties(device, &deviceProperties);
@@ -171,6 +171,13 @@ namespace Crescent
 		//Specifies the set of device features that we will be using. These are features that we queried for support with vkGetPhysicalDeviceFeatures.
 		VkPhysicalDeviceFeatures deviceFeatures{};
 		deviceFeatures.samplerAnisotropy = VK_TRUE; //Enables anisotrophy.
+		/*
+			There are certain limitations of our current MSAA implementation which may impact the quality of the output image in more detailed scenes. For example, 
+			we're not currently not solving potential problems caused by shader aliasing as MSAA only smoothens out the edges of geometry but not the interior filling. 
+			This may lead to a situation when you get a smooth polygon rendered on screen but the applied texture will look aliased if it contains high contrasting colors. 
+			One way to approach this problem is to enable sample shading, which will improve quality even further, though at an additional performance cost.
+		*/
+		deviceFeatures.sampleRateShading = VK_TRUE; //Enables sample shading.
 
 		//Main device creation.
 		VkDeviceCreateInfo deviceCreationInfo{};
