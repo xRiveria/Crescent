@@ -15,6 +15,7 @@
 #include "../Source/Vulkan/VulkanFence.h"
 #include "../Source/Vulkan/VulkanSemaphore.h"
 #include "Window.h"
+#include "EditorSystem.h"
 
 namespace Crescent
 {
@@ -68,5 +69,8 @@ namespace Crescent
 		std::shared_ptr<VulkanResource> m_Model = nullptr;
 		std::shared_ptr<VulkanVertexBuffer> m_VertexBuffer = nullptr;
 		std::shared_ptr<VulkanIndexBuffer> m_IndexBuffer = nullptr;
+
+		//Editor
+		std::shared_ptr<EditorSystem> m_Editor = nullptr;
 	};
 }

@@ -148,6 +148,7 @@ namespace Crescent
 		swapchainCreationInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 		swapchainCreationInfo.surface = *m_Surface;
 		swapchainCreationInfo.minImageCount = imageCount;
+		std::cout << "Minimum Image Count: " << swapchainCreationInfo.minImageCount << ".\n";
 		swapchainCreationInfo.imageFormat = surfaceFormat.format;
 		swapchainCreationInfo.imageColorSpace = surfaceFormat.colorSpace;
 		swapchainCreationInfo.imageExtent = swapExtent;
@@ -230,6 +231,7 @@ namespace Crescent
 			Thus, we will first query the final number of images with vkGetSwapchainImagesKHR, then resize the container and finally call it again to retrieve the handles.
 		*/
 		vkGetSwapchainImagesKHR(*m_LogicalDevice, m_Swapchain, &imageCount, nullptr);
+		std::cout << "Total Image Count: " << imageCount << ".\n";
 
 		//Temporary buffer to store the image handles.
 		std::vector<VkImage> swapchainImages;

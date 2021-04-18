@@ -377,12 +377,12 @@ namespace Crescent
 	//Ends and submits a command buffer for execution aftrer recording.
 	static void EndSingleTimeCommands(VkCommandBuffer commandBuffer, const VkCommandPool& commandPool, const VkDevice& logicalDevice, const VkQueue& queue)
 	{
-		vkEndCommandBuffer(commandBuffer);
-
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffer;
+
+		vkEndCommandBuffer(commandBuffer);
 
 		//Execute the command buffer to complete the operation.
 		vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);

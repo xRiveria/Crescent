@@ -102,12 +102,11 @@ namespace Crescent
 		resolveColorAttachmentInfo.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		resolveColorAttachmentInfo.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		resolveColorAttachmentInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		resolveColorAttachmentInfo.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		resolveColorAttachmentInfo.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 		VkAttachmentReference colorAttachmentResolveReferenceInfo{};
 		colorAttachmentResolveReferenceInfo.attachment = 2;
 		colorAttachmentResolveReferenceInfo.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
 
 		VkAttachmentDescription depthAttachmentInfo{};
 		depthAttachmentInfo.format = FindDepthFormat(*m_PhysicalDevice); //The format should be the same as the depth image itself.

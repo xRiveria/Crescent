@@ -22,12 +22,12 @@ namespace Crescent
 			be allocated from a pool like command buffers. The equivalant for descriptor sets is unsurprisingly called a descriptor pool. First, we will need to describe which 
 			descriptor types our descriptor sets are going to contain and how many of them.
 		*/
-		std::array<VkDescriptorPoolSize, 2> poolSizeInfo{};
-		poolSizeInfo[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSizeInfo[0].descriptorCount = static_cast<uint32_t>(m_SwapchainImages->size());
+			std::array<VkDescriptorPoolSize, 2> poolSizeInfo{};
+			poolSizeInfo[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			poolSizeInfo[0].descriptorCount = static_cast<uint32_t>(m_SwapchainImages->size());
 
-		poolSizeInfo[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSizeInfo[1].descriptorCount = static_cast<uint32_t>(m_SwapchainImages->size());
+			poolSizeInfo[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			poolSizeInfo[1].descriptorCount = static_cast<uint32_t>(m_SwapchainImages->size());
 
 		/*
 			Inadequete descriptor pools are a good example of a problem that the validation layers will not catch. As of Vulkan 1.1, vkAllocateDescriptorSets may fail with 
@@ -49,9 +49,8 @@ namespace Crescent
 		poolCreateInfo.pPoolSizes = poolSizeInfo.data();
 		//Aside from the maximum number of individual descriptors that are avaliable, we also need to specify the maximum number of descriptor sets that may be allocated.
 		poolCreateInfo.maxSets = static_cast<uint32_t>(m_SwapchainImages->size());
-		//The structure has an optional flag simmilar to command pools that determines if individual descriptor sets can be freed or not: VK_DESCRIPTOR_CREATE_FREE_DESCRIPTOR_SET_BIT.
+		//The structure has an optional flag simmilar to command pools that determines if individual descriptor sets can be freed or not: VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT.
 		//We're not going to touch the descriptor set after creating it, so we don't need this flag.
-		poolCreateInfo.flags = 0;
 
 		if (vkCreateDescriptorPool(*m_LogicalDevice, &poolCreateInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS)
 		{

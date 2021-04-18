@@ -36,7 +36,7 @@ namespace Crescent
 		VkCommandPoolCreateInfo poolCreationInfo{};
 		poolCreationInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		poolCreationInfo.queueFamilyIndex = queueFamilies.m_GraphicsFamily.value();
-		poolCreationInfo.flags = 0;
+		poolCreationInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 		if (vkCreateCommandPool(*m_LogicalDevice, &poolCreationInfo, nullptr, &m_CommandPool) != VK_SUCCESS)
 		{

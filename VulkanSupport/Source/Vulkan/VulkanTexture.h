@@ -35,7 +35,7 @@ namespace Crescent
 	private:
 		void GenerateMipmaps(VkImage texture, VkFormat imageFormat, int32_t textureWidth, int32_t textureHeight, uint32_t mipLevels);
 
-	private:
+	public:
 		VkImage m_Texture;
 		VkDeviceMemory m_TextureMemory;
 		VkImageView m_TextureView;

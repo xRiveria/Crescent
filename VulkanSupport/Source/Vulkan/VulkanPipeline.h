@@ -15,7 +15,8 @@ namespace Crescent
 		VkRenderPass* RetrieveRenderPass() { return &m_RenderPass; }
 		VkPipeline* RetrievePipeline() { return &m_Pipeline; }
 		VkPipelineLayout* RetrievePipelineLayout() { return &m_PipelineLayout; }
-
+		VkFormat RetrieveSwapchainImageFormat() { return m_SwapchainImageFormat; }
+			
 	private:
 		VkRenderPass m_RenderPass;
 		VkPipeline m_Pipeline;

@@ -51,6 +51,7 @@ namespace Crescent
 
 		CreateSynchronizationObjects();
 		CreateCommandBuffers();
+		m_Editor = std::make_shared<EditorSystem>(m_Window->RetrieveWindow(), &m_VulkanInstance, m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Devices->RetrieveGraphicsQueue(), &m_Surface, m_DescriptorPool->RetrieveDescriptorPool(), m_Swapchain, m_Pipeline->RetrieveSwapchainImageFormat());
 	}
 
 	VulkanRenderer::~VulkanRenderer()
@@ -394,6 +395,7 @@ namespace Crescent
 		while (!glfwWindowShouldClose(m_Window->RetrieveWindow()))
 		{
 			glfwPollEvents();
+			m_Editor->OnUpdate(m_ModelTexture);
 
 			/*
 				Wait for the previous operations/frame to finish before continuing with drawing operations. The vkWaitForFences function takes an array of fences and waits 
@@ -466,6 +468,7 @@ namespace Crescent
 			
 			//Once true, mark the image as now being in use by this frame.
 			m_ImagesInFlightFences[imageIndex] = m_InFlightFences[g_CurrentFrameIndex].m_Fence;
+			m_Editor->RecordEditorCommands(imageIndex);
 			UpdateUniformBuffers(imageIndex);
 
 			//Queue submission and synchronization is configured through parameters in the VkSubmitInfo structure.
@@ -481,6 +484,8 @@ namespace Crescent
 
 			VkSemaphore waitSemaphores[] = { *m_ImageAvaliableSemaphores[g_CurrentFrameIndex].RetrieveSemaphore() };
 			VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+			std::array<VkCommandBuffer, 2> commandBuffers = { m_CommandBuffers[imageIndex], m_Editor->m_EditorCommandBuffers[imageIndex] }; //Submit both our main and editor buffers.
+
 			submitInfo.waitSemaphoreCount = 1;
 			submitInfo.pWaitSemaphores = waitSemaphores;
 			submitInfo.pWaitDstStageMask = waitStages;
@@ -489,8 +494,8 @@ namespace Crescent
 				The next two parameters specify which command buffers to actually submit for execution. As mentioned earlier, we should submit the command buffer that binds the swapchain 
 				image we just acquired as color attachment.
 			*/
-			submitInfo.commandBufferCount = 1;
-			submitInfo.pCommandBuffers = &m_CommandBuffers[imageIndex];
+			submitInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
+			submitInfo.pCommandBuffers = commandBuffers.data();
 
 			//The signal semaphore count and pSignalSemaphores parameters specify which semaphores to signal once the command buffer(s) have finished execution. In our case, 
 			//we're using the renderFinishedSemaphore for that purpose.
@@ -633,7 +638,7 @@ namespace Crescent
 	{
 		//This is where we destroy the Vulkan instance. For now, rather then leaving them to the destructors, we will do them manually.
 		CleanupSwapchain();
-
+		m_Editor->ShutdownEditor();
 		m_ModelTexture->DestroyAllTextureInstances();
 		m_DescriptorLayout->DestroyDescriptorLayoutInstance();
 		m_IndexBuffer->DestroyIndexBufferInstance();
@@ -696,6 +701,7 @@ namespace Crescent
 
 		vkDeviceWaitIdle(*m_Devices->RetrieveLogicalDevice());
 		CleanupSwapchain();
+		m_Editor->CleanupEditorResources();
 
 		m_Swapchain->CreateSwapchain();
 		//m_Swapchain->RecreateSwapchainImageViews();
@@ -708,5 +714,8 @@ namespace Crescent
 		m_DescriptorPool->CreateDescriptorPool();
 		m_Swapchain->CreateDescriptorSets(m_ModelTexture, m_DescriptorLayout->RetrieveDescriptorSetLayout(), m_DescriptorPool->RetrieveDescriptorPool());
 		CreateCommandBuffers();
+		
+		//We will handle our UI accordingly.
+		m_Editor->RecreateEditorResources();
 	}
 }	
