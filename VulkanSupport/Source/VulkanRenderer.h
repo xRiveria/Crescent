@@ -71,6 +71,7 @@ namespace Crescent
 		std::shared_ptr<VulkanIndexBuffer> m_IndexBuffer = nullptr;
 
 		//Editor
+		std::shared_ptr<VulkanTexture> m_FileIcon = nullptr;
 		std::shared_ptr<EditorSystem> m_Editor = nullptr;
 	};
 }

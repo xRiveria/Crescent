@@ -24,6 +24,10 @@ namespace Crescent
 		{
 			throw std::runtime_error("Failed to load texture image with path: " + filePath);
 		}
+		else
+		{
+			std::cout << "Loaded Texture at: " << filePath << ".\n";
+		}
 
 		/*
 			We need to calculate the number of mipmap levels avaliable from the dimensions of the image. This calculates the number of levels in the mip chain. The max function 

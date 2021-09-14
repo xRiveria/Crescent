@@ -18,12 +18,28 @@ namespace Crescent
 		renderer->m_FramebufferResized = true;
 	}
 
+	bool g_CameraMode = false;
+	static void CameraAllowEulerCallback(GLFWwindow* window, int button, int action, int mods)
+	{
+		if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+		{
+			g_CameraMode = true;
+			std::cout << "True!\n";
+		}
+		else
+		{
+			g_CameraMode = false;
+		}
+	}
+
 	VulkanRenderer::VulkanRenderer(const std::string& applicationName, const std::string& engineName, const int& applicationMainVersion, const int& applicationSubVersion, const bool& validationLayersEnabled)
 		: m_ValidationLayersEnabled(validationLayersEnabled)
 	{
 		m_Window = std::make_shared<Window>(1280, 1080, "Vulkan Demo");
 		glfwSetWindowUserPointer(m_Window->RetrieveWindow(), this);
 		glfwSetWindowUserPointer(m_Window->RetrieveWindow(), FramebufferResizeCallback);
+		glfwSetMouseButtonCallback(m_Window->RetrieveWindow(), CameraAllowEulerCallback);
+
 		m_DebugMessenger = std::make_shared<VulkanDebug>(); //To be created first before the instance so as to allow for callbacks during instance creation.
 
 		CreateVulkanInstance(applicationName, engineName, applicationMainVersion, applicationSubVersion);
@@ -52,6 +68,7 @@ namespace Crescent
 		CreateSynchronizationObjects();
 		CreateCommandBuffers();
 		m_Editor = std::make_shared<EditorSystem>(m_Window->RetrieveWindow(), &m_VulkanInstance, m_Devices->RetrievePhysicalDevice(), m_Devices->RetrieveLogicalDevice(), m_Devices->RetrieveGraphicsQueue(), &m_Surface, m_DescriptorPool->RetrieveDescriptorPool(), m_Swapchain, m_Pipeline->RetrieveSwapchainImageFormat());
+		//m_FileIcon = std::make_shared<VulkanTexture>("Resources/Textures/FileIcon.png", m_Devices->RetrieveLogicalDevice(), m_Devices->RetrievePhysicalDevice(), VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, m_CommandPool->RetrieveCommandPool(), m_Devices->RetrieveGraphicsQueue());
 	}
 
 	VulkanRenderer::~VulkanRenderer()

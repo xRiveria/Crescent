@@ -122,7 +122,7 @@ namespace Crescent
         //2) Shows a simple window that we create ourselves.
         ImGui::Begin("Diagnostics");
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-        //ImGui::Image(ImGui_ImplVulkan_AddTexture({ *texture->RetrieveTextureSampler(), *texture->RetrieveTextureView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }), ImVec2(300, 300));
+        //ImGui::Image(ImGui_ImplVulkan_AddTexture(*texture->RetrieveTextureSampler(), *texture->RetrieveTextureView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL), ImVec2(300, 300));
         ImGui::End();
         //ImGui::End(); //Docking.
 
