@@ -33,19 +33,27 @@ namespace Crescent
         void LoadAssets();
         void PopulateCommandList();
         void WaitForPreviousFrame();
+        std::vector<UINT8> GenerateTextureData();
             
     private:
         static const uint16_t m_FrameCount = 2;
+        static const unsigned int m_TextureWidth = 256;
+        static const unsigned int m_TextureHeight = 256;
+        static const unsigned int m_TexturePixelSize = 4; // The number of bytes to represent a pixel in the texture.
 
         struct Vertex
         {
             XMFLOAT3 m_Position;
-            XMFLOAT4 m_Color;
+            XMFLOAT2 m_UV;
         };
 
         // Application resoures.
         ComPtr<ID3D12Resource> m_VertexBuffer;
         D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
+        ComPtr<ID3D12Resource> m_Texture;
+
+        ComPtr<ID3D12DescriptorHeap> m_RTVHeap; // A descriptor heap can be thought of as an array of descriptors, where each descriptor fully describes an object to the GPU.
+        ComPtr<ID3D12DescriptorHeap> m_SRVHeap;
 
         // Pipeline Objects
         CD3DX12_VIEWPORT m_Viewport;
@@ -56,7 +64,6 @@ namespace Crescent
         ComPtr<ID3D12CommandAllocator> m_CommandAllocator; // A command allocator manages the underlying storage for command lists and bundles.
         ComPtr<ID3D12CommandQueue> m_CommandQueue;
         ComPtr<ID3D12RootSignature> m_RootSignature;
-        ComPtr<ID3D12DescriptorHeap> m_RTVHeap; // A descriptor heap can be thought of as an array of descriptors, where each descriptor fully describes an object to the GPU.
         ComPtr<ID3D12PipelineState> m_PipelineState;
         ComPtr<ID3D12GraphicsCommandList> m_CommandList;
         uint32_t m_RTVDescriptorSize;
@@ -76,4 +83,20 @@ namespace Crescent
         uint32_t m_AspectRatio;
         std::wstring m_WindowName;
     };
+
+    /*  Command lists and bundles both allow applications to record drawing or state-changing calls for later execution on the GPU.
+    
+        Beyond command lists, the API exploits functionality present in GPU hardware by adding a second level of command lists, which are referred to as 
+        bundles. The purpose of bundles is to allow applications to group a small number of API commands together for later execution.
+
+        At bundle creation time, the driver will perform as much pre-processing as it possible to make those cheap to execution to execute later. 
+        Bundles are designed to be used and reused any number of times. Command lists, on the other hand, are typically executed only a single time.
+        However, a command list *can* be executed multiple times (as long as the application ensures that the previous executions have completed before 
+        submitting new executions).
+
+        // ======================================================
+
+        ID3D12Device4::CreateCommandList1 - Create a closed command list, rather than creating a new list and immediately closing it. This avoids the 
+        inefficiency of creating a list with an allocator and PSO but not using it.
+    */
 }
