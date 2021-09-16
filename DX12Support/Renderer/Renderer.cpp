@@ -36,6 +36,8 @@ namespace Crescent
         m_UseWarpDevice = false;
         m_RTVDescriptorSize = 0;
         m_AspectRatio = static_cast<float>(m_WindowWidth) / static_cast<float>(m_WindowHeight);
+        m_PConstantBufferViewDataBegin = nullptr;
+        m_ConstantBufferData = {};
     }
 
     void Renderer::OnInitialize()
@@ -47,6 +49,24 @@ namespace Crescent
     // Update frame-based values.
     void Renderer::OnUpdate()
     {
+        const float translationSpeed = 0.005f;
+        const float offsetBounds = 1.25f;
+
+        m_ConstantBufferData.m_Offset.x += translationSpeed;
+        m_ConstantBufferData.m_Color.x += translationSpeed;
+        m_ConstantBufferData.m_Color.y += translationSpeed;
+        m_ConstantBufferData.m_Color.z += translationSpeed;
+
+        if (m_ConstantBufferData.m_Offset.x > offsetBounds)
+        {
+            m_ConstantBufferData.m_Offset.x = -offsetBounds;
+            m_ConstantBufferData.m_Color.x = 0.3f;
+            m_ConstantBufferData.m_Color.y = 0.2f;
+            m_ConstantBufferData.m_Color.z = 0.2f;
+        }
+
+        // Remember that our buffer is still mapped at this point.
+        memcpy(m_PConstantBufferViewDataBegin, &m_ConstantBufferData, sizeof(m_ConstantBufferData));
     }
 
     // Render the scene.
@@ -62,13 +82,13 @@ namespace Crescent
         // Present the frame.
         ThrowIfFailed(m_SwapChain->Present(1, 0));
 
-        WaitForPreviousFrame();
+        MoveToNextFrame();
     }
     
     void Renderer::OnDestroy()
     {
         // Ensure that the GPU is no longer referencing resources that are about to be cleaned up by the destructor.
-        WaitForPreviousFrame();
+        WaitForGPU();
         CloseHandle(m_FenceEvent);
     }
     
@@ -166,20 +186,35 @@ namespace Crescent
             ThrowIfFailed(m_Device->CreateDescriptorHeap(&srvHeapDescription, IID_PPV_ARGS(&m_SRVHeap)));
 
             m_RTVDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+            D3D12_DESCRIPTOR_HEAP_DESC cbvDescription = {};
+            cbvDescription.NumDescriptors = 1;
+            cbvDescription.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            cbvDescription.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+            ThrowIfFailed(m_Device->CreateDescriptorHeap(&cbvDescription, IID_PPV_ARGS(&m_ConstantBufferViewHeap)));
         }
 
         // Create frame resources.
         CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_RTVHeap->GetCPUDescriptorHandleForHeapStart());
 
-        // Create a RTV for each frame.
+        // Create a RTV and a command allocator for each frame. 
         for (UINT i = 0; i < m_FrameCount; i++)
         {
             ThrowIfFailed(m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&m_RenderTargets[i])));
             m_Device->CreateRenderTargetView(m_RenderTargets[i].Get(), nullptr, rtvHandle);
             rtvHandle.Offset(1, m_RTVDescriptorSize);
+
+            ThrowIfFailed(m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_CommandAllocators[i])));
         }
 
-        ThrowIfFailed(m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_CommandAllocator)));
+
+        // Command allocators allows the application to manage the memory that is allocated for command lists.
+        // The command allocator is created by calling CreateCommandAllocator. When creating a command list, the command list type of the allocator must match the type of command list being created.
+        // A given allocator can be associated with no more than one current recording command list at a time, although one command allocator can be used to create any number of GraphiicsCommandList objects.
+        // Before resetting the command allocator is reclaim memory using Reset(), ensure that the GPU is no longer executing commands nwhich are associated with the allocator. Else, the call will fail.
+        // Note that while allocator can no longer be used for new comands for Reset(), its underlying size won't be reduced. 
+        // ThrowIfFailed(m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_CommandAllocator)));
+        ThrowIfFailed(m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_BUNDLE, IID_PPV_ARGS(&m_BundleAllocator)));
     }
 
     void Renderer::LoadAssets()
@@ -196,10 +231,12 @@ namespace Crescent
         }
 
         CD3DX12_DESCRIPTOR_RANGE1 ranges[1];
-        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+        //ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
         CD3DX12_ROOT_PARAMETER1 rootParameters[1];
-        rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
+        // rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
+        rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
 
         D3D12_STATIC_SAMPLER_DESC sampler = {};
         sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
@@ -216,8 +253,15 @@ namespace Crescent
         sampler.RegisterSpace = 0;
         sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
+        // Allow input layout and deny unnessarry access top the certain pipeline stages.
+        D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+            D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+            D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+            D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+
         CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
-        rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 1, &sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT); // We are opting in to using the Input Assembler (requiring an input layout that defines a set of vertex buffer bindings). Omitting this flag can result in one root argument space being saved on some hardware. We can omit this flag if the input assembler is not required, though the optimization is minor.
+        rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 1, &sampler, rootSignatureFlags); // We are opting in to using the Input Assembler (requiring an input layout that defines a set of vertex buffer bindings). Omitting this flag can result in one root argument space being saved on some hardware. We can omit this flag if the input assembler is not required, though the optimization is minor.
 
         ComPtr<ID3DBlob> signature;
         ComPtr<ID3DBlob> error;
@@ -266,7 +310,10 @@ namespace Crescent
         }
 
         // Create the command list.
-        ThrowIfFailed(m_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_CommandList)));
+        ThrowIfFailed(m_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_CommandAllocators[m_FrameIndex].Get(), nullptr, IID_PPV_ARGS(&m_CommandList)));
+
+        // Command lists are created in the recording state, but there is nothing to record yet. The main loop expects it to be closed, so close it or now.
+        ThrowIfFailed(m_CommandList->Close());
 
         // Create the vertex buffer.
         {
@@ -304,6 +351,43 @@ namespace Crescent
             m_VertexBufferView.StrideInBytes = sizeof(Vertex);
             m_VertexBufferView.SizeInBytes = vertexBufferSize;
         }
+
+        // Create the constant buffer.
+        const UINT constantBufferSize = sizeof(SceneConstantBuffer); // CB size is required to be 256 byte aligned.
+        ThrowIfFailed(m_Device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(constantBufferSize),
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&m_ConstantBuffer)));
+
+        // Describe and create a constant buffer view.
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDescription = {};
+        cbvDescription.BufferLocation = m_ConstantBuffer->GetGPUVirtualAddress();
+        cbvDescription.SizeInBytes = constantBufferSize;
+        m_Device->CreateConstantBufferView(&cbvDescription, m_ConstantBufferViewHeap->GetCPUDescriptorHandleForHeapStart());
+
+        // Map and initialize the constant buffer. We don't unmap this until the application closes. Keeping things mapped for the lifetime of the resource is okay.
+        CD3DX12_RANGE cbReadRange(0, 0); // We do not intend to read from this resource on the CPU.
+        ThrowIfFailed(m_ConstantBuffer->Map(0, &cbReadRange, reinterpret_cast<void**>(&m_PConstantBufferViewDataBegin)));
+        memcpy(m_PConstantBufferViewDataBegin, &m_ConstantBufferData, sizeof(m_ConstantBufferData));
+
+        // Create and record the bundle.
+        // Immediately after creation, command lists are in the recording state. We an simply call methods of ID3D12GraphicsCommandList to add commands to the list. Once done, Close it.
+        // Command lists can be reused by calling Reset(), which also leaves the command list in a reocrding state. Unlike the command allocator, you can call Reset while the command lsit is still being allocated.
+        // A typical pattern is to submit a command list and then immediately reset it to reuse the allocated memory for another command list.  Once done, exit recording state with Close().
+        // Command allocators can grow but don't shrink - pooling and reusing allocators should be considered to maximize efficiency. You can record multiple lists to the same allocator 
+        // before it is reset, provided only one list is recording to a given allocator at one time. You can visualizr each list as owning a portion of the allocator which indicates what ExecuteCommandLists will execute.
+        // Use a fence to determine when a given allocator is able to be reused.
+        // Most D3D12 APIs continue to use reference counting following COM conventions. However,a notable exception is the D3D12 graphics command list API.
+        // All APIs on ID3D12GraphicsCommandList do not hold references to the objects passed into those APIs. Hence, our appliczations are responsble on ensuring that 
+        // a command list is never submitted for execution that references a destroyed resource. 
+        ThrowIfFailed(m_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_BUNDLE, m_BundleAllocator.Get(), m_PipelineState.Get(), IID_PPV_ARGS(&m_Bundle)));
+        m_Bundle->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        m_Bundle->IASetVertexBuffers(0, 1, &m_VertexBufferView);
+        m_Bundle->DrawInstanced(3, 1, 0, 0);
+        ThrowIfFailed(m_Bundle->Close());
 
         /*
             ComPtrs are CPU objects but this resource needs to stay in scope until the command list that references it has finished executing on the GPU.
@@ -363,14 +447,12 @@ namespace Crescent
             m_Device->CreateShaderResourceView(m_Texture.Get(), &srvDesc, m_SRVHeap->GetCPUDescriptorHandleForHeapStart());
         }
 
-        // Command lists are created in the recording state, but there is nothing to record yet. The main loop expects it to be closed, so close it or now.
-        ThrowIfFailed(m_CommandList->Close());
         ID3D12CommandList* ppCommandLists[] = { m_CommandList.Get() };
         m_CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
         // Create synchronization objects and wait until assets have been uploaded to the GPU.
-        ThrowIfFailed(m_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence)));
-        m_FenceValue = 1;
+        ThrowIfFailed(m_Device->CreateFence(m_FenceValues[m_FrameIndex], D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence)));
+        m_FenceValues[m_FrameIndex]++;
 
         // Create an event handle to use for frame synchronization.
         m_FenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
@@ -380,16 +462,18 @@ namespace Crescent
         }
 
         // Wait for the command list to execute. We are reusing the same command list in our main loop for now, we just want to wait for setup to complete before continuing.
-        WaitForPreviousFrame();
+        WaitForGPU();
     }
 
     void Renderer::PopulateCommandList()
     {
-        // Command list allocators can only be reset when the associated command lists have finished execution on the GPU. Thus, we should use fences to determine GPU execution progress.
-        ThrowIfFailed(m_CommandAllocator->Reset());
+        // Command list allocators can only be reset when the associated command lists have finished execution on the GPU. 
+        // Thus, we should use fences to determine GPU execution progress.
+        ThrowIfFailed(m_CommandAllocators[m_FrameIndex]->Reset());
 
-        // However, when ExecuteCommandList() is called on a particular command list, that command listc an then be reset at any time and must be before re-recording.
-        ThrowIfFailed(m_CommandList->Reset(m_CommandAllocator.Get(), m_PipelineState.Get()));
+        // However, when ExecuteCommandList() is called on a particular command list, 
+        // that command list can then be reset at any time and must be before re-recording.
+        ThrowIfFailed(m_CommandList->Reset(m_CommandAllocators[m_FrameIndex].Get(), m_PipelineState.Get()));
 
         /*
             A root signature is configured by the application and links command lists to the resources the shaders require. The graphics command list has 
@@ -416,10 +500,12 @@ namespace Crescent
         */
         // Set the necessary states.
         m_CommandList->SetGraphicsRootSignature(m_RootSignature.Get()); 
-        ID3D12DescriptorHeap* ppHeaps[] = { m_SRVHeap.Get() };
+        ID3D12DescriptorHeap* ppHeaps[] = { m_ConstantBufferViewHeap.Get() };
         m_CommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-        m_CommandList->SetGraphicsRootDescriptorTable(0, m_SRVHeap->GetGPUDescriptorHandleForHeapStart());
+        // m_CommandList->SetGraphicsRootDescriptorTable(0, m_SRVHeap->GetGPUDescriptorHandleForHeapStart()); // Sets a descriptor table into the currently bound graphics root table.
+        m_CommandList->SetGraphicsRootDescriptorTable(0, m_ConstantBufferViewHeap->GetGPUDescriptorHandleForHeapStart());
+
         m_CommandList->RSSetViewports(1, &m_Viewport);
         m_CommandList->RSSetScissorRects(1, &m_ScissorRect);
 
@@ -432,9 +518,12 @@ namespace Crescent
         // Record commands.
         const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
         m_CommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-        m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        m_CommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
-        m_CommandList->DrawInstanced(3, 1, 0, 0);
+
+        m_CommandList->ExecuteBundle(m_Bundle.Get()); // Set Topology, Vertex Buffers and Draw Instanced.
+
+        // m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        // m_CommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
+        // m_CommandList->DrawInstanced(3, 1, 0, 0);
 
         // Indicate that the backbuffer wikll now be used to present.
         m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_RenderTargets[m_FrameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
@@ -442,25 +531,52 @@ namespace Crescent
         ThrowIfFailed(m_CommandList->Close());
     }
 
-    void Renderer::WaitForPreviousFrame()
+    void Renderer::WaitForGPU()
     {
-        // Waiting for the frame to complete before continuing is not best practice. This is for simplicity's state.
-        // The D3D12HelloFrameBuffering sample illustrates how to use fences for efficient resource usage and to maximize GPU utilization.
+        // Schedule a Signal command in the queue. Updates a fence to a specified value (1) (or 2 and so on for subsequent iterations) once all previously queued commands have been executed.
 
-        // Signal and increment fence value.
-        const UINT64 fence = m_FenceValue;
-        ThrowIfFailed(m_CommandQueue->Signal(m_Fence.Get(), fence));
-        m_FenceValue++;
+        ThrowIfFailed(m_CommandQueue->Signal(m_Fence.Get(), m_FenceValues[m_FrameIndex])); 
 
-        // Waitr until the previous frame is finished.
-        if (m_Fence->GetCompletedValue() < fence)
+        // Now, we wait until the fence gets set to 1.
+        ThrowIfFailed(m_Fence->SetEventOnCompletion(m_FenceValues[m_FrameIndex], m_FenceEvent)); // Fire event when the fence reaches the fence value.
+        WaitForSingleObjectEx(m_FenceEvent, INFINITE, FALSE); // Waits until the object is in signalled state. We will wait infinitely and only until the fence is signalled for execution. Otherwise, the function will not continue to execute.
+
+        // Increment the fence value for the current frame once signalled.
+        m_FenceValues[m_FrameIndex]++;
+    }
+
+    void Renderer::MoveToNextFrame()
+    {
+        // Schedule a Signal command in the queue.
+        const INT64 currentFenceValue = m_FenceValues[m_FrameIndex];
+        ThrowIfFailed(m_CommandQueue->Signal(m_Fence.Get(), currentFenceValue)); 
+
+        // Update the frame index.
+        m_FrameIndex = m_SwapChain->GetCurrentBackBufferIndex();
+
+        // If the next frame is not ready to be rendered yet, we wait until it is ready.
+        // Note that Signal() is a nonblocking operation and does not immediately set the value of the fence, only after all other GPU commands have been executed. 
+        // You can assume that m_Fence->GetCompletedValue() < m_CurrentFenceValue is always true in this case.
+        if (m_Fence->GetCompletedValue() < m_FenceValues[m_FrameIndex])
         {
-            ThrowIfFailed(m_Fence->SetEventOnCompletion(fence, m_FenceEvent));
-            WaitForSingleObject(m_FenceEvent, INFINITE);
+            ThrowIfFailed(m_Fence->SetEventOnCompletion(m_FenceValues[m_FrameIndex], m_FenceEvent));
+            WaitForSingleObjectEx(m_FenceEvent, INFINITE, FALSE);
         }
 
-        m_FrameIndex = m_SwapChain->GetCurrentBackBufferIndex();
+        // Set the fence value for the next frame.
+        m_FenceValues[m_FrameIndex] = currentFenceValue + 1;
     }
+
+
+
+
+
+
+
+
+
+
+
 
     // Generate a simple black and white checkerboard texture.
     std::vector<UINT8> Renderer::GenerateTextureData()
