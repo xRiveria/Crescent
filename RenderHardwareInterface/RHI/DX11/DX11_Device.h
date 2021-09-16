@@ -1,0 +1,17 @@
+#pragma once
+#include "../RHI_Device.h"
+
+namespace Aurora
+{
+    class DX11_Device : public RHI_Device
+    {
+    public:
+        virtual ~DX11_Device() override;
+
+        virtual void Initialize() override;
+        virtual bool IsInitialized() const override { return m_IsInitialized; }
+
+    private:
+        bool m_IsInitialized = false;
+    };
+}
