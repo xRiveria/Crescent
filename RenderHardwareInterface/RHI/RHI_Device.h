@@ -25,7 +25,7 @@ namespace Aurora
         virtual void Initialize() = 0;
 
         // Physical Devices
-        void RegisterGPU(const RHI_GPU& gpu);
+        void RegisterGPU(RHI_GPU&& gpu);
         const RHI_GPU* GetPrimaryGPU();
         void SetPrimaryGPU(const uint32_t index);
         const std::vector<RHI_GPU>& GetGPUs() const { return m_GPUs; }
@@ -36,6 +36,7 @@ namespace Aurora
         static std::shared_ptr<RHI_Device> Create();
 
     protected:
+        uint32_t m_CurrentGPUIndex = 0;
         std::vector<RHI_GPU> m_GPUs;
         std::shared_ptr<RHI_Context> m_RHI_Context; // Render contexts are created alongside RHI_Device.
     };

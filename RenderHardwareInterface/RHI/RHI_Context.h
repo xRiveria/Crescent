@@ -1,17 +1,12 @@
 #pragma once
+#include <wrl/client.h>
 
-#pragma comment(lib, "d3d11.lib")
-#pragma comment(lib, "dxgi.lib")
-#include <d3d11_4.h>
+using namespace Microsoft::WRL;
 
 namespace Aurora
 {
     struct RHI_Context
     {
-        ID3D11Device5* m_Device = nullptr;
-        ID3D11DeviceContext4* m_DeviceContext = nullptr;
-        ID3DUserDefinedAnnotation* m_Annotation = nullptr;
-
         // Debugging
 #ifdef _DEBUG
         bool m_DebuggingEnabled = true;
@@ -24,3 +19,4 @@ namespace Aurora
 #endif
     };
 }
+

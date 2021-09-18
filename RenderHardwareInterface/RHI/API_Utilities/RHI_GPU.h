@@ -16,7 +16,7 @@ namespace Aurora
     class RHI_GPU
     {
     public:
-        RHI_GPU(const uint32_t gpuVendorID, const RHI_GPU_Type gpuType, const char& gpuName, const uint64_t gpuTotalMemory, void* internalData)
+        RHI_GPU(const uint32_t gpuVendorID, const RHI_GPU_Type gpuType, const char* gpuName, const uint64_t gpuTotalMemory, void* internalData)
         {
             this->m_GPUName = gpuName;
             this->m_GPUMemory = gpuTotalMemory / 1024 / 1024; // Memory is usually retrieved in bytes. Hence, we shall divide it by 1000 2 times to store it in MB.
@@ -33,7 +33,7 @@ namespace Aurora
     private:
         std::string DecodeVendorID(uint32_t vendorID)
         {
-
+            return "Yet to Decode";
         }
 
     private:

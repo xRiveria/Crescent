@@ -21,6 +21,6 @@ namespace Aurora
     void Renderer::SetRenderAPI(RenderAPI renderAPI)
     {
         s_CurrentRenderAPI = renderAPI;
-        std::cout << "Render API Selected: " << RenderAPIToString(renderAPI);
+        std::cout << "Render API Selected: " << RenderAPIToString(renderAPI) << "\n";
     }
 }

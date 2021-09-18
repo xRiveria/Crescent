@@ -42,6 +42,21 @@
     <ClInclude Include="RHI\DX12\DX12_Device.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RHI\DX11\DX11_Context.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\DX12\DX12_Context.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\Vulkan\Vulkan_Context.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\Vulkan\Vulkan_Device.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\Vulkan\Vulkan_Utilities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RHI\RHI_Device.cpp">
@@ -54,6 +69,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RHI\DX11\DX11_Device.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\DX12\DX12_Device.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\Vulkan\Vulkan_Device.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

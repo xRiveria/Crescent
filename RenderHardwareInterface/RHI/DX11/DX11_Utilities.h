@@ -1,6 +1,6 @@
 #pragma once
 #include "../RHI_Device.h"
-#include "../RHI_Context.h"
+#include "DX11_Context.h"
 #include <vector>
 #include <iostream>
 
@@ -52,6 +52,17 @@ namespace Aurora
             return (std::string("Unknown Error Code: %d.", std::system_category().message(errorCode).c_str()).c_str());
         }
 
+        constexpr bool ErrorCheck(const HRESULT result)
+        {
+            if (FAILED(result))
+            {
+                std::cout << "Error! " << DXGI_Error_To_String(result);
+                return false;
+            }
+
+            return true;
+        }
+
         inline void DetectGraphicsAdapters()
         {
             IDXGIFactory1* factory;
@@ -84,7 +95,7 @@ namespace Aurora
             factory = nullptr;
             if (adapters.empty())
             {
-                std::cout << "Couldn't find any adapters.";
+                std::cout << "Couldn't find any adapters.\n";
                 return;
             }
 
@@ -94,21 +105,34 @@ namespace Aurora
             {
                 if (FAILED(displayAdapter->GetDesc(&adapterDescription)))
                 {
-                    std::cout << "Failed to retrieve adapter description.";
+                    std::cout << "Failed to retrieve adapter description.\n";
                     continue;
                 }
 
                 // Of course it wouldn't be simple. Let's convert the device name.
                 char adapterName[128];
+                char defaultChar = ' ';
+                WideCharToMultiByte(CP_ACP, 0, adapterDescription.Description, -1, adapterName, 128, &defaultChar, nullptr);
 
+                GlobalContext::m_RHI_Device->RegisterGPU(RHI_GPU(
+                    adapterDescription.VendorId,
+                    RHI_GPU_Type::Unknown,
+                    &adapterName[0],
+                    static_cast<uint64_t>(adapterDescription.DedicatedVideoMemory),
+                    static_cast<void*>(displayAdapter)));
             }
 
             // Get display modes.
 
 
-            // Get displat modes and set primary adaper.
+            // Get display modes and set primary adaper.
 
             // If we failed to get any display modes but have at least one adapter, use it.
+            if (GlobalContext::m_RHI_Device->GetGPUs().size() != 0)
+            {
+                std::cout << "Falling back to 1st default GPU adapter avaliable.\n";
+                GlobalContext::m_RHI_Device->SetPrimaryGPU(0);
+            }
         }
     }
 }
