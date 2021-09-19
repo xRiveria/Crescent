@@ -57,6 +57,12 @@
     <ClInclude Include="RHI\Vulkan\Vulkan_Utilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RHI\API_Utilities\RHI_DisplayMode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\API_Utilities\RHI_Display.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RHI\RHI_Device.cpp">
@@ -75,6 +81,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RHI\Vulkan\Vulkan_Device.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\API_Utilities\RHI_Display.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

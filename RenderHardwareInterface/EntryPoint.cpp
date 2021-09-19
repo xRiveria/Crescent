@@ -24,7 +24,7 @@
 int main(int argc, int argv[])
 {
     Aurora::Renderer rendererContext;
-    rendererContext.SetRenderAPI(Aurora::RenderAPI::DirectX12);
+    rendererContext.SetRenderAPI(Aurora::RenderAPI::DirectX11);
     rendererContext.Initialize();
 
     return 0;

@@ -160,6 +160,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Renderer\Renderer.h" />
+    <ClInclude Include="RHI\API_Utilities\RHI_Display.h" />
+    <ClInclude Include="RHI\API_Utilities\RHI_DisplayMode.h" />
     <ClInclude Include="RHI\DX11\DX11_Context.h" />
     <ClInclude Include="RHI\DX11\DX11_Device.h" />
     <ClInclude Include="RHI\DX11\DX11_Utilities.h" />
@@ -177,6 +179,7 @@
   <ItemGroup>
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Renderer\Renderer.cpp" />
+    <ClCompile Include="RHI\API_Utilities\RHI_Display.cpp" />
     <ClCompile Include="RHI\DX11\DX11_Device.cpp" />
     <ClCompile Include="RHI\DX12\DX12_Device.cpp" />
     <ClCompile Include="RHI\RHI_Device.cpp" />

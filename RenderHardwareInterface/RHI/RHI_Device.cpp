@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include "RHI_Device.h"
 #include "DX11/DX11_Device.h"
 #include "DX12/DX12_Device.h"
@@ -10,6 +11,13 @@ namespace Aurora
     void RHI_Device::RegisterGPU(RHI_GPU&& gpu)
     {
         m_GPUs.emplace_back(std::move(gpu));
+        std::cout << "Registered GPU: " << m_GPUs.back().GetGPUName() << ", " << m_GPUs.back().GetGPUMemory() << "\n";
+
+        // Sort in descending order based on highest memory avaliable.
+        std::sort(m_GPUs.begin(), m_GPUs.end(), [](const RHI_GPU& firstGPU, const RHI_GPU& secondGPU)
+        {
+            return firstGPU.GetGPUMemory() > secondGPU.GetGPUMemory();
+        });
     }
 
     const RHI_GPU* RHI_Device::GetPrimaryGPU()

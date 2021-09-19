@@ -5,7 +5,7 @@ namespace Aurora
 {
     DX12_Device::~DX12_Device()
     {
-
+        GetContext()->m_Device->Release();
     }
 
     DX12_Context* DX12_Device::GetContext() const
@@ -22,7 +22,7 @@ namespace Aurora
         DX12_Utilities::GlobalContext::m_RHI_Device = this;
 
         // Detect and set primary GPU.
-        DX12_Utilities::DetectGraphicsAdapters();
+        DX12_Utilities::QueryAdaptersAndDisplays();
 
         const RHI_GPU* acquiredGPU = GetPrimaryGPU();
         if (!acquiredGPU)

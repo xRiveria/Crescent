@@ -7,16 +7,14 @@ namespace Aurora
 {
     DX11_Device::~DX11_Device()
     {
-        std::shared_ptr<DX11_Context> graphicsContext = std::static_pointer_cast<DX11_Context>(m_RHI_Context);
+        GetContext()->m_DeviceContext->Release();
+        GetContext()->m_DeviceContext = nullptr;
 
-        graphicsContext->m_DeviceContext->Release();
-        graphicsContext->m_DeviceContext = nullptr;
+        GetContext()->m_Device->Release();
+        GetContext()->m_Device = nullptr;
 
-        graphicsContext->m_Device->Release();
-        graphicsContext->m_Device = nullptr;
-
-        graphicsContext->m_Annotation->Release();
-        graphicsContext->m_Annotation = nullptr;
+       GetContext()->m_Annotation->Release();
+       GetContext()->m_Annotation = nullptr;
     }
 
     DX11_Context* DX11_Device::GetContext() const
@@ -34,7 +32,7 @@ namespace Aurora
         const bool multithreadedProtection = true;
 
         // Detect and set ideal GPU adapter.
-        DX11_Utilities::DetectGraphicsAdapters();
+        DX11_Utilities::QueryAdaptersAndDisplays();
 
         const RHI_GPU* acquiredGPU = GetPrimaryGPU();
         if (!acquiredGPU)
@@ -163,6 +161,8 @@ namespace Aurora
         }
 
         std::cout << "Successfully initialized DX11.\n";
+        std::cout << RHI_Display::GetWidthPrimary() << ", " << RHI_Display::GetHeightPrimary() << "\n";
+
         m_IsInitialized = true;
     }
 }

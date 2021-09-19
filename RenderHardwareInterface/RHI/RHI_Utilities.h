@@ -4,6 +4,11 @@
 
 namespace Aurora
 {
+    enum RHI_Format
+    {
+        RHI_Format_R8G8B8A8_Unorm
+    };
+
     inline std::string RenderAPIToString(RenderAPI renderAPI)
     {
         switch (renderAPI)
