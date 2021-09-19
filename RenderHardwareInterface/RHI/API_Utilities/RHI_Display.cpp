@@ -1,6 +1,5 @@
+#include "RHI_PCH.h"
 #include "RHI_Display.h"
-#include <algorithm>
-#include <iostream>
 #include <windows.h>
 
 namespace Aurora

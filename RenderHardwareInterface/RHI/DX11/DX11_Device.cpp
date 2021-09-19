@@ -1,25 +1,19 @@
+#include "RHI_PCH.h"
 #include "DX11_Device.h"
 #include "DX11_Utilities.h"
-#include <iostream>
-#include <memory>
 
 namespace Aurora
 {
     DX11_Device::~DX11_Device()
     {
-        GetContext()->m_DeviceContext->Release();
-        GetContext()->m_DeviceContext = nullptr;
+        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_DeviceContext->Release();
+        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_DeviceContext = nullptr;
 
-        GetContext()->m_Device->Release();
-        GetContext()->m_Device = nullptr;
+        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Device->Release();
+        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Device = nullptr;
 
-       GetContext()->m_Annotation->Release();
-       GetContext()->m_Annotation = nullptr;
-    }
-
-    DX11_Context* DX11_Device::GetContext() const
-    {
-        return std::static_pointer_cast<DX11_Context>(m_RHI_Context).get();
+        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Annotation->Release();
+        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Annotation = nullptr;
     }
 
     void DX11_Device::Initialize()
@@ -33,6 +27,8 @@ namespace Aurora
 
         // Detect and set ideal GPU adapter.
         DX11_Utilities::QueryAdaptersAndDisplays();
+
+        m_RHI_Context->m_Texture2D_Dimensions_Max = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
 
         const RHI_GPU* acquiredGPU = GetPrimaryGPU();
         if (!acquiredGPU)
@@ -87,7 +83,7 @@ namespace Aurora
             if (SUCCEEDED(result))
             {
                 // Query old device for newer interface.
-                if (!DX11_Utilities::ErrorCheck(temporaryDevice->QueryInterface(__uuidof(ID3D11Device5), (void**)&GetContext()->m_Device)))
+                if (!DX11_Utilities::ErrorCheck(temporaryDevice->QueryInterface(__uuidof(ID3D11Device5), (void**)&DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Device)))
                 {
                     return E_FAIL;
                 }
@@ -97,7 +93,7 @@ namespace Aurora
                 temporaryDevice = nullptr;
 
                 // Query old device for newer interface.
-                if (!DX11_Utilities::ErrorCheck(temporaryDeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext4), (void**)&GetContext()->m_DeviceContext)))
+                if (!DX11_Utilities::ErrorCheck(temporaryDeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext4), (void**)&DX11_Utilities::GetDX11Context(m_RHI_Context)->m_DeviceContext)))
                 {
                     return E_FAIL;
                 }
@@ -134,7 +130,7 @@ namespace Aurora
         if (multithreadedProtection) // Provides threading protection for critical sections of a multi-threaded applications.
         {
             ID3D11Multithread* multithreadingContext = nullptr;
-            if (SUCCEEDED(GetContext()->m_DeviceContext->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&multithreadingContext))))
+            if (SUCCEEDED(DX11_Utilities::GetDX11Context(m_RHI_Context)->m_DeviceContext->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&multithreadingContext))))
             {
                 multithreadingContext->SetMultithreadProtected(TRUE);
                 multithreadingContext->Release();
@@ -150,7 +146,7 @@ namespace Aurora
         if (m_RHI_Context->m_DebuggingEnabled)
         {
             // Queries and retrieves a pointer to the requested interface whilst calling AddRef.
-            const HRESULT result = GetContext()->m_DeviceContext->QueryInterface(IID_PPV_ARGS(&GetContext()->m_Annotation));
+            const HRESULT result = DX11_Utilities::GetDX11Context(m_RHI_Context)->m_DeviceContext->QueryInterface(IID_PPV_ARGS(&DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Annotation));
             if (FAILED(result))
             {
                 std::cout << DX11_Utilities::DXGI_Error_To_String(result);

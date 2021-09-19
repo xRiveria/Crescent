@@ -1,4 +1,6 @@
+#include "RHI_PCH.h"
 #include "Renderer/Renderer.h"
+#include <GLFW/glfw3.h>
 
 /*
     A RHI (Render Hardware Interface) is the abstraction layer between a graphics API and the renderer. It allows the renderer to be completely API
@@ -23,9 +25,22 @@
 
 int main(int argc, int argv[])
 {
+    if (!glfwInit())
+    {
+        std::cout << "Failed to initialize Window API.\n";
+    }
+
+    glfwWindowHint(GLFW_RESIZABLE, 0);
+
     Aurora::Renderer rendererContext;
     rendererContext.SetRenderAPI(Aurora::RenderAPI::DirectX11);
     rendererContext.Initialize();
+
+    while (!glfwWindowShouldClose(Aurora::Renderer::s_RenderWindow))
+    {
+        // Render
+        glfwPollEvents();
+    }
 
     return 0;
 }

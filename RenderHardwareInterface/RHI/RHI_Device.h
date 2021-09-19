@@ -31,8 +31,12 @@ namespace Aurora
         const std::vector<RHI_GPU>& GetGPUs() const { return m_GPUs; }
         
         virtual bool IsInitialized() const = 0;
-        RHI_Context* GetContextRHI() const { return m_RHI_Context.get(); }
+        std::shared_ptr<RHI_Context>& GetContextRHI() { return m_RHI_Context; }
+
+        // Misc
+        static bool IsValidResolution(const uint32_t width, const uint32_t height);
         
+        // API
         static std::shared_ptr<RHI_Device> Create();
 
     protected:

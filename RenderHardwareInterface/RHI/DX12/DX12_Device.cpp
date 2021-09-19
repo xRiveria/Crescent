@@ -1,3 +1,4 @@
+#include "RHI_PCH.h"
 #include "DX12_Device.h"
 #include "DX12_Utilities.h"
 

@@ -71,6 +71,11 @@ namespace Aurora
             return true;
         }
 
+        inline DX11_Context* GetDX11Context(std::shared_ptr<RHI_Context>& rhiContext)
+        {
+            return std::dynamic_pointer_cast<DX11_Context>(rhiContext).get();
+        }
+
         inline void QueryAdaptersAndDisplays()
         {
             IDXGIFactory1* factory;
@@ -190,6 +195,35 @@ namespace Aurora
             {
                 std::cout << "Falling back to 1st default GPU adapter avaliable.\n";
                 GlobalContext::m_RHI_Device->SetPrimaryGPU(0);
+            }
+        }
+
+        namespace SwapChain
+        {
+            inline uint32_t ValidateFlags(uint32_t flags)
+            {
+                return flags;
+            }
+
+            inline UINT ToDX11Flags(uint32_t flags)
+            {
+                UINT dxFlags = 0;
+
+                dxFlags |= flags & RHI_Swap_Allow_Mode_Switch ? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
+                dxFlags |= flags & RHI_Present_Immediate ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+                
+                return dxFlags;
+            }
+
+            inline DXGI_SWAP_EFFECT ToDX11SwapEffect(uint32_t flags)
+            {
+                if (flags & RHI_Swap_Discard) { return DXGI_SWAP_EFFECT_DISCARD; }
+                if (flags & RHI_Swap_Sequential) { return DXGI_SWAP_EFFECT_SEQUENTIAL; }
+                if (flags & RHI_Swap_Flip_Discard) { return DXGI_SWAP_EFFECT_FLIP_DISCARD; }
+                if (flags & RHI_Swap_Flip_Sequential) { return DXGI_SWAP_EFFECT_SEQUENTIAL; }
+
+                std::cout << "Failed to determine the requested swap effect, opting for DXGI_SWAP_EFFECT_DISCARD.\n";
+                return DXGI_SWAP_EFFECT_DISCARD;
             }
         }
     }

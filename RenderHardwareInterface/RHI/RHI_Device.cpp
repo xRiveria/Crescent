@@ -1,5 +1,4 @@
-#include <iostream>
-#include <algorithm>
+#include "RHI_PCH.h"
 #include "RHI_Device.h"
 #include "DX11/DX11_Device.h"
 #include "DX12/DX12_Device.h"
@@ -38,6 +37,12 @@ namespace Aurora
         {
             std::cout << "Set GPU As: " << gpu->GetGPUName() << ", " << gpu->GetGPUMemory() << "\n";
         }
+    }
+
+    bool RHI_Device::IsValidResolution(const uint32_t width, const uint32_t height)
+    {
+        return width > 4  && width  <= RHI_Context::m_Texture2D_Dimensions_Max &&
+               height > 4 && height <= RHI_Context::m_Texture2D_Dimensions_Max;
     }
 
     std::shared_ptr<RHI_Device> RHI_Device::Create()

@@ -97,12 +97,15 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies/Vulkan/include/;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)RenderHardwareInterface\Core\;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;</AdditionalIncludeDirectories>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>RHI_PCH.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies/Vulkan/lib/;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies/Vulkan/lib/;$(SolutionDir)Dependencies\GLFW\lib-vc2019\;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -114,14 +117,17 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies/Vulkan/include/;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)RenderHardwareInterface\Core\;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;</AdditionalIncludeDirectories>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>RHI_PCH.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies/Vulkan/lib/;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies/Vulkan/lib/;$(SolutionDir)Dependencies\GLFW\lib-vc2019\;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -131,12 +137,15 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies/Vulkan/include/;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)RenderHardwareInterface\Core\;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;</AdditionalIncludeDirectories>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>RHI_PCH.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies/Vulkan/lib/;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies/Vulkan/lib/;$(SolutionDir)Dependencies\GLFW\lib-vc2019\;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -148,22 +157,27 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies/Vulkan/include/;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)RenderHardwareInterface\Core\;$(SolutionDir)Dependencies/Vulkan/include/;$(SolutionDir)Dependencies/GLFW/include/;</AdditionalIncludeDirectories>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>RHI_PCH.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies/Vulkan/lib/;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies/Vulkan/lib/;$(SolutionDir)Dependencies\GLFW\lib-vc2019\;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Core\RHI_PCH.h" />
     <ClInclude Include="Renderer\Renderer.h" />
     <ClInclude Include="RHI\API_Utilities\RHI_Display.h" />
     <ClInclude Include="RHI\API_Utilities\RHI_DisplayMode.h" />
     <ClInclude Include="RHI\DX11\DX11_Context.h" />
     <ClInclude Include="RHI\DX11\DX11_Device.h" />
+    <ClInclude Include="RHI\DX11\DX11_SwapChain.h" />
     <ClInclude Include="RHI\DX11\DX11_Utilities.h" />
     <ClInclude Include="RHI\DX12\DX12_Context.h" />
     <ClInclude Include="RHI\DX12\DX12_Device.h" />
@@ -171,18 +185,31 @@
     <ClInclude Include="RHI\RHI_Context.h" />
     <ClInclude Include="RHI\RHI_Device.h" />
     <ClInclude Include="RHI\API_Utilities\RHI_GPU.h" />
+    <ClInclude Include="RHI\RHI_SwapChain.h" />
     <ClInclude Include="RHI\RHI_Utilities.h" />
     <ClInclude Include="RHI\Vulkan\Vulkan_Context.h" />
     <ClInclude Include="RHI\Vulkan\Vulkan_Device.h" />
     <ClInclude Include="RHI\Vulkan\Vulkan_Utilities.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Core\RHI_PCH.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">RHI_PCH.h</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">RHI_PCH.h</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">RHI_PCH.h</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">RHI_PCH.h</PrecompiledHeaderFile>
+    </ClCompile>
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Renderer\Renderer.cpp" />
     <ClCompile Include="RHI\API_Utilities\RHI_Display.cpp" />
     <ClCompile Include="RHI\DX11\DX11_Device.cpp" />
+    <ClCompile Include="RHI\DX11\DX11_SwapChain.cpp" />
     <ClCompile Include="RHI\DX12\DX12_Device.cpp" />
     <ClCompile Include="RHI\RHI_Device.cpp" />
+    <ClCompile Include="RHI\RHI_SwapChain.cpp" />
     <ClCompile Include="RHI\Vulkan\Vulkan_Device.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

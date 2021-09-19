@@ -12,8 +12,6 @@ namespace Aurora
         virtual void Initialize() override;
         virtual bool IsInitialized() const override { return m_IsInitialized; }
 
-        DX11_Context* GetContext() const;
-
     private:
         bool m_IsInitialized = false;
     };
