@@ -57,7 +57,15 @@ namespace Aurora
         // Matches our RHI_Format enum in RHI_Utilities. As enums are essentially integer literals, they can be used to index these array lists.
         static const DXGI_FORMAT ToDX11Format[] =
         {
-            DXGI_FORMAT_R8G8B8A8_UNORM
+            DXGI_FORMAT_UNKNOWN,
+            DXGI_FORMAT_R8G8B8A8_UNORM,
+
+            // RGB
+            DXGI_FORMAT_R11G11B10_FLOAT,
+
+            // Depth
+            DXGI_FORMAT_D32_FLOAT,
+            DXGI_FORMAT_D32_FLOAT_S8X24_UINT
         };
 
         constexpr bool ErrorCheck(const HRESULT result)
@@ -71,9 +79,11 @@ namespace Aurora
             return true;
         }
 
-        inline DX11_Context* GetDX11Context(std::shared_ptr<RHI_Context>& rhiContext)
+        inline DX11_Context* GetDX11Context()
         {
-            return std::dynamic_pointer_cast<DX11_Context>(rhiContext).get();
+            return static_cast<DX11_Context*>(GlobalContext::m_RHI_Context); // Static cast here as there is no virtual inheritence in our context.
+
+            // return std::dynamic_pointer_cast<DX11_Context>(rhiContext).get();
         }
 
         inline void QueryAdaptersAndDisplays()
@@ -198,10 +208,70 @@ namespace Aurora
             }
         }
 
+        // Determine maximum MSAA level supported - 16.
+        inline UINT QueryMaximumMSAALevel()
+        {
+
+        }
+
+        /*
+            Screen tear is a visual effect that occurs when your GPU's frame rate doesn't match your monitor's refresh rate. This can happen if your GPU outputs 
+            a higher framerate than the monitor's refresh rate. This leads to two or more frames being displayed by the monitor at the same time. 
+            
+            V-Sync (Vertical Synchronization) is a way to prevent screen tears. This technology would synchronize the vertical refresh rate of your display 
+            with the framerate your GPU was providing. However, as VSync would give priority to your monitor, your GPU would often have to wait until the monitor
+            was ready to receive a frame before sending it - ultimately leading to much greater input lag. Imagine if your FPS drops to 20, your monitor will have to 
+            wait a good amount of tuime before freshing the image on screen.
+
+            For example, a 60hz monitor with VSync enabled will force your GPU to cap the framerate to 60 regardless of how high it supports. To uncap your frame rate, 
+            turn off VSync. More VSync content here: https://www.wepc.com/gaming-monitor/faq/what-is-vsync/.
+
+            Another feature called VRR (Variable Refresh Rate, or V-Sync Off Mode) also allows your screen to adjust how often it refreshes its image to match the frame rate
+            from your GPU, either in a console or PC. There are technologies out there based on VRR, such as Nvidia GSync, which updates the screen only when the GPU tells it to.
+        */
+        inline bool QueryTearingSupport()
+        {
+            // Rather than creaing the 1.5 factory interface directly, we create the 1.4 interface and query for the 1.5 interface. This will enable graphics debugging tools which might not support the 1.5 factory interface.
+            ComPtr<IDXGIFactory4> factory4;
+            HRESULT result = CreateDXGIFactory1(IID_PPV_ARGS(&factory4));
+            BOOL allowTearing = FALSE;
+
+            if (SUCCEEDED(result))
+            {
+                ComPtr<IDXGIFactory5> factory5; // IDXGIFactory5 enables a single method to support variable refresh rate displays.
+                result = factory4.As(&factory5);
+
+                if (SUCCEEDED(result))
+                {
+                    result = factory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
+                }
+            }
+
+            const bool fullscreenBorderlessSupport = SUCCEEDED(result) && allowTearing;
+            /// Apparently Intel doesn't support tearing. Might want to check on that?
+
+            return fullscreenBorderlessSupport;
+        }
+
         namespace SwapChain
         {
             inline uint32_t ValidateFlags(uint32_t flags)
             {
+                // If tearing support is requested...
+                if (flags & RHI_Present_Mode::RHI_Present_Immediate)
+                {
+                    // Check if the adapter supports it. If not, disable it as it tends to fail with Intel adapters.
+                    if (!QueryTearingSupport())
+                    {
+                        flags &= ~RHI_Present_Immediate;
+                        std::cout << "Present_Immediate was requested by wasn't supported by the adapter. Removing flag...\n";
+                    }
+                    else
+                    {
+                        std::cout << "Tearing is supported. Enabling feature flag...\n";
+                    }
+                }
+
                 return flags;
             }
 
@@ -209,18 +279,19 @@ namespace Aurora
             {
                 UINT dxFlags = 0;
 
-                dxFlags |= flags & RHI_Swap_Allow_Mode_Switch ? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
-                dxFlags |= flags & RHI_Present_Immediate ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+                dxFlags |= flags & RHI_Swap_Allow_Mode_Switch ? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0; // Allows for mode switching (fullscreen/windowed mode) by calling IDXGISwapChain::ResizeTarget. The display mode (or monitor resolution) will be changed to match the dimensions of the application window.
+                // To allow VSync-Off support, we have to check for the below flag. This flag can only bw used with sync interval 0.
+                dxFlags |= flags & RHI_Present_Immediate      ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING     : 0; // 
                 
                 return dxFlags;
             }
 
             inline DXGI_SWAP_EFFECT ToDX11SwapEffect(uint32_t flags)
             {
-                if (flags & RHI_Swap_Discard) { return DXGI_SWAP_EFFECT_DISCARD; }
-                if (flags & RHI_Swap_Sequential) { return DXGI_SWAP_EFFECT_SEQUENTIAL; }
-                if (flags & RHI_Swap_Flip_Discard) { return DXGI_SWAP_EFFECT_FLIP_DISCARD; }
-                if (flags & RHI_Swap_Flip_Sequential) { return DXGI_SWAP_EFFECT_SEQUENTIAL; }
+                if (flags & RHI_Swap_Discard)         { return DXGI_SWAP_EFFECT_DISCARD;      }
+                if (flags & RHI_Swap_Sequential)      { return DXGI_SWAP_EFFECT_SEQUENTIAL;   }
+                if (flags & RHI_Swap_Flip_Discard)    { return DXGI_SWAP_EFFECT_FLIP_DISCARD; }
+                if (flags & RHI_Swap_Flip_Sequential) { return DXGI_SWAP_EFFECT_SEQUENTIAL;   }
 
                 std::cout << "Failed to determine the requested swap effect, opting for DXGI_SWAP_EFFECT_DISCARD.\n";
                 return DXGI_SWAP_EFFECT_DISCARD;

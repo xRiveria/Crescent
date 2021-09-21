@@ -72,6 +72,21 @@
     <ClInclude Include="Core\RHI_PCH.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Math\Vector2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\RHI_Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\RHI_Texture2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\RHI_Viewport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\DX11\DX11_Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RHI\RHI_Device.cpp">
@@ -102,6 +117,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RHI\DX11\DX11_SwapChain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Math\Vector2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\RHI_Viewport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\DX11\DX11_Texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\RHI_Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

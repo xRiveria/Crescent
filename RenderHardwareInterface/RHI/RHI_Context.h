@@ -7,8 +7,6 @@ namespace Aurora
 {
     struct RHI_Context
     {
-        virtual void Initialize() {}
-
         // Debugging
 #ifdef _DEBUG
         bool m_DebuggingEnabled = true;

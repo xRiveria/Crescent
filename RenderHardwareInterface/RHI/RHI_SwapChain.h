@@ -37,6 +37,7 @@ namespace Aurora
 
         // API
         void* m_SwapChain = nullptr;
+        void* m_ResourceView_RenderTarget = nullptr;
 
         RHI_Device* m_RHI_Device = nullptr;
     };

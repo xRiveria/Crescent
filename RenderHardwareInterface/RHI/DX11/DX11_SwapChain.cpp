@@ -12,7 +12,7 @@ namespace Aurora
     {
         /// Assert that our pointers aren't empty.
 
-        // Assert Window Handle
+        /// Assert Window Handle
 
         // Validate Resolution
         if (!rhiDevice->IsValidResolution(width, height))
@@ -62,7 +62,7 @@ namespace Aurora
             swapchainDescription.SwapEffect = DX11_Utilities::SwapChain::ToDX11SwapEffect(m_Flags);
             swapchainDescription.Flags = DX11_Utilities::SwapChain::ToDX11Flags(m_Flags);
 
-            if (!DX11_Utilities::ErrorCheck(dxgiFactory->CreateSwapChain((DX11_Utilities::GetDX11Context(m_RHI_Device->GetContextRHI()))->m_Device, &swapchainDescription, reinterpret_cast<IDXGISwapChain**>(&m_SwapChain))))
+            if (!DX11_Utilities::ErrorCheck(dxgiFactory->CreateSwapChain((DX11_Utilities::GetDX11Context())->m_Device, &swapchainDescription, reinterpret_cast<IDXGISwapChain**>(&m_SwapChain))))
             {
                 std::cout << "Failed to create SwapChain.\n";
                 return;
@@ -73,12 +73,44 @@ namespace Aurora
             }
         }
 
+        // Creates the render target.
+        if (IDXGISwapChain* swapChain = static_cast<IDXGISwapChain*>(m_SwapChain))
+        {
+            ID3D11Texture2D* backBuffer = nullptr;
+            // GetBuffer() utilizes a zero-based buffer index. Note that if the swapchain's swap effect is either DXGI_SWAP_EFFECT_SEQUENTIAL or DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL, only the swapchain's zero-index buffer can be read from and written to.
+            // The swapchain's buffers with indexes greater than zero can only be read from. Hence, if you call IDXGIResource::GetUsage() for such buffers, they only have the DXGI_USAGE_READ_ONLY flag set.
+            HRESULT result = swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer)); // Accesses one of the swapchain's backbuffers and stores it in ID3D11Texture2D.
+            if (FAILED(result))
+            {
+                std::cout << "Error getting Swapchain Buffer: " << DX11_Utilities::DXGI_Error_To_String(result) << "\n";
+                return;
+            }
+
+            ID3D11RenderTargetView* renderTargetView = static_cast<ID3D11RenderTargetView*>(m_ResourceView_RenderTarget);
+            result = DX11_Utilities::GetDX11Context()->m_Device->CreateRenderTargetView(backBuffer, nullptr, &renderTargetView);
+            backBuffer->Release();
+
+            if (FAILED(result))
+            {
+                std::cout << "Failed to create SwapChain RTV. " << DX11_Utilities::DXGI_Error_To_String(result) << "\n";
+                return;
+            }
+
+            std::cout << "Successfully created SwapChain RTV.\n";
+            m_ResourceView_RenderTarget = static_cast<void*>(renderTargetView);
+        }
+
         m_IsInitialized = true;
     }
 
     DX11_SwapChain::~DX11_SwapChain()
     {
+        IDXGISwapChain* swapChain = static_cast<IDXGISwapChain*>(m_SwapChain);
 
+        // Before shutting down, set to windowed mode to avoid swapchain exception.
+
+        swapChain->Release();
+        swapChain = nullptr;
     }
 
     void DX11_SwapChain::Resize(uint32_t newWidth, uint32_t newHeight, const bool forceResize)

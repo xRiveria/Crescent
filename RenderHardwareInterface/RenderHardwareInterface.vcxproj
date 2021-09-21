@@ -172,12 +172,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Core\RHI_PCH.h" />
+    <ClInclude Include="Math\Vector2.h" />
     <ClInclude Include="Renderer\Renderer.h" />
     <ClInclude Include="RHI\API_Utilities\RHI_Display.h" />
     <ClInclude Include="RHI\API_Utilities\RHI_DisplayMode.h" />
     <ClInclude Include="RHI\DX11\DX11_Context.h" />
     <ClInclude Include="RHI\DX11\DX11_Device.h" />
     <ClInclude Include="RHI\DX11\DX11_SwapChain.h" />
+    <ClInclude Include="RHI\DX11\DX11_Texture.h" />
     <ClInclude Include="RHI\DX11\DX11_Utilities.h" />
     <ClInclude Include="RHI\DX12\DX12_Context.h" />
     <ClInclude Include="RHI\DX12\DX12_Device.h" />
@@ -186,7 +188,10 @@
     <ClInclude Include="RHI\RHI_Device.h" />
     <ClInclude Include="RHI\API_Utilities\RHI_GPU.h" />
     <ClInclude Include="RHI\RHI_SwapChain.h" />
+    <ClInclude Include="RHI\RHI_Texture.h" />
+    <ClInclude Include="RHI\RHI_Texture2D.h" />
     <ClInclude Include="RHI\RHI_Utilities.h" />
+    <ClInclude Include="RHI\RHI_Viewport.h" />
     <ClInclude Include="RHI\Vulkan\Vulkan_Context.h" />
     <ClInclude Include="RHI\Vulkan\Vulkan_Device.h" />
     <ClInclude Include="RHI\Vulkan\Vulkan_Utilities.h" />
@@ -203,13 +208,17 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">RHI_PCH.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="EntryPoint.cpp" />
+    <ClCompile Include="Math\Vector2.cpp" />
     <ClCompile Include="Renderer\Renderer.cpp" />
     <ClCompile Include="RHI\API_Utilities\RHI_Display.cpp" />
     <ClCompile Include="RHI\DX11\DX11_Device.cpp" />
     <ClCompile Include="RHI\DX11\DX11_SwapChain.cpp" />
+    <ClCompile Include="RHI\DX11\DX11_Texture.cpp" />
     <ClCompile Include="RHI\DX12\DX12_Device.cpp" />
     <ClCompile Include="RHI\RHI_Device.cpp" />
     <ClCompile Include="RHI\RHI_SwapChain.cpp" />
+    <ClCompile Include="RHI\RHI_Texture.cpp" />
+    <ClCompile Include="RHI\RHI_Viewport.cpp" />
     <ClCompile Include="RHI\Vulkan\Vulkan_Device.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

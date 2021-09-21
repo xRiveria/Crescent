@@ -6,14 +6,14 @@ namespace Aurora
 {
     DX11_Device::~DX11_Device()
     {
-        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_DeviceContext->Release();
-        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_DeviceContext = nullptr;
+        DX11_Utilities::GetDX11Context()->m_DeviceContext->Release();
+        DX11_Utilities::GetDX11Context()->m_DeviceContext = nullptr;
 
-        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Device->Release();
-        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Device = nullptr;
+        DX11_Utilities::GetDX11Context()->m_Device->Release();
+        DX11_Utilities::GetDX11Context()->m_Device = nullptr;
 
-        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Annotation->Release();
-        DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Annotation = nullptr;
+        DX11_Utilities::GetDX11Context()->m_Annotation->Release();
+        DX11_Utilities::GetDX11Context()->m_Annotation = nullptr;
     }
 
     void DX11_Device::Initialize()
@@ -83,7 +83,7 @@ namespace Aurora
             if (SUCCEEDED(result))
             {
                 // Query old device for newer interface.
-                if (!DX11_Utilities::ErrorCheck(temporaryDevice->QueryInterface(__uuidof(ID3D11Device5), (void**)&DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Device)))
+                if (!DX11_Utilities::ErrorCheck(temporaryDevice->QueryInterface(__uuidof(ID3D11Device5), (void**)&DX11_Utilities::GetDX11Context()->m_Device)))
                 {
                     return E_FAIL;
                 }
@@ -93,7 +93,7 @@ namespace Aurora
                 temporaryDevice = nullptr;
 
                 // Query old device for newer interface.
-                if (!DX11_Utilities::ErrorCheck(temporaryDeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext4), (void**)&DX11_Utilities::GetDX11Context(m_RHI_Context)->m_DeviceContext)))
+                if (!DX11_Utilities::ErrorCheck(temporaryDeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext4), (void**)&DX11_Utilities::GetDX11Context()->m_DeviceContext)))
                 {
                     return E_FAIL;
                 }
@@ -130,7 +130,7 @@ namespace Aurora
         if (multithreadedProtection) // Provides threading protection for critical sections of a multi-threaded applications.
         {
             ID3D11Multithread* multithreadingContext = nullptr;
-            if (SUCCEEDED(DX11_Utilities::GetDX11Context(m_RHI_Context)->m_DeviceContext->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&multithreadingContext))))
+            if (SUCCEEDED(DX11_Utilities::GetDX11Context()->m_DeviceContext->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&multithreadingContext))))
             {
                 multithreadingContext->SetMultithreadProtected(TRUE);
                 multithreadingContext->Release();
@@ -146,7 +146,7 @@ namespace Aurora
         if (m_RHI_Context->m_DebuggingEnabled)
         {
             // Queries and retrieves a pointer to the requested interface whilst calling AddRef.
-            const HRESULT result = DX11_Utilities::GetDX11Context(m_RHI_Context)->m_DeviceContext->QueryInterface(IID_PPV_ARGS(&DX11_Utilities::GetDX11Context(m_RHI_Context)->m_Annotation));
+            const HRESULT result = DX11_Utilities::GetDX11Context()->m_DeviceContext->QueryInterface(IID_PPV_ARGS(&DX11_Utilities::GetDX11Context()->m_Annotation));
             if (FAILED(result))
             {
                 std::cout << DX11_Utilities::DXGI_Error_To_String(result);

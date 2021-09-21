@@ -15,6 +15,13 @@ namespace Aurora
             static inline RHI_Context* m_RHI_Context = nullptr;
         };
 
+        inline DX12_Context* GetDX12Context()
+        {
+            return static_cast<DX12_Context*>(GlobalContext::m_RHI_Context); // Static cast here as there is no virtual inheritence in our context.
+
+            // return std::dynamic_pointer_cast<DX12_Context>(rhiContext).get();
+        }
+
         constexpr bool ErrorCheck(const HRESULT result)
         {
             if (FAILED(result))

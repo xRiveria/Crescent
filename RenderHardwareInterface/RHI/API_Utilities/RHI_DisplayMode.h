@@ -20,7 +20,10 @@ namespace Aurora
             return m_Width == otherDisplayMode.m_Width && m_Height == otherDisplayMode.m_Height && m_Hertz == otherDisplayMode.m_Hertz;
         }
 
-    private:
+        void SetWidth(uint32_t newWidth) { m_Width = newWidth; }
+        void SetHeight(uint32_t newHeight) { m_Height = newHeight; }
+
+    public:
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
         uint32_t m_Numerator = 0;
