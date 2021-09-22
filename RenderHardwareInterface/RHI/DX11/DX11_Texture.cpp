@@ -130,19 +130,11 @@ namespace Aurora
         D3D11_RENDER_TARGET_VIEW_DESC rtvDescription = {};
         rtvDescription.Format = ToDX11_TextureFormat(m_Format);
         rtvDescription.ViewDimension = m_TextureType == RHI_Texture_Type::Texture2D ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_UNKNOWN;
-        // rtvDescription.Texture2DArray.MipSlice = 0;
-        // rtvDescription.Texture2DArray.ArraySize = 1;
-
-        // Create
-        // for (uint32_t i = 0; i < m_ArrayLength; i++)
-        // {
-        //    rtvDescription.Texture2DArray.FirstArraySlice = i;
 
         if (!DX11_Utilities::ErrorCheck(DX11_Utilities::GetDX11Context()->m_Device->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_Resource), &rtvDescription, reinterpret_cast<ID3D11RenderTargetView**>(m_ResourceView_RenderTargetView))))
         {
             return false;
         }
-        //}
 
         std::cout << "Successfully created Render Target View.\n";
         return true;

@@ -22,6 +22,7 @@ namespace Aurora
         bool CreateDepthStencilView();
         bool CreateUnorderedAccessView();
 
+        // Utilities
         UINT ToDX11_BindFlags(uint32_t flags);
         DXGI_FORMAT ToDX11_TextureFormat(RHI_Format format);
         DXGI_FORMAT ToDX11_SRVFormat(RHI_Format format);

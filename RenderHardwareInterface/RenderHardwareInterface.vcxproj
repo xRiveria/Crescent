@@ -173,6 +173,7 @@
   <ItemGroup>
     <ClInclude Include="Core\RHI_PCH.h" />
     <ClInclude Include="Math\Vector2.h" />
+    <ClInclude Include="Math\Vector4.h" />
     <ClInclude Include="Renderer\Renderer.h" />
     <ClInclude Include="RHI\API_Utilities\RHI_Display.h" />
     <ClInclude Include="RHI\API_Utilities\RHI_DisplayMode.h" />
@@ -183,6 +184,7 @@
     <ClInclude Include="RHI\DX11\DX11_Utilities.h" />
     <ClInclude Include="RHI\DX12\DX12_Context.h" />
     <ClInclude Include="RHI\DX12\DX12_Device.h" />
+    <ClInclude Include="RHI\DX12\DX12_SwapChain.h" />
     <ClInclude Include="RHI\DX12\DX12_Utilities.h" />
     <ClInclude Include="RHI\RHI_Context.h" />
     <ClInclude Include="RHI\RHI_Device.h" />
@@ -215,11 +217,13 @@
     <ClCompile Include="RHI\DX11\DX11_SwapChain.cpp" />
     <ClCompile Include="RHI\DX11\DX11_Texture.cpp" />
     <ClCompile Include="RHI\DX12\DX12_Device.cpp" />
+    <ClCompile Include="RHI\DX12\DX12_SwapChain.cpp" />
     <ClCompile Include="RHI\RHI_Device.cpp" />
     <ClCompile Include="RHI\RHI_SwapChain.cpp" />
     <ClCompile Include="RHI\RHI_Texture.cpp" />
     <ClCompile Include="RHI\RHI_Viewport.cpp" />
     <ClCompile Include="RHI\Vulkan\Vulkan_Device.cpp" />
+    <ClCompile Include="RHI\Vulkan\Vulkan_Utilities.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
