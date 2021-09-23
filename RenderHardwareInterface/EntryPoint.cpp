@@ -33,7 +33,7 @@ int main(int argc, int argv[])
     glfwWindowHint(GLFW_RESIZABLE, 0);
 
     Aurora::Renderer rendererContext;
-    rendererContext.SetRenderAPI(Aurora::RenderAPI::Vulkan);
+    rendererContext.SetRenderAPI(Aurora::RenderAPI::DirectX12);
     rendererContext.Initialize();
 
     while (!glfwWindowShouldClose(Aurora::Renderer::s_RenderWindow))

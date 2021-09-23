@@ -172,6 +172,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Core\RHI_PCH.h" />
+    <ClInclude Include="Math\MathUtilities.h" />
     <ClInclude Include="Math\Vector2.h" />
     <ClInclude Include="Math\Vector4.h" />
     <ClInclude Include="Renderer\Renderer.h" />
@@ -182,9 +183,11 @@
     <ClInclude Include="RHI\DX11\DX11_SwapChain.h" />
     <ClInclude Include="RHI\DX11\DX11_Texture.h" />
     <ClInclude Include="RHI\DX11\DX11_Utilities.h" />
+    <ClInclude Include="RHI\DX12\d3dx12.h" />
     <ClInclude Include="RHI\DX12\DX12_Context.h" />
     <ClInclude Include="RHI\DX12\DX12_Device.h" />
     <ClInclude Include="RHI\DX12\DX12_SwapChain.h" />
+    <ClInclude Include="RHI\DX12\DX12_Texture.h" />
     <ClInclude Include="RHI\DX12\DX12_Utilities.h" />
     <ClInclude Include="RHI\RHI_Context.h" />
     <ClInclude Include="RHI\RHI_Device.h" />
@@ -218,6 +221,7 @@
     <ClCompile Include="RHI\DX11\DX11_Texture.cpp" />
     <ClCompile Include="RHI\DX12\DX12_Device.cpp" />
     <ClCompile Include="RHI\DX12\DX12_SwapChain.cpp" />
+    <ClCompile Include="RHI\DX12\DX12_Texture.cpp" />
     <ClCompile Include="RHI\RHI_Device.cpp" />
     <ClCompile Include="RHI\RHI_SwapChain.cpp" />
     <ClCompile Include="RHI\RHI_Texture.cpp" />

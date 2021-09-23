@@ -1,6 +1,9 @@
 #pragma once
-#include "../RHI_Device.h"
 #include "../Math/Vector4.h"
+#include "../RHI_Device.h"
+#include "../RHI_Utilities.h"
+#include "../API_Utilities/RHI_Display.h"
+#include "../API_Utilities/RHI_GPU.h"
 #include "Vulkan_Context.h"
 
 namespace Aurora
@@ -257,11 +260,11 @@ namespace Aurora
             // Callback function signature.
             static VKAPI_ATTR VkBool32 VKAPI_CALL Callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* userData)
             {
-                std::string message = "Vulkan + " + std::string(pCallbackData->pMessage);
+                std::string message = "Vulkan + " + std::string(pCallbackData->pMessage) + "\n";
                 
                 if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
                 {
-                    std::cout << "[Info] " << message;
+                    // std::cout << "[Info] " << message;
                 }
                 else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
                 {
@@ -401,83 +404,271 @@ namespace Aurora
 
             static void SetGPUObjectName(VkImageView imageView, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)imageView, VK_OBJECT_TYPE_IMAGE_VIEW, name);
             }
 
             static void SetGPUObjectName(VkSampler sampler, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)sampler, VK_OBJECT_TYPE_SAMPLER, name);
             }
 
             static void SetGPUObjectName(VkBuffer buffer, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)buffer, VK_OBJECT_TYPE_BUFFER, name);
             }
 
             static void SetGPUObjectName(VkBufferView bufferView, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)bufferView, VK_OBJECT_TYPE_BUFFER_VIEW, name);
             }
 
             static void SetGPUObjectName(VkDeviceMemory memory, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)memory, VK_OBJECT_TYPE_DEVICE_MEMORY, name);
             }
 
             static void SetGPUObjectName(VkShaderModule shaderModule, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)shaderModule, VK_OBJECT_TYPE_SHADER_MODULE, name);
             }
 
             static void SetGPUObjectName(VkPipeline pipeline, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)pipeline, VK_OBJECT_TYPE_PIPELINE, name);
             }
 
             static void SetGPUObjectName(VkPipelineLayout pipelineLayout, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, name);
             }
 
             static void SetGPUObjectName(VkRenderPass renderPass, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)renderPass, VK_OBJECT_TYPE_RENDER_PASS, name);
             }
 
             static void SetGPUObjectName(VkFramebuffer framebuffer, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)framebuffer, VK_OBJECT_TYPE_FRAMEBUFFER, name);
             }
 
             static void SetGPUObjectName(VkDescriptorSetLayout descriptorSetLayout, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)descriptorSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, name);
             }
 
             static void SetGPUObjectName(VkDescriptorSet descriptorSet, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)descriptorSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, name);
             }
 
             static void SetGPUObjectName(VkDescriptorPool descriptorPool, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)descriptorPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, name);
             }
 
             static void SetGPUObjectName(VkSemaphore semaphore, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)semaphore, VK_OBJECT_TYPE_SEMAPHORE, name);
             }
 
             static void SetGPUObjectName(VkFence fence, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)fence, VK_OBJECT_TYPE_FENCE, name);
             }
 
             static void SetGPUObjectName(VkEvent event, const char* name)
             {
-
+                _SetGPUObjectName((uint64_t)event, VK_OBJECT_TYPE_EVENT, name);
             }
         };
+
+        namespace DevicesAndQueues
+        {
+            inline uint32_t GetQueueFamilyIndex(VkQueueFlagBits queueFlags, const std::vector<VkQueueFamilyProperties>& queueFamilyProperties, uint32_t* index)
+            {
+                // Dedicated queue for compute for not graphics.
+                if (queueFlags & VK_QUEUE_COMPUTE_BIT)
+                {
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
+                    {
+                        if ((queueFamilyProperties[i].queueFlags & queueFlags) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
+                        {
+                            *index = i;
+                            return true;
+                        }
+                    }
+                }
+
+                // Dedicated queue for transfer. Try to find a queue family index that supports transfer but not graphics and compute.
+                if (queueFlags & VK_QUEUE_TRANSFER_BIT)
+                {
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
+                    {
+                        if ((queueFamilyProperties[i].queueFlags & queueFlags) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0)
+                            && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+                        {
+                            *index = i;
+                            return true;
+                        }
+                    }
+                }
+
+                // For other queue types or if no seperate compute queue is present, return the first one to support the requested flags. 
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
+                {
+                    if (queueFamilyProperties[i].queueFlags & queueFlags)
+                    {
+                        *index = i;
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            inline bool GetQueueFamilyIndices(const VkPhysicalDevice& physicalDevice)
+            {
+                uint32_t queueFamilyCount = 0;
+                vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+
+                std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
+                vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
+
+                if (!GetQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT, queueFamilyProperties, &GetVulkanContext()->m_QueueGraphicsIndex))
+                {
+                    std::cout << "Graphics queue not supported.\n";
+                    return false;
+                }
+
+                if (!GetQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT, queueFamilyProperties, &GetVulkanContext()->m_QueueTransferIndex))
+                {
+                    std::cout << "Transfer queue not supported, using Graphics queue instead.\n";
+                    return false;
+                }
+
+                if (!GetQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT, queueFamilyProperties, &GetVulkanContext()->m_QueueComputeIndex))
+                {
+                    std::cout << "Compute queue not supported, using Graphics queue instead.\n";
+                    return false;
+                }
+
+                return true;
+            }
+
+            inline bool ChoosePhysicalDevice()
+            {
+                // Register all physical devices.
+                uint32_t deviceCount = 0;
+                if (!Errors::Check(vkEnumeratePhysicalDevices(GetVulkanContext()->m_Instance, &deviceCount, nullptr)))
+                {
+                    return false;
+                }
+
+                if (deviceCount == 0)
+                {
+                    std::cout << "There are no avaliable devices.\n";
+                    return false;
+                }
+
+                std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
+                if (!Errors::Check(vkEnumeratePhysicalDevices(GetVulkanContext()->m_Instance, &deviceCount, physicalDevices.data())))
+                {
+                    return false;
+                }
+
+                // Go through all the devices.
+                for (const VkPhysicalDevice& physicalDevice : physicalDevices)
+                {
+                    // Get device properties.
+                    VkPhysicalDeviceProperties deviceProperties = {};
+                    vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+
+                    VkPhysicalDeviceMemoryProperties deviceMemoryProperties = {};
+                    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &deviceMemoryProperties);
+
+                    RHI_GPU_Type deviceType = RHI_GPU_Type::Unknown;
+                    if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+                    {
+                        deviceType = RHI_GPU_Type::Integrated;
+                    }
+                    if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+                    {
+                        deviceType = RHI_GPU_Type::Discrete;
+                    }
+                    if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)
+                    {
+                        deviceType = RHI_GPU_Type::Virtual;
+                    }
+                    if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
+                    {
+                        deviceType = RHI_GPU_Type::CPU;
+                    }
+
+                    // Let the engine know about it as it will sort all the devices from best to worst automatically in RegisterGPU().
+                    GlobalContext::m_RHI_Device->RegisterGPU(RHI_GPU(
+                        // deviceProperties.apiVersion,                                     // API Version
+                        // deviceProperties.driverVersion,                                  // Driver Version
+                        deviceProperties.vendorID,                                          // Vendor ID
+                        deviceType,                                                         // Type
+                        &deviceProperties.deviceName[0],                                    // Name
+                        static_cast<uint64_t>(deviceMemoryProperties.memoryHeaps[0].size),  // Memory
+                        static_cast<void*>(physicalDevice)                                  // Data
+                    ));
+                }
+
+                // Go through all the devices (sorted from best to worse based on their properties).
+                for (uint32_t deviceIndex = 0; deviceIndex < static_cast<uint32_t>(GlobalContext::m_RHI_Device->GetGPUs().size()); deviceIndex++)
+                {
+                    const RHI_GPU& gpu = GlobalContext::m_RHI_Device->GetGPUs()[deviceIndex];
+                    VkPhysicalDevice vulkanPhysicalDevice = static_cast<VkPhysicalDevice>(gpu.GetInternalData());
+
+                    // Get the first device that has a graphics, a compute and a transfer queue.
+                    if (GetQueueFamilyIndices(vulkanPhysicalDevice))
+                    {
+                        GlobalContext::m_RHI_Device->SetPrimaryGPU(deviceIndex);
+                        GetVulkanContext()->m_PhysicalDevice = vulkanPhysicalDevice;
+                        break;
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        namespace Display
+        {
+            inline void DetectDisplayModes()
+            {
+                const bool updateFPSLimitToHighestHertz = true;
+
+                RHI_Display::RegisterDisplayMode(RHI_DisplayMode(640, 480, 165, 1), updateFPSLimitToHighestHertz);
+                RHI_Display::RegisterDisplayMode(RHI_DisplayMode(720, 576, 165, 1), updateFPSLimitToHighestHertz);
+                RHI_Display::RegisterDisplayMode(RHI_DisplayMode(1280, 720, 165, 1), updateFPSLimitToHighestHertz);
+                RHI_Display::RegisterDisplayMode(RHI_DisplayMode(1920, 1080, 165, 1), updateFPSLimitToHighestHertz);
+                RHI_Display::RegisterDisplayMode(RHI_DisplayMode(2560, 1440, 165, 1), updateFPSLimitToHighestHertz);
+            }
+        }
+
+        namespace CommandPool
+        {
+            inline bool Create(void*& commandPool, const RHI_Queue_Type queueType)
+            {
+                VkCommandPoolCreateInfo commandPoolInfo = {};
+                commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+                commandPoolInfo.queueFamilyIndex = GlobalContext::m_RHI_Context->GetQueueIndex(queueType);
+                commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allows any command buffer allocated from the pool to be individually reset to its initial state, either by calling vkResetCommandBuffer or implict reset through vkBeginCommandBuffer.
+                
+                VkCommandPool* vulkanCommandPool = reinterpret_cast<VkCommandPool*>(&commandPool);
+                return Errors::Check(vkCreateCommandPool(GetVulkanContext()->m_Device, &commandPoolInfo, nullptr, vulkanCommandPool));
+            }
+
+            inline void Destroy(void*& commandPool)
+            {
+                VkCommandPool vulkanCommandPool = static_cast<VkCommandPool>(commandPool);
+                vkDestroyCommandPool(GetVulkanContext()->m_Device, vulkanCommandPool, nullptr);
+                commandPool = nullptr;
+            }
+        }
     }
 }

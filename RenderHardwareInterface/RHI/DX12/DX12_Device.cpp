@@ -6,12 +6,7 @@ namespace Aurora
 {
     DX12_Device::~DX12_Device()
     {
-        GetContext()->m_Device->Release();
-    }
-
-    DX12_Context* DX12_Device::GetContext() const
-    {
-        return std::static_pointer_cast<DX12_Context>(m_RHI_Context).get();
+        DX12_Utilities::GetDX12Context()->m_Device->Release();
     }
 
     void DX12_Device::Initialize()
@@ -33,7 +28,7 @@ namespace Aurora
         }
 
         // Create Direct3D device.
-        const HRESULT result = D3D12CreateDevice(static_cast<IDXGIAdapter1*>(acquiredGPU->GetInternalData()), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&GetContext()->m_Device));
+        const HRESULT result = D3D12CreateDevice(static_cast<IDXGIAdapter1*>(acquiredGPU->GetInternalData()), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&DX12_Utilities::GetDX12Context()->m_Device));
 
         if (FAILED(result))
         {
@@ -44,6 +39,9 @@ namespace Aurora
         {
             std::cout << "Successfully created DX12 Device.\n";
         }
+
+        // Create Command Queue
+        DX12_Utilities::CommandQueue::Create(m_CommandPool, DX12_Utilities::GetDX12Context()->m_Device);
 
         std::cout << "Successfully initialized DX12.\n";
         m_IsInitialized = true;

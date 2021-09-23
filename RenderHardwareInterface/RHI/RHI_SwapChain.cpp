@@ -2,6 +2,7 @@
 #include "RHI_SwapChain.h"
 #include "DX11/DX11_SwapChain.h"
 #include "DX12/DX12_SwapChain.h"
+// #include "Vulkan/Vulkan_SwapChain.h"
 #include "../Renderer/Renderer.h"
 
 namespace Aurora
@@ -12,7 +13,7 @@ namespace Aurora
         {
             case RenderAPI::DirectX11: return std::make_shared<DX11_SwapChain>(width, height, windowHandle, rhiDevice, bufferCount, flags, format, objectName);
             case RenderAPI::DirectX12: return std::make_shared<DX12_SwapChain>(width, height, windowHandle, rhiDevice, bufferCount, flags, format, objectName);
-            // case RenderAPI::Vulkan:    return std::make_shared<Vulkan_Device>();
+            // case RenderAPI::Vulkan:    return std::make_shared<Vulkan_SwapChain>();
             // So on and so forth...
         }
 

@@ -6,6 +6,9 @@
 #include <string>
 #include <memory>
 
+// Internal
+#include "../Math/MathUtilities.h"
+
 #define RHI_ASSERT_STATEMENT(statement)                   \
 if (!(statement))                                         \
 {                                                         \

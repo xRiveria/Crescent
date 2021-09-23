@@ -38,13 +38,45 @@ namespace Aurora
             return;
         }
 
-        ///
+        m_Width = width;
+        m_Height = height;
+        m_Format = format;
+        m_BufferCount = bufferCount;
+        m_RHI_Device = rhiDevice;
+
+        {
+            // Describe and create the swapchain.
+            DXGI_SWAP_CHAIN_DESC1 swapchainDescription = {};
+
+            swapchainDescription.BufferCount = bufferCount;
+            swapchainDescription.Width = width;
+            swapchainDescription.Height = height;
+            swapchainDescription.Format = DX12_Utilities::ToDX12Format[format];
+            swapchainDescription.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // Uses the surface as an output render target.
+            swapchainDescription.SwapEffect = DX12_Utilities::SwapChain::ToDX12SwapEffect(flags); // Contents of the backbuffer is discarded after calling present. 
+            swapchainDescription.SampleDesc.Count = 1;
+
+            if (!DX12_Utilities::ErrorCheck(dxgiFactory->CreateSwapChainForHwnd(
+                static_cast<ID3D12CommandQueue*>(m_RHI_Device->m_CommandPool), // The swapchain needs the queue so that it can force a flush on it.
+                glfwGetWin32Window(static_cast<GLFWwindow*>(windowHandle)),
+                &swapchainDescription,
+                nullptr, nullptr,
+                reinterpret_cast<IDXGISwapChain1**>(&m_SwapChain)
+            )))
+            {
+                std::cout << "Failed to create DX12 SwapChain.\n";
+                return;
+            }
+
+            std::cout << "Successfully created DX12 SwapChain.\n";
+        }
 
         m_IsInitialized = true;
     }
 
     DX12_SwapChain::~DX12_SwapChain()
     {
+
     }
 
     void DX12_SwapChain::Resize(uint32_t newWidth, uint32_t newHeight, const bool forceResize)

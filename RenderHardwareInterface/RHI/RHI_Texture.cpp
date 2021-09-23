@@ -2,6 +2,7 @@
 #include "RHI_Texture2D.h"
 #include "../Renderer/Renderer.h"
 #include "DX11/DX11_Texture.h"
+#include "DX12/DX12_Texture.h"
 
 namespace Aurora
 {
@@ -24,7 +25,7 @@ namespace Aurora
         switch (Renderer::GetCurrentRenderAPI())
         {
             case RenderAPI::DirectX11: return std::make_shared<DX11_Texture>(width, height, mipCount, format, flags, textureType, objectName);
-                // case RenderAPI::DirectX12: return std::make_shared<DX12_Device>();
+            case RenderAPI::DirectX12: return std::make_shared<DX12_Texture>(width, height, mipCount, format, flags, textureType, objectName);
                 // case RenderAPI::Vulkan:    return std::make_shared<Vulkan_Device>();
                 // So on and so forth...
         }

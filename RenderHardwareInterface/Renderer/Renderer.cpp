@@ -29,15 +29,15 @@ namespace Aurora
         }
 
         // Create SwapChain (Implicit Command Queue for DX12)
-        //m_SwapChain = RHI_SwapChain::Create(windowWidth, windowHeight, s_RenderWindow, m_RenderContext.get(),
-        //                                    m_SwapChainBufferCount, RHI_Present_Mode::RHI_Present_Immediate | RHI_Present_Mode::RHI_Swap_Flip_Discard,
-        //                                    RHI_Format::RHI_Format_R8G8B8A8_Unorm, "Swapchain_Main");
+        m_SwapChain = RHI_SwapChain::Create(windowWidth, windowHeight, s_RenderWindow, m_RenderContext.get(),
+                                            m_SwapChainBufferCount, RHI_Present_Mode::RHI_Present_Immediate | RHI_Present_Mode::RHI_Swap_Flip_Discard,
+                                            RHI_Format::RHI_Format_R8G8B8A8_Unorm, "Swapchain_Main");
 
-        //if (!m_SwapChain->IsInitialized())
-        //{
-        //    std::cout << "Failed to create SwapChain.\n";
-        //    return;
-        //}
+        if (!m_SwapChain->IsInitialized())
+        {
+            std::cout << "Failed to create SwapChain.\n";
+            return;
+        }
 
         // Determine MSAA Support
 
@@ -46,7 +46,7 @@ namespace Aurora
         // SetViewport(static_cast<float>(windowWidth), static_cast<float>(windowHeight));
 
         // Create Resources
-        //CreateFramebuffers(true);
+        CreateFramebuffers(true);
     }
 
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreateResources /*= true*/)

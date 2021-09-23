@@ -36,7 +36,23 @@ namespace Aurora
         // Matches our RHI_Format enum in RHI_Utilities. As enums are essentially integer literals, they can be used to index these array lists.
         static const DXGI_FORMAT ToDX12Format[] =
         {
-            DXGI_FORMAT_R8G8B8A8_UNORM
+            DXGI_FORMAT_UNKNOWN,
+            DXGI_FORMAT_R8G8B8A8_UNORM,
+
+            // RGB
+            DXGI_FORMAT_R11G11B10_FLOAT,
+
+            // Depth
+            DXGI_FORMAT_D32_FLOAT,
+            DXGI_FORMAT_D32_FLOAT_S8X24_UINT
+        };
+
+        static const D3D12_DESCRIPTOR_HEAP_TYPE ToDX12DescriptorType[] =
+        {
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+            D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+            D3D12_DESCRIPTOR_HEAP_TYPE_DSV
         };
 
         inline void QueryAdaptersAndDisplays()
@@ -102,6 +118,7 @@ namespace Aurora
                     static_cast<void*>(displayAdapter)));
             }
 
+            /*
             // Get display modes. Querying display modes ensures that our application can properly choose a valid full-screen mode.
             const auto GetDisplayModes = [](IDXGIAdapter1* adapter, RHI_Format queryingFormat)
             {
@@ -156,13 +173,93 @@ namespace Aurora
                     std::cout << "Failed to get display modes for " << gpu.GetGPUName();
                 }
             }
-
+            */
 
             // If we failed to get any display modes but have at least one adapter, use it.
             if (GlobalContext::m_RHI_Device->GetGPUs().size() != 0)
             {
                 std::cout << "Falling back to 1st default GPU adapter avaliable.\n";
                 GlobalContext::m_RHI_Device->SetPrimaryGPU(0);
+            }
+        }
+
+        namespace Heap
+        {
+            inline D3D12_DESCRIPTOR_HEAP_FLAGS ValidateFlags(uint32_t flags)
+            {
+                if (flags & RHI_Descriptor_Heap_Flag::RHI_Descriptor_Heap_Flag_None)
+                {
+                    return D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+                }
+
+                if (flags & RHI_Descriptor_Heap_Flag::RHI_Descriptor_Heap_Flag_ShaderVisible)
+                {
+                    return D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+                }
+            }
+
+            inline bool Create(void*& heap, uint32_t descriptorCount, RHI_Descriptor_Heap_Flag flag, RHI_Descriptor_Heap_Type heapType)
+            {
+                D3D12_DESCRIPTOR_HEAP_DESC heapDescription = {};
+                heapDescription.Type = ToDX12DescriptorType[heapType];
+                heapDescription.NumDescriptors = static_cast<UINT>(descriptorCount);
+                heapDescription.Flags = ValidateFlags(flag);
+
+                ID3D12DescriptorHeap* descriptorHeap;
+
+                if (!ErrorCheck(GetDX12Context()->m_Device->CreateDescriptorHeap(&heapDescription, IID_PPV_ARGS(&descriptorHeap))))
+                {
+                    std::cout << "Failed to create Descriptor Heap.\n";
+                    return false;
+                }
+
+                heap = static_cast<void*>(descriptorHeap);
+                std::cout << "Successfully created Descriptor Heap.\n";
+                return true;
+            }
+        }
+
+        namespace CommandQueue
+        {
+            inline bool Create(void*& commandQueue, ID3D12Device* device)
+            {
+                D3D12_COMMAND_QUEUE_DESC commandQueueDescription = {};
+                commandQueueDescription.Flags = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE; // Signifies a default command queue.
+                commandQueueDescription.Type = D3D12_COMMAND_LIST_TYPE_DIRECT; // Specifies a command buffer that the GPU can execute. A direct command list doesn't inherit any GPU state.
+                
+                ID3D12CommandQueue* dx12CommandQueue;
+                if (!ErrorCheck(device->CreateCommandQueue(&commandQueueDescription, IID_PPV_ARGS(&dx12CommandQueue))))
+                {
+                    std::cout << "Failed to create DX12 Command Queue.\n";
+                    return false;
+                }
+                else
+                {
+                    commandQueue = static_cast<void*>(dx12CommandQueue);
+                    std::cout << "Successfully created DX12 Command Queue.\n";
+                    return true;
+                }
+            }
+
+            inline void Destroy(void*& commandQueue)
+            {
+                ID3D12CommandQueue* dx12CommandQueue = static_cast<ID3D12CommandQueue*>(commandQueue);
+                dx12CommandQueue->Release();
+                commandQueue = nullptr;
+            }
+        }
+
+        namespace SwapChain
+        {
+            inline DXGI_SWAP_EFFECT ToDX12SwapEffect(uint32_t flags)
+            {
+                if (flags & RHI_Swap_Discard) { return DXGI_SWAP_EFFECT_DISCARD; }
+                if (flags & RHI_Swap_Sequential) { return DXGI_SWAP_EFFECT_SEQUENTIAL; }
+                if (flags & RHI_Swap_Flip_Discard) { return DXGI_SWAP_EFFECT_FLIP_DISCARD; }
+                if (flags & RHI_Swap_Flip_Sequential) { return DXGI_SWAP_EFFECT_SEQUENTIAL; }
+
+                std::cout << "Failed to determine the requested swap effect, opting for DXGI_SWAP_EFFECT_DISCARD.\n";
+                return DXGI_SWAP_EFFECT_DISCARD;
             }
         }
     }

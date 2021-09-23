@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include "RHI_Device.h"
-#include "RHI_Context.h"
 
 namespace Aurora
 {
@@ -31,6 +30,29 @@ namespace Aurora
         RHI_Swap_Flip_Sequential    = 1 << 6,   // Backbuffer contents are persisted.
         RHI_Swap_Flip_Discard       = 1 << 7,   // Backbuffer contents are discarded.
         RHI_Swap_Allow_Mode_Switch  = 1 << 8
+    };
+    
+    enum RHI_Queue_Type
+    {
+        RHI_Queue_Graphics,
+        RHI_Queue_Compute,
+        RHI_Queue_Transfer
+    };
+
+    // DX12
+    enum RHI_Descriptor_Heap_Type
+    {
+        RHI_Descriptor_Heap_Type_CBV_SRV_UAV,
+        RHI_Descriptor_Heap_Type_Sampler,
+        RHI_Descriptor_Heap_Type_RTV,
+        RHI_Descriptor_Heap_Type_DSV
+    };
+
+    // DX12
+    enum RHI_Descriptor_Heap_Flag
+    {
+        RHI_Descriptor_Heap_Flag_None,
+        RHI_Descriptor_Heap_Flag_ShaderVisible
     };
 
     inline std::string RenderAPIToString(RenderAPI renderAPI)

@@ -15,6 +15,8 @@ namespace Aurora
         VkPhysicalDevice m_PhysicalDevice = nullptr;
         VkDevice m_Device = nullptr;
         VkPhysicalDeviceProperties m_DeviceProperties = {};
+        VkPhysicalDeviceVulkan12Features m_DeviceFeature1_2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+        VkPhysicalDeviceFeatures2 m_DeviceFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &m_DeviceFeature1_2 };
 
 #ifdef _DEBUG
         /*

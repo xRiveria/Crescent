@@ -137,7 +137,7 @@ namespace Crescent
         swapchainDescription.Width = m_WindowWidth;
         swapchainDescription.Height = m_WindowHeight;
         swapchainDescription.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        swapchainDescription.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // Uses the surface as an output render target.
+        swapchainDescription.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // Uses the surface or resource as an output render target.
         swapchainDescription.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // Contents of the backbuffer is discarded after calling present. 
         swapchainDescription.SampleDesc.Count = 1;
 
