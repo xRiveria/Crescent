@@ -30,20 +30,9 @@ namespace Aurora
 
     }
 
-    // Retrieve buffer count from renderer/swapchain. Heap type based on texture format.
     bool DX12_Texture::CreateResourceInternal()
     {
-        // Heap with 2 descriptors for our RTV.
-        DX12_Utilities::Heap::Create(m_ResourceHeap_RenderTargetView, 2, RHI_Descriptor_Heap_Flag::RHI_Descriptor_Heap_Flag_None, RHI_Descriptor_Heap_Type::RHI_Descriptor_Heap_Type_RTV);
 
-        // Create frame resources.
-        CD3DX12_CPU_DESCRIPTOR_HANDLE rtvCPUHandle(static_cast<ID3D12DescriptorHeap*>(m_ResourceHeap_RenderTargetView)->GetCPUDescriptorHandleForHeapStart());
-
-        // Create an RTV for each frame.
-        for (UINT i = 0; i < 2; i++)
-        {
-
-        }
 
         return true;
     }

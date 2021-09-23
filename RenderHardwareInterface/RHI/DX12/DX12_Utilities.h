@@ -196,6 +196,9 @@ namespace Aurora
                 {
                     return D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
                 }
+
+                std::cout << "Descriptor Heap Flag not found. Returning default.\n";
+                return D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
             }
 
             inline bool Create(void*& heap, uint32_t descriptorCount, RHI_Descriptor_Heap_Flag flag, RHI_Descriptor_Heap_Type heapType)

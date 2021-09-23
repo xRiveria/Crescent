@@ -86,7 +86,7 @@ namespace Aurora
                 return;
             }
 
-            ID3D11RenderTargetView* renderTargetView = static_cast<ID3D11RenderTargetView*>(m_ResourceView_RenderTarget);
+            ID3D11RenderTargetView* renderTargetView = static_cast<ID3D11RenderTargetView*>(m_ResourceView_RenderTarget[0]);
             result = DX11_Utilities::GetDX11Context()->m_Device->CreateRenderTargetView(backBuffer, nullptr, &renderTargetView);
             backBuffer->Release();
 
@@ -97,7 +97,7 @@ namespace Aurora
             }
 
             std::cout << "Successfully created SwapChain RTV.\n";
-            m_ResourceView_RenderTarget = static_cast<void*>(renderTargetView);
+            m_ResourceView_RenderTarget[0] = static_cast<void*>(renderTargetView);
         }
 
         m_IsInitialized = true;

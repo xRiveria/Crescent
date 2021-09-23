@@ -37,7 +37,10 @@ namespace Aurora
 
         // API
         void* m_SwapChain = nullptr;
-        void* m_ResourceView_RenderTarget = nullptr;
+
+        uint32_t m_RTV_DescriptorSize = 0;
+        void* m_ResourceHeap_RenderTargetView = nullptr; // DX12
+        void* m_ResourceView_RenderTarget[4] = { nullptr, nullptr, nullptr, nullptr };
 
         RHI_Device* m_RHI_Device = nullptr;
     };

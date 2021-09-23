@@ -66,7 +66,6 @@ namespace Aurora
         void* m_ResourceView_UAV = nullptr;
 
         // RTV
-        void* m_ResourceHeap_RenderTargetView = nullptr;
         void* m_ResourceView_RenderTargetView = nullptr;
 
         void* m_ResourceView_DepthStencilView = nullptr;
