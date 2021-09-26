@@ -47,6 +47,71 @@ namespace Aurora
             DXGI_FORMAT_D32_FLOAT_S8X24_UINT
         };
 
+        static const D3D12_CULL_MODE ToDX12CullMode[] =
+        {
+            D3D12_CULL_MODE_NONE,
+            D3D12_CULL_MODE_FRONT,
+            D3D12_CULL_MODE_BACK,
+        };
+        
+        static const D3D12_FILL_MODE ToDX12FillMode[] =
+        {
+            D3D12_FILL_MODE_SOLID,
+            D3D12_FILL_MODE_WIREFRAME,
+        };
+
+        static const D3D12_COMPARISON_FUNC ToDX12ComparisonFunction[] =
+        {
+            D3D12_COMPARISON_FUNC_NEVER,
+            D3D12_COMPARISON_FUNC_LESS,
+            D3D12_COMPARISON_FUNC_EQUAL,
+            D3D12_COMPARISON_FUNC_LESS_EQUAL,
+            D3D12_COMPARISON_FUNC_GREATER,
+            D3D12_COMPARISON_FUNC_NOT_EQUAL,
+            D3D12_COMPARISON_FUNC_GREATER_EQUAL,
+            D3D12_COMPARISON_FUNC_ALWAYS
+        };
+
+        static const D3D12_STENCIL_OP ToDX12StencilOperation[] =
+        {
+            D3D12_STENCIL_OP_KEEP,
+            D3D12_STENCIL_OP_ZERO,
+            D3D12_STENCIL_OP_REPLACE,
+            D3D12_STENCIL_OP_INCR_SAT,
+            D3D12_STENCIL_OP_DECR_SAT,
+            D3D12_STENCIL_OP_INVERT,
+            D3D12_STENCIL_OP_INCR,
+            D3D12_STENCIL_OP_DECR
+        };
+
+        static const D3D12_BLEND ToDX12BlendFunction[] =
+        {
+            D3D12_BLEND_ZERO,
+            D3D12_BLEND_ONE,
+            D3D12_BLEND_SRC_COLOR,
+            D3D12_BLEND_INV_SRC_COLOR,
+            D3D12_BLEND_SRC_ALPHA,
+            D3D12_BLEND_INV_SRC_ALPHA,
+            D3D12_BLEND_DEST_ALPHA,
+            D3D12_BLEND_INV_DEST_ALPHA,
+            D3D12_BLEND_SRC_ALPHA_SAT,
+            D3D12_BLEND_BLEND_FACTOR,
+            D3D12_BLEND_INV_BLEND_FACTOR,
+            D3D12_BLEND_SRC1_COLOR,
+            D3D12_BLEND_INV_SRC1_COLOR,
+            D3D12_BLEND_SRC1_ALPHA,
+            D3D12_BLEND_INV_SRC1_ALPHA
+        };
+
+        static const D3D12_BLEND_OP ToDX12BlendOperation[] =
+        {
+            D3D12_BLEND_OP_ADD,
+            D3D12_BLEND_OP_SUBTRACT,
+            D3D12_BLEND_OP_REV_SUBTRACT,
+            D3D12_BLEND_OP_MIN,
+            D3D12_BLEND_OP_MAX
+        };
+
         static const D3D12_DESCRIPTOR_HEAP_TYPE ToDX12DescriptorType[] =
         {
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,

@@ -38,6 +38,12 @@ namespace Aurora
             std::cout << "Failed to create SwapChain.\n";
             return;
         }
+        
+        // Create Command Lists - 1 command list per buffer.
+        for (uint32_t i = 0; i < m_SwapChainBufferCount; i++)
+        {
+
+        }
 
         // Determine MSAA Support
 
@@ -47,6 +53,7 @@ namespace Aurora
 
         // Create Resources
         CreateFramebuffers(true);
+        CreateAssets();
     }
 
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreateResources /*= true*/)
@@ -123,5 +130,17 @@ namespace Aurora
                                                                                      RHI_Texture_Flag::RHI_Texture_RT_DepthStencil | RHI_Texture_Flag::RHI_Texture_SRV, 
                                                                                      "RT_DepthBuffer");
         }
+    }
+
+    void Renderer::CreateAssets()
+    {
+        // Rasterizer States
+        m_RasterizerState_CullBackSolid = RHI_RasterizerState::Create(RHI_Cull_Mode::RHI_Cull_Back, RHI_Fill_Mode::RHI_Fill_Solid, true, false, true, false);
+        
+        // Blend States
+        m_BlendState_Disabled = RHI_BlendState::Create(false);
+
+        // Depth Stencil State
+        m_DepthStencilState_ReadWrite_Off = RHI_DepthStencilState::Create(true, true, RHI_Comparison_Function::RHI_Comparison_Function_Less_Equal, false, false, RHI_Comparison_Function::RHI_Comparison_Function_Never);
     }
 }

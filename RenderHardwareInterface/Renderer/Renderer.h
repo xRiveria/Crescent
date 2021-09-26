@@ -2,6 +2,8 @@
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_States.h"
+#include "../RHI/RHI_CommandList.h"
 #include "../Math/Vector2.h"
 #include <array>
 
@@ -35,6 +37,7 @@ namespace Aurora
     private:
         // Resource Creation
         void CreateFramebuffers(const bool createRenderBuffers = true);
+        void CreateAssets();
 
     private:
         std::shared_ptr<RHI_Device> m_RenderContext;
@@ -52,6 +55,16 @@ namespace Aurora
         Vector2 m_ResolutionRender;
         static const uint8_t m_SwapChainBufferCount = 3;
         std::shared_ptr<RHI_SwapChain> m_SwapChain;
+        std::shared_ptr<RHI_CommandList> m_CommandList;
+
+        // Rasterizer States
+        std::shared_ptr<RHI_RasterizerState> m_RasterizerState_CullBackSolid;
+
+        // Blend States
+        std::shared_ptr<RHI_BlendState> m_BlendState_Disabled;
+
+        // Depth Stencil States
+        std::shared_ptr<RHI_DepthStencilState> m_DepthStencilState_ReadWrite_Off;
 
         static RenderAPI s_CurrentRenderAPI; // Initialized to Unknown.
     };

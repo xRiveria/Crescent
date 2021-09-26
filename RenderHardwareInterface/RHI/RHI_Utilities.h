@@ -1,9 +1,14 @@
 #pragma once
 #include <string>
+#include "../Math/Vector4.h"
 #include "RHI_Device.h"
 
 namespace Aurora
 {
+    static const Vector4  m_RHI_Color_Load = Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    static const float    m_RHI_Depth_Load = std::numeric_limits<float>::infinity();
+    static const uint32_t m_RHI_Stencil_Load = (std::numeric_limits<uint32_t>::max)() - 1;
+
     enum RHI_Format : uint32_t
     {
         RHI_Format_Undefined,
@@ -37,6 +42,73 @@ namespace Aurora
         RHI_Queue_Graphics,
         RHI_Queue_Compute,
         RHI_Queue_Transfer
+    };
+
+    enum RHI_Cull_Mode
+    {
+        RHI_Cull_None,
+        RHI_Cull_Front,
+        RHI_Cull_Back,
+    };
+
+    enum RHI_Fill_Mode
+    {
+        RHI_Fill_Solid,
+        RHI_Fill_Wireframe,
+    };
+
+    enum RHI_Comparison_Function
+    {
+        RHI_Comparison_Function_Never,                // The comparison will never pass.
+        RHI_Comparison_Function_Less,                 // If the source data is less than the destination data, the comparison passes.
+        RHI_Comparison_Function_Equal,                // If the source data is equal to the destination data, the comparison passes.
+        RHI_Comparison_Function_Less_Equal,           // If the source data is lesser than or equal to the destination data, the comparison passes.
+        RHI_Comparison_Function_Greater,              // If the source data is greater than the destination data, the comparison passes.
+        RHI_Comparison_Function_Not_Equal,            // If the source data is not equal to the destination data, the comparison passes.
+        RHI_Comparison_Function_Greater_Equal,        // If the source data is greater than or equal to the destination data, the comparison passes.
+        RHI_Comparison_Function_Always                // Always passes the comparison.
+    };
+
+    enum RHI_Stencil_Operation
+    {
+        RHI_Stencil_Operation_Keep,             // Keeps the existing stencil data.
+        RHI_Stencil_Operation_Zero,             // Sets the stencil data to 0.
+        RHI_Stencil_Operation_Replace,          // Sets the stencil data to the reference value set through OMSetStencilRef.
+        RHI_Stencil_Operation_Increment_Sat,    // Increment the stencil buffer entry by 1, and clamps the result to the maximum value of our stencil buffer (eg 255 for 8-bit stencil buffers).
+        RHI_Stencil_Operation_Decrement_Sat,    // Same as the above, but for decrementations.
+        RHI_Stencil_Operation_Invert,           // Inverts the bits of our stencil data.
+        RHI_Stencil_Operation_Increment,        // Increment the stencil buffer entry by 1. If the incremented value exceeds our stencil buffer limits, wrap it to 0.
+        RHI_Stencil_Operation_Decrement         // Decrement the stencil buffer entry by 1. If the decremented value is less than 0, wrap it to the maximum allowed value.
+    };
+
+    // Operation between two pixel values to be blended after blending functions are applied.
+    enum RHI_Blend_Operation
+    {
+        RHI_Blend_Operation_Add,                // Adds source 1 and 2.
+        RHI_Blend_Operation_Subtract,           // Subtracts the source pixel from the target pixel.
+        RHI_Blend_Operation_Reverse_Subtract,   // Subtracts the target pixel from the source pixel.
+        RHI_Blend_Operation_Minimum,            // Finds the minimum of source 1 and source 2.
+        RHI_Blend_Operation_Maximum             // Finds the maximum of source 1 and source 2.
+    };
+
+    // Function to apply to the current pixel value before blend operations are applied.
+    enum RHI_Blend_Function
+    {
+        RHI_Blend_Function_Zero,                          // Generates RGBA * (0, 0, 0, 0).
+        RHI_Blend_Function_One,                           // Generates RGBA * (1, 1, 1, 1).
+        RHI_Blend_Function_Source_Color,                  // Generates RGBA * RGB.
+        RHI_Blend_Function_Inverse_Source_Color,          // Generates RGBA * (1 - RGB).
+        RHI_Blend_Function_Source_Alpha,                  // Generates RGBA * Source Alpha Value.
+        RHI_Blend_Function_Inverse_Source_Alpha,          // Generates RGBA * (1 - Source Alpha Value).
+        RHI_Blend_Function_Destination_Alpha,             // Generates RGBA * (Render Target (Destination) Alpha)
+        RHI_Blend_Function_Inverse_Destination_Color,     // Generates RGBA * (1 - Render Target (Destination) Alpha)
+        RHI_Blend_Function_Source_Alpha_Sat,              // Generates RGBA * (F, F, F, 1), where F = min(A, 1 - A). 
+        RHI_Blend_Function_Blend_Factor,                  // Generates RGBA * Blend Factor (Set with OMSetBlendFactor in DX)
+        RHI_Blend_Function_Inverse_Blend_Factor,          // Generates RGBA * 1 - Blend Factor (Set with OMSetBlendFactor in DX)
+        RHI_Blend_Function_Source1_Color,
+        RHI_Blend_Function_Inverse_Source1_Color,
+        RHI_Blend_Function_Source1_Alpha,
+        RHI_Blend_Function_Inverse_Source1_Alpha
     };
 
     // DX12
