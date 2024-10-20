@@ -13,7 +13,7 @@ While I've since moved on to more structured and advanced engines, Crescent serv
 - PBR
 - Screen Space Ambient Occlusion
 - Directional Shadow Mapping
-- Tranparency Sorting
+- Transparency Sorting
 - Material System and Instancing
 - Animations
 - Custom ECS
@@ -22,4 +22,4 @@ While I've since moved on to more structured and advanced engines, Crescent serv
 
 ## Compilation
 
-The solution file is directly included within the repository due to my cluelessness with build systems many years ago. 
+The solution file is directly included within the repository due to my cluelessness with build systems many years ago. 😂
